@@ -36,6 +36,7 @@ compose.paperclip.json           Serviço Paperclip e suas fronteiras de rede/da
 scripts/setup.py                 Planejar, sincronizar, exportar skills e operar
 scripts/bootstrap-ubuntu.sh      Pré-requisitos do sistema
 scripts/install-orca.py          Download verificado e instalação opcional
+scripts/audit-history.py         Leitor opcional de históricos/exportações locais
 docs/                           Instalação, componentes, operação e orquestração
 tests/                          Testes sem cloud, Docker ou APIs pagas
 ```
@@ -58,6 +59,7 @@ Use `--root /caminho/absoluto` antes do subcomando para mudar o runtime. Nenhum 
 - [Componentes e decisões](docs/COMPONENTES.md)
 - [Operação, atualização e recuperação](docs/OPERACAO.md)
 - [Orquestração e limites das sessões](docs/ORQUESTRACAO.md)
+- [Auditoria de históricos fornecidos](docs/AUDITORIA_HISTORICOS.md)
 - [Resultado da validação](docs/VALIDACAO.md)
 
 ```bash
