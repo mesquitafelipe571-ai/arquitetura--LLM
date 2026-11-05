@@ -8,12 +8,14 @@ Data: 2026-11-05.
 - `bash -n scripts/bootstrap-ubuntu.sh` passou.
 - `scripts/setup.py plan` retornou os cinco componentes e não criou runtime.
 - Duas revisões independentes examinaram implantação/backup e sincronização/skills.
+- GitHub Actions passou no commit 164fda4f44d449e6a82dd4cd60ddabb0051e684a: [execução 42096473662](https://github.com/mesquitafelipe571-ai/arquitetura--LLM/actions/runs/42096473662).
+- Alvo confirmado pelo usuário: Ubuntu 24.04 x86_64.
 
 Os testes cobrem preservação de segredos, configuração ausente com dados existentes, locks, checkouts alterados, origens divergentes, arquivos extras/ignorados, falhas parciais em paralelo, colisões de skills/licenças, symlinks, isolamento Compose por runtime, sudo sem segredos no argv, readiness e backup sem recriação do container.
 
 ## Ainda não executado
 
-- Instalação em VM Google real ou validação de sua distribuição/arquitetura.
+- Instalação e verificação de funcionamento na VM Google real.
 - Build/runtime Docker do Paperclip e fluxo real de onboarding.
 - Instalação .deb e runtime remoto Orca.
 - Ativação de plugins completos, hooks ou chamadas a provedores.

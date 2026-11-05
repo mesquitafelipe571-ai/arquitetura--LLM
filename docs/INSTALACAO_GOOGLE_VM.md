@@ -2,7 +2,7 @@
 
 ## Alvo e capacidade
 
-O bootstrap foi escrito para Ubuntu 24.04 amd64/arm64. A configuração real da VM não foi fornecida. Para o primeiro build, uma base prática é 4 vCPUs, 16 GiB de RAM e 80 GiB de disco; isso é recomendação, não dimensionamento medido. Usar uma VM existente evita criar recursos ou custos por este instalador.
+A VM informada usa **Ubuntu 24.04 x86_64 (amd64)**. O bootstrap foi escrito para esse alvo e também aceita arm64. A capacidade de CPU, RAM e disco ainda não foi informada. Para o primeiro build, uma base prática é 4 vCPUs, 16 GiB de RAM e 80 GiB de disco; isso é recomendação, não dimensionamento medido. Usar uma VM existente evita criar recursos ou custos por este instalador.
 
 Debian pode executar o gerenciador Python, mas precisa Git, Python >=3.10, Docker Engine, Compose v2 e Buildx instalados conforme a documentação Docker para sua distribuição. O bootstrap recusa outros sistemas.
 
