@@ -4,7 +4,7 @@ Data: 2026-11-05.
 
 ## Executado
 
-- 45 testes unittest passaram usando Python 3.12.14 e Git 2.52.0: 23 do instalador e 22 do leitor opcional de históricos.
+- 50 testes unittest passaram usando Python 3.12.14 e Git 2.52.0: 28 do instalador e 22 do leitor opcional de históricos.
 - `bash -n scripts/bootstrap-ubuntu.sh` passou.
 - `scripts/setup.py plan` retornou os cinco componentes e não criou runtime.
 - Duas revisões independentes examinaram implantação/backup e sincronização/skills.
@@ -24,6 +24,12 @@ O leitor de históricos usa fixtures sintéticas. Foram verificados JSON/JSONL, 
 - Restauração completa do banco em uma VM.
 
 A configuração Paperclip foi conferida contra o código/documentação upstream fixados. Chamadas Docker e saúde são simuladas nos testes de comportamento; isso não comprova funcionamento ponta a ponta.
+
+## Instalação real no ambiente desta conversa
+
+Paperclip 2026.1023.0 foi instalado via npm com Node 24.22.2, configuração autenticada e banco local. CLI, esquema de configuração, API, HTML e JavaScript responderam; a rota de empresas sem login retornou 403. Parada e reinicialização foram verificadas com os segredos e o banco preservados. O cadastro inicial do administrador permanece pendente.
+
+A imagem oficial Docker foi tentada e excedeu o disco disponível do ambiente VFS; não foi considerada instalada. Esses resultados são do ambiente gerenciado, sem instalação ou validação na VM Google. Veja [operação nativa](PAPERCLIP_NATIVO.md).
 
 ## Reprodução local
 

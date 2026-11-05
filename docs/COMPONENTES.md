@@ -18,7 +18,7 @@ O Compose deriva do [quickstart oficial fixado](https://github.com/paperclipai/p
 
 Node >=24.11, pnpm 9.15.4 e Rust ficam no build/container. Não instale essas versões no host apenas para executar Paperclip.
 
-**Reprodutibilidade:** o commit fixa o código. O [Dockerfile upstream](https://github.com/paperclipai/paperclip/blob/d361f920716ac3aeb5c771246071abe8f2672efe/Dockerfile) ainda usa `node:24-trixie-slim`, resolução de dependências e CLIs `@latest`. Builds do mesmo SHA podem produzir imagens diferentes. Preserve a imagem de um deployment que queira recuperar exatamente.
+**Reprodutibilidade:** o commit fixa o código. O [Dockerfile upstream](https://github.com/paperclipai/paperclip/blob/d361f920716ac3aeb5c771246071abe8f2672efe/Dockerfile) ainda usa `node:24-trixie-slim`, resolução de dependências e CLIs `@latest`. Builds do mesmo SHA podem produzir imagens diferentes. Preserve a imagem de um deployment que queira recuperar exatamente. O comando paperclip pull usa a imagem oficial publicada para o mesmo commit, verifica a revisão e registra o digest de conteúdo. Esse caminho dispensa o build local.
 
 ## Orca opcional
 

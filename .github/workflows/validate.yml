@@ -19,3 +19,4 @@ jobs:
         run: |
           bash -n scripts/bootstrap-ubuntu.sh
           python3 scripts/setup.py plan
+          python3 scripts/paperclip-native.py --help

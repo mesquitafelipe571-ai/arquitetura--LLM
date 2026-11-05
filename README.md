@@ -22,11 +22,11 @@ python3 scripts/setup.py --sudo-docker doctor
 python3 scripts/setup.py plan
 python3 scripts/setup.py init
 python3 scripts/setup.py sync --jobs 3
-python3 scripts/setup.py --sudo-docker paperclip build
+python3 scripts/setup.py --sudo-docker paperclip pull
 python3 scripts/setup.py --sudo-docker paperclip up
 ```
 
-O build inicial pode demorar: o Dockerfile upstream compila Rust, servidor e interface. Nenhuma chave de provedor é necessária para iniciar a aplicação; agentes exigem autenticação própria e podem gerar custos.
+O comando pull baixa a imagem oficial correspondente ao SHA e verifica revisão/digest. Para compilar localmente, use paperclip build; o Dockerfile upstream compila Rust, servidor e interface. Nenhuma chave de provedor é necessária para iniciar a aplicação; agentes exigem autenticação própria e podem gerar custos.
 
 ## Organização
 
@@ -37,6 +37,7 @@ scripts/setup.py                 Planejar, sincronizar, exportar skills e operar
 scripts/bootstrap-ubuntu.sh      Pré-requisitos do sistema
 scripts/install-orca.py          Download verificado e instalação opcional
 scripts/audit-history.py         Leitor opcional de históricos/exportações locais
+scripts/paperclip-native.py      Controle de uma instalação npm já preparada
 docs/                           Instalação, componentes, operação e orquestração
 tests/                          Testes sem cloud, Docker ou APIs pagas
 ```
@@ -60,6 +61,7 @@ Use `--root /caminho/absoluto` antes do subcomando para mudar o runtime. Nenhum 
 - [Operação, atualização e recuperação](docs/OPERACAO.md)
 - [Orquestração e limites das sessões](docs/ORQUESTRACAO.md)
 - [Auditoria de históricos fornecidos](docs/AUDITORIA_HISTORICOS.md)
+- [Operação da instalação Paperclip via npm](docs/PAPERCLIP_NATIVO.md)
 - [Resultado da validação](docs/VALIDACAO.md)
 
 ```bash

@@ -216,7 +216,7 @@ def export_skills(root, component, project, selected):
     atomic_json(metadata, previous)
     return {"project": str(project), "skills": [p[0] for p in planned]}
 
-def compose(root, component, sudo):
+def compose(root, component, sudo, override=None):
     verify_source(source_path(root, component), component)
     envfile = root / "config/paperclip.env"
     if not envfile.is_file() or envfile.is_symlink() or envfile.stat().st_mode & 0o077:
@@ -230,6 +230,11 @@ def compose(root, component, sudo):
     project_name = "alm-" + hashlib.sha256(str(root.resolve()).encode()).hexdigest()[:12]
     cmd = prefix + ["docker", "compose", "--project-name", project_name,
                     "--env-file", str(envfile), "-f", str(REPO / "compose.paperclip.json")]
+    if override:
+        overlay = Path(override).expanduser()
+        if overlay.is_symlink() or not overlay.is_file():
+            raise ValueError("Override Compose ausente ou inválido.")
+        cmd += ["-f", str(overlay.resolve())]
     return cmd, env
 
 def health():
@@ -239,8 +244,31 @@ def health():
         raise ValueError("Serviço ainda não está pronto: " + str(data.get("status")))
     return {k: data[k] for k in ("status", "commit", "bootstrapStatus") if k in data}
 
-def paperclip(root, component, sudo, action):
-    cmd, env = compose(root, component, sudo)
+def paperclip(root, component, sudo, action, override=None):
+    cmd, env = compose(root, component, sudo, override)
+    if action == "pull":
+        docker = (["sudo"] if sudo else []) + ["docker"]
+        repository = "ghcr.io/" + component["repository"]
+        upstream = repository + ":sha-" + component["commit"]
+        run(docker + ["pull", upstream], env=env)
+        revision = capture(docker + ["image", "inspect", "--format",
+                                   '{{index .Config.Labels "org.opencontainers.image.revision"}}', upstream])
+        if revision != component["commit"]:
+            raise ValueError("Revisão da imagem oficial difere do catálogo; imagem não ativada.")
+        digests = json.loads(capture(docker + ["image", "inspect", "--format", "{{json .RepoDigests}}", upstream]))
+        digest = next((d for d in (digests or []) if re.fullmatch(re.escape(repository) + r"@sha256:[a-f0-9]{64}", d)), None)
+        if not digest:
+            raise ValueError("Imagem oficial sem digest verificável; imagem não ativada.")
+        image_id = capture(docker + ["image", "inspect", "--format", "{{.Id}}", upstream])
+        if not re.fullmatch(r"sha256:[a-f0-9]{64}", image_id):
+            raise ValueError("ID da imagem inválido.")
+        image = "arquitetura-llm/paperclip:" + component["commit"]
+        run(docker + ["tag", upstream, image])
+        receipt = {"source_commit": component["commit"], "image_id": image_id,
+                   "source_image_digest": digest, "method": "official-image",
+                   "acquired_at": datetime.now(timezone.utc).isoformat()}
+        atomic_json(root / "state/paperclip-build.json", receipt)
+        return receipt
     if action == "build":
         run(cmd + ["build", "paperclip"], env=env)
         image = "arquitetura-llm/paperclip:" + component["commit"]
@@ -254,7 +282,7 @@ def paperclip(root, component, sudo, action):
     if action == "up":
         receipt_file = root / "state/paperclip-build.json"
         if not receipt_file.exists():
-            raise ValueError("Execute paperclip build antes de iniciar.")
+            raise ValueError("Execute paperclip pull ou paperclip build antes de iniciar.")
         receipt = json.loads(receipt_file.read_text())
         docker = (["sudo"] if sudo else []) + ["docker"]
         actual = capture(docker + ["image", "inspect", "--format", "{{.Id}}",
@@ -317,6 +345,7 @@ def parser():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--root", default=str(DEFAULT_ROOT))
     p.add_argument("--sudo-docker", action="store_true", help="Executar somente Docker com sudo")
+    p.add_argument("--compose-override", help="Arquivo Compose adicional para configuração específica do ambiente")
     sub = p.add_subparsers(dest="command", required=True)
     sub.add_parser("plan")
     sub.add_parser("init")
@@ -329,7 +358,7 @@ def parser():
     skills.add_argument("--project", required=True)
     skills.add_argument("--skill", action="append", default=[])
     app = sub.add_parser("paperclip")
-    app.add_argument("action", choices=("build", "up", "status", "stop", "logs", "backup"))
+    app.add_argument("action", choices=("pull", "build", "up", "status", "stop", "logs", "backup"))
     return p
 
 def main():
@@ -371,7 +400,7 @@ def main():
                 c = components[args.component]
                 emit(export_skills(root, c, args.project, args.skill or c["skills"]))
             else:
-                emit(paperclip(root, components["paperclip"], args.sudo_docker, args.action))
+                emit(paperclip(root, components["paperclip"], args.sudo_docker, args.action, args.compose_override))
         return 0
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
         emit({"error": str(exc)})

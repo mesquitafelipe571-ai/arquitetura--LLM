@@ -240,6 +240,59 @@ class SetupTests(unittest.TestCase):
             cmd2, _ = setup.compose(other, c, False)
         self.assertNotEqual(cmd1[cmd1.index("--project-name") + 1], cmd2[cmd2.index("--project-name") + 1])
 
+    def test_pull_records_verified_official_digest(self):
+        c, _ = self.checkout("paperclip")
+        image_id = "sha256:" + "a" * 64
+        digest = "ghcr.io/" + c["repository"] + "@sha256:" + "b" * 64
+        def capture(argv, **kwargs):
+            if "{{.Id}}" in argv:
+                return image_id
+            if "{{json .RepoDigests}}" in argv:
+                return json.dumps([digest])
+            return c["commit"]
+        with patch.object(setup, "verify_source"), patch.object(setup, "capture", side_effect=capture), patch.object(setup, "run") as run:
+            result = setup.paperclip(self.root, c, False, "pull")
+        self.assertEqual(result["source_image_digest"], digest)
+        self.assertEqual(result["method"], "official-image")
+        self.assertEqual(json.loads((self.root / "state/paperclip-build.json").read_text()), result)
+        self.assertTrue(any("tag" in call.args[0] for call in run.call_args_list))
+
+    def test_pull_rejects_wrong_revision_without_activation(self):
+        c, _ = self.checkout("paperclip")
+        with patch.object(setup, "verify_source"), patch.object(setup, "capture", return_value="0" * 40), patch.object(setup, "run") as run:
+            with self.assertRaisesRegex(ValueError, "Revisão"):
+                setup.paperclip(self.root, c, False, "pull")
+        self.assertFalse((self.root / "state/paperclip-build.json").exists())
+        self.assertFalse(any("tag" in call.args[0] for call in run.call_args_list))
+
+    def test_pull_requires_registry_digest(self):
+        c, _ = self.checkout("paperclip")
+        def capture(argv, **kwargs):
+            return "[]" if "{{json .RepoDigests}}" in argv else c["commit"]
+        with patch.object(setup, "verify_source"), patch.object(setup, "capture", side_effect=capture), patch.object(setup, "run") as run:
+            with self.assertRaisesRegex(ValueError, "digest"):
+                setup.paperclip(self.root, c, False, "pull")
+        self.assertFalse(any("tag" in call.args[0] for call in run.call_args_list))
+
+    def test_compose_appends_environment_override(self):
+        c, _ = self.checkout("paperclip")
+        overlay = self.base / "overlay.json"
+        overlay.write_text('{"services":{}}')
+        cmd, _ = setup.compose(self.root, c, False, overlay)
+        self.assertEqual(cmd[-2:], ["-f", str(overlay.resolve())])
+        self.assertIn(str(REPO / "compose.paperclip.json"), cmd)
+
+    def test_compose_rejects_invalid_or_symlink_override(self):
+        c, _ = self.checkout("paperclip")
+        overlay = self.base / "missing.json"
+        with self.assertRaisesRegex(ValueError, "Override"):
+            setup.compose(self.root, c, False, overlay)
+        target = self.base / "target.json"
+        target.write_text("{}")
+        overlay.symlink_to(target)
+        with self.assertRaisesRegex(ValueError, "Override"):
+            setup.compose(self.root, c, False, overlay)
+
     def test_manifest_pins_and_candidate_not_default(self):
         c = setup.load_components()
         self.assertEqual(len(c), 5)

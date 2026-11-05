@@ -34,7 +34,7 @@ python3 scripts/setup.py --sudo-docker doctor
 python3 scripts/setup.py plan
 python3 scripts/setup.py init
 python3 scripts/setup.py sync --jobs 3
-python3 scripts/setup.py --sudo-docker paperclip build
+python3 scripts/setup.py --sudo-docker paperclip pull
 python3 scripts/setup.py --sudo-docker paperclip up
 ```
 
@@ -48,7 +48,7 @@ python3 scripts/setup.py sync --component ui-ux-pro-max
 
 Se um download falhar, os que terminaram ficam preservados. Corrija a conexão e repita o comando. Checkouts alterados são recusados; não são limpos automaticamente.
 
-O build Paperclip executa o Dockerfile upstream. Ao terminar, um recibo registra o SHA de origem e o image ID. `up` exige esse recibo e aguarda o healthcheck.
+O comando pull verifica a revisão da imagem oficial e registra seu digest e image ID. Se a imagem não estiver publicada para o SHA, use paperclip build para executar o Dockerfile upstream. `up` exige o recibo e aguarda o healthcheck.
 
 ## Acesso pelo computador
 
