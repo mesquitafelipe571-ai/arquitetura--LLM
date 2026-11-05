@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "verified_on": "2026-11-05",
+  "components": [
+    {
+      "id": "paperclip",
+      "repository": "paperclipai/paperclip",
+      "commit": "d361f920716ac3aeb5c771246071abe8f2672efe",
+      "license": "MIT",
+      "identity": "verified",
+      "role": "Serviço web de coordenação de agentes",
+      "install": "docker-production"
+    },
+    {
+      "id": "orca",
+      "repository": "stablyai/orca",
+      "commit": "b98a0fba16561fadc06868fe3e8710781d705efd",
+      "license": "MIT",
+      "identity": "verified",
+      "role": "Orquestrador opcional; servidor remoto beta",
+      "install": "optional-deb",
+      "release": {
+        "version": "1.4.250",
+        "assets": {
+          "amd64": {
+            "url": "https://github.com/stablyai/orca/releases/download/v1.4.250/orca-ide_1.4.250_amd64.deb",
+            "sha256": "ca2322046c2a42cec59c0a57382b2b782f784ed64861deac0154b38e1577810e"
+          },
+          "arm64": {
+            "url": "https://github.com/stablyai/orca/releases/download/v1.4.250/orca-ide_1.4.250_arm64.deb",
+            "sha256": "811fbf45373a54dc255dc6efbb20ba66b2bf37ff23ff55679a4b0fded2442559"
+          }
+        }
+      }
+    },
+    {
+      "id": "ecc",
+      "repository": "affaan-m/ECC",
+      "commit": "b38be6a7f6350964d59328b52f0624e1d1d552d1",
+      "license": "MIT",
+      "identity": "verified",
+      "role": "Skills por projeto; sem instalador global",
+      "install": "selected-skills",
+      "skills": [
+        "coding-standards",
+        "architecture-decision-records"
+      ]
+    },
+    {
+      "id": "ponytail",
+      "repository": "DietrichGebert/ponytail",
+      "commit": "96608e078b2d5ea607c5c3b8b5a54d1c1fba6846",
+      "license": "MIT",
+      "identity": "verified",
+      "role": "Skills sob demanda; sem hooks globais",
+      "install": "selected-skills",
+      "skills": [
+        "ponytail",
+        "ponytail-review",
+        "ponytail-audit"
+      ]
+    },
+    {
+      "id": "ui-ux-pro-max",
+      "repository": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "b7d5353e0130feb8c5574ef1251f8a1db1873ccb",
+      "license": "MIT",
+      "identity": "candidate",
+      "role": "Candidato pelo nome; confirmar origem antes de instalar",
+      "install": "manual-project-cli"
+    }
+  ]
+}

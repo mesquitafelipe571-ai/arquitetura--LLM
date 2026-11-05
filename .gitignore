@@ -1,0 +1,12 @@
+# Runtime pertence a um diretório externo.
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.runtime/
+data/
+backups/
+logs/
+node_modules/

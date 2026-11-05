@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "task_id": null,
+  "environment_id": null,
+  "working_directory": null,
+  "repository": null,
+  "base_commit": null,
+  "branch": null,
+  "objective": null,
+  "acceptance_criteria": [],
+  "allowed_changes": [],
+  "assigned_owner": null,
+  "concurrency": {
+    "exclusive_worktree": true,
+    "max_workers": 3
+  },
+  "external_actions": {
+    "paid_calls": false,
+    "deploy": false,
+    "deletion": false,
+    "credential_changes": false
+  },
+  "status": "requires_verified_context",
+  "evidence": []
+}
