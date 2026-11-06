@@ -1,0 +1,7 @@
+# Equivale ao que `rea setup --client codex` gravaria, mas só para este projeto.
+# O Codex só carrega este arquivo quando o projeto está marcado como confiável.
+[mcp_servers.rea]
+command = "npx"
+args = ["-y", "rea-agents@6.8.0", "mcp"]
+startup_timeout_sec = 30
+tool_timeout_sec = 450

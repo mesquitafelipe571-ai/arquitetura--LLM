@@ -16,7 +16,7 @@ npm run setup
 ```
 
 Esse comando baixa o catálogo, instala o Orca (incluindo a verificação obrigatória
-do Electron) e prepara o Paperclip. As 103 skills já são arquivos do projeto.
+do Electron) e prepara o Paperclip. As 105 skills já são arquivos do projeto.
 No GitHub Codespaces, o ambiente inclui Node.js 24, Rust 1.97.1 e desktop virtual,
 e executa esse mesmo comando ao ser criado.
 
@@ -39,6 +39,15 @@ configurados nas próprias aplicações, conforme o uso.
 Consulte o [resultado da revisão das integrações](docs/INTEGRACOES.md).
 
 Paperclip integrado em [`paperclip/`](https://github.com/paperclipai/paperclip/tree/7351a9d74ff8e413a1ea1bfd47a1e3c26a81cc06), como submódulo Git fixado no commit `7351a9d74ff8e413a1ea1bfd47a1e3c26a81cc06`.
+
+## Verificação automática
+
+A cada pull request e a cada push no `main`, o GitHub executa
+[`scripts/check-repo.py`](scripts/check-repo.py)
+([workflow](.github/workflows/check.yml)). O script confere se cada skill e
+agente tem `name` e `description`, se o `name` de cada skill é igual ao nome da
+pasta, e se os arquivos TOML e JSON versionados são válidos. Para rodar
+localmente, use `npm run check`.
 
 ## Instalação
 
@@ -262,19 +271,32 @@ Os hooks e as instalações como plugin não fazem parte desta cópia; cada
 ## REA
 
 O [REA](https://github.com/morluto/rea) é um servidor MCP de engenharia reversa.
-Ele é registrado nas configurações do assistente, fora deste repositório, por isso
-precisa ser ativado uma vez em cada computador:
+Ele já vem configurado neste projeto, com um agente dedicado e uma skill `rea`
+que chama esse agente:
 
-```bash
-npm run rea:setup   # registra o MCP e a skill do REA no Codex (pede confirmação)
-npm run rea -- doctor --client codex
-```
+| Assistente | Agente | Skill | Servidor MCP |
+| --- | --- | --- | --- |
+| Codex | [.codex/agents/rea.toml](.codex/agents/rea.toml) | `$rea` ([SKILL.md](.agents/skills/rea/SKILL.md)) | [.codex/config.toml](.codex/config.toml) |
+| Claude Code | [.claude/agents/rea.md](.claude/agents/rea.md) | `/rea` ([SKILL.md](.claude/skills/rea/SKILL.md)) | no próprio agente |
 
-Os comandos usam `rea-agents@6.8.0`, que exige Node.js 24.22.1 ou superior na série 24.
-O setup grava em `~/.codex` com backup e aponta para o cache do `npx`; se esse cache
-for limpo, execute `npm run rea:setup` de novo. Para outros assistentes, use
-`npm run rea -- setup` e escolha na lista. Análise de binários nativos usa Ghidra,
-Hopper, IDA ou Kuna já instalados; JavaScript e Electron não precisam deles.
+Exemplo: `$rea explique como a busca do app Notes funciona` no Codex ou
+`/rea explique como a busca do app Notes funciona` no Claude Code.
+
+O agente segue a skill oficial
+[`reverse-engineer-anything`](.agents/skills/reverse-engineer-anything/SKILL.md)
+([origem e licença](.agents/rea/SOURCE.md)). O servidor é iniciado por
+`npx -y rea-agents@6.8.0 mcp`, que exige Node.js 22.23.4+ ou 24.22.1+.
+
+- **Codex:** o Codex só carrega `.codex/config.toml` quando o projeto está marcado
+  como confiável. Os agentes do Codex não têm servidores MCP próprios, então as
+  ferramentas do REA também aparecem na sessão principal.
+- **Claude Code:** o servidor só é iniciado dentro do agente `rea` e não ocupa
+  espaço na conversa principal.
+
+Para usar o REA em outros projetos, registre-o globalmente com
+`npm run rea:setup`. Não é preciso fazer isso para usar neste projeto. Para
+diagnóstico, use `npm run rea -- doctor`. A análise de binários nativos usa
+Ghidra, Hopper, IDA ou Kuna já instalados; JavaScript e Electron não precisam deles.
 
 ## Catálogos de skills e mods
 
