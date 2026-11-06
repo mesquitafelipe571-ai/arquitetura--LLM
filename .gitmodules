@@ -1,4 +1,0 @@
-[submodule "paperclip"]
-	path = vendor/paperclip
-	url = https://github.com/paperclipai/paperclip.git
-	shallow = true

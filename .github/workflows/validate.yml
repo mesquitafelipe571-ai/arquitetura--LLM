@@ -7,16 +7,12 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Origem e versão do Paperclip
-        run: python3 scripts/check-paperclip-source.py --checkout
       - name: Testes do instalador
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
       - name: Sintaxe e plano

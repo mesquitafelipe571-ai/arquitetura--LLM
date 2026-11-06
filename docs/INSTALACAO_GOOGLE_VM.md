@@ -10,22 +10,21 @@ Conecte-se com seu usuário normal e sudo. Não rode o gerenciador inteiro como 
 
 ## Obter o código
 
-Clone a branch principal com o código do Paperclip incluído:
+Após merge na branch principal:
 
 ```bash
-git clone --recurse-submodules https://github.com/mesquitafelipe571-ai/arquitetura--LLM.git
+git clone https://github.com/mesquitafelipe571-ai/arquitetura--LLM.git
 cd arquitetura--LLM
-python3 scripts/check-paperclip-source.py --checkout
 ```
 
-Se já tiver um clone, preserve suas alterações locais e atualize:
+Enquanto a entrega estiver em revisão, use a branch completa:
 
 ```bash
-git pull --ff-only
-git submodule update --init --recursive
+git clone --branch setup/google-vm-organizado https://github.com/mesquitafelipe571-ai/arquitetura--LLM.git
+cd arquitetura--LLM
 ```
 
-Guarde o SHA retornado por `git rev-parse HEAD` junto do inventário da VM. A fonte fica em `vendor/paperclip`; o [guia do submódulo](PAPERCLIP_REPOSITORIO.md) descreve sua atualização. O ZIP do GitHub não inclui essa fonte.
+Guarde o SHA retornado por `git rev-parse HEAD` junto do inventário da VM.
 
 ## Preparar e instalar
 
