@@ -33,6 +33,15 @@ Consulte o [resultado da revisão das integrações](docs/INTEGRACOES.md).
 
 Paperclip integrado em [`paperclip/`](https://github.com/paperclipai/paperclip/tree/7351a9d74ff8e413a1ea1bfd47a1e3c26a81cc06), como submódulo Git fixado no commit `7351a9d74ff8e413a1ea1bfd47a1e3c26a81cc06`.
 
+## Verificação automática
+
+A cada pull request e a cada push no `main`, o GitHub executa
+[`scripts/check-repo.py`](scripts/check-repo.py)
+([workflow](.github/workflows/check.yml)). O script confere se cada skill e
+agente tem `name` e `description`, se o `name` de cada skill é igual ao nome da
+pasta, e se os arquivos TOML e JSON versionados são válidos. Para rodar
+localmente, use `npm run check`.
+
 ## Instalação
 
 Em Linux ou macOS, tenha Git, Node.js 24.11 ou superior, Corepack (ou pnpm 9.15.4), Rust via rustup e um compilador C/C++ disponíveis. O instalador prepara a versão de Rust indicada pelo Paperclip. A primeira compilação nativa pode levar vários minutos.
