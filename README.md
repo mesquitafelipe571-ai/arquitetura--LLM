@@ -184,3 +184,22 @@ a esses arquivos.
 Os números de `$ponytail-gain` vêm do
 [benchmark do autor](https://github.com/DietrichGebert/ponytail/blob/96608e078b2d5ea607c5c3b8b5a54d1c1fba6846/benchmarks/results/2026-10-07-agentic.md),
 não de medições realizadas neste projeto.
+
+## Awesome Linux Dev Tools
+
+O catálogo [madbob/awesome-linux-dev](https://github.com/madbob/awesome-linux-dev)
+está disponível no submódulo `awesome-linux-dev/`, fixado no commit
+[`57ed4c8619ef`](https://github.com/madbob/awesome-linux-dev/commit/57ed4c8619ef5b8b4dc51ca551c183d6a5d577cd).
+Consulte a [lista de ferramentas](awesome-linux-dev/README.md) para referências
+de editores, terminais, bancos de dados e outros recursos para desenvolvimento Linux.
+
+Em uma cópia já clonada deste repositório, baixe o catálogo com:
+
+```bash
+git submodule update --init -- awesome-linux-dev
+```
+
+O catálogo contém documentação e dispensa compilação ou configuração de serviço.
+Os aplicativos listados são instalados individualmente, conforme sua distribuição
+Linux e as instruções de cada projeto. O conteúdo mantém a
+[licença original](awesome-linux-dev/LICENSE).

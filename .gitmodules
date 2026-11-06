@@ -6,3 +6,7 @@
 	path = orca
 	url = https://github.com/stablyai/orca.git
 	shallow = true
+
+[submodule "awesome-linux-dev"]
+	path = awesome-linux-dev
+	url = https://github.com/madbob/awesome-linux-dev.git
