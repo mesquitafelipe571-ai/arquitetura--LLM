@@ -1,6 +1,6 @@
 # Arquitetura LLM — setup organizado para Google VM
 
-Instalador e catálogo para manter Paperclip, Orca e skills em uma VM Linux, com fontes por commit, dados persistentes separados e downloads paralelos.
+Instalador e catálogo para manter Paperclip, Orca e skills em uma VM Linux, com fontes por commit, dados persistentes separados e downloads paralelos. O código oficial do Paperclip está incluído como submódulo Git em `vendor/paperclip`.
 
 O alvo inicial é **Ubuntu 24.04, amd64 ou arm64**. Não há provisionamento de recursos Google, alteração de firewall nem ativação automática de agentes pagos.
 
@@ -14,30 +14,40 @@ O alvo inicial é **Ubuntu 24.04, amd64 ou arm64**. Não há provisionamento de 
 
 ## Instalação
 
-Siga [o guia da VM Google](docs/INSTALACAO_GOOGLE_VM.md). Dentro deste checkout:
+Baixe o projeto com o código do Paperclip:
+
+```bash
+git clone --recurse-submodules https://github.com/mesquitafelipe571-ai/arquitetura--LLM.git
+cd arquitetura--LLM
+python3 scripts/check-paperclip-source.py --checkout
+```
+
+Siga [o guia da VM Google](docs/INSTALACAO_GOOGLE_VM.md). Para instalar somente o Paperclip:
 
 ```bash
 sudo bash scripts/bootstrap-ubuntu.sh
 python3 scripts/setup.py --sudo-docker doctor
 python3 scripts/setup.py plan
 python3 scripts/setup.py init
-python3 scripts/setup.py sync --jobs 3
+python3 scripts/setup.py sync --component paperclip
 python3 scripts/setup.py --sudo-docker paperclip pull
 python3 scripts/setup.py --sudo-docker paperclip up
 ```
 
-O comando pull baixa a imagem oficial correspondente ao SHA e verifica revisão/digest. Para compilar localmente, use paperclip build; o Dockerfile upstream compila Rust, servidor e interface. Nenhuma chave de provedor é necessária para iniciar a aplicação; agentes exigem autenticação própria e podem gerar custos.
+O comando pull baixa a imagem oficial correspondente ao SHA e verifica revisão/digest. Para compilar localmente, use paperclip build; o Dockerfile upstream compila Rust, servidor e interface. Para baixar também os demais componentes verificados, execute `python3 scripts/setup.py sync --jobs 3`. Nenhuma chave de provedor é necessária para iniciar a aplicação; agentes exigem autenticação própria e podem gerar custos.
 
 ## Organização
 
 ```text
 config/components.lock.json      Origens, commits, licenças e hashes de pacotes
+vendor/paperclip/                Código oficial completo via submódulo fixado
 compose.paperclip.json           Serviço Paperclip e suas fronteiras de rede/dados
 scripts/setup.py                 Planejar, sincronizar, exportar skills e operar
 scripts/bootstrap-ubuntu.sh      Pré-requisitos do sistema
 scripts/install-orca.py          Download verificado e instalação opcional
 scripts/audit-history.py         Leitor opcional de históricos/exportações locais
 scripts/paperclip-native.py      Controle de uma instalação npm já preparada
+scripts/check-paperclip-source.py Verificação do submódulo e do catálogo
 docs/                           Instalação, componentes, operação e orquestração
 tests/                          Testes sem cloud, Docker ou APIs pagas
 ```
@@ -57,6 +67,7 @@ Use `--root /caminho/absoluto` antes do subcomando para mudar o runtime. Nenhum 
 ## Documentação e validação
 
 - [Instalação na VM Google](docs/INSTALACAO_GOOGLE_VM.md)
+- [Paperclip no repositório e clone completo](docs/PAPERCLIP_REPOSITORIO.md)
 - [Componentes e decisões](docs/COMPONENTES.md)
 - [Operação, atualização e recuperação](docs/OPERACAO.md)
 - [Orquestração e limites das sessões](docs/ORQUESTRACAO.md)
