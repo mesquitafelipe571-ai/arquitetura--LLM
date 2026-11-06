@@ -145,3 +145,42 @@ Versão de origem: **ECC 2.2.3**. Consulte a
 [origem, o escopo e as dependências opcionais](.agents/ecc/SOURCE.md), o
 [manifesto de integridade](.agents/ecc/manifest.json) e a
 [licença MIT](.agents/ecc/LICENSE).
+
+## Ponytail
+
+O [Ponytail](https://github.com/DietrichGebert/ponytail) está instalado neste
+repositório como instruções e skills de projeto. Não exige dependências.
+
+- [AGENTS.md](AGENTS.md): regras para assistentes que leem instruções do projeto.
+- [.agents/skills](.agents/skills): seis skills disponíveis ao abrir este
+  repositório em um assistente compatível.
+
+No Codex, inicie uma nova sessão na pasta do projeto e invoque as skills pelo nome:
+
+| Skill | Uso |
+| --- | --- |
+| `$ponytail` | Aplicar o modo de desenvolvimento com a menor mudança completa. |
+| `$ponytail-review` | Revisar uma alteração ou um diff. |
+| `$ponytail-audit` | Auditar o repositório. |
+| `$ponytail-debt` | Listar atalhos registrados em comentários. |
+| `$ponytail-gain` | Consultar os resultados do benchmark publicado pelo autor. |
+| `$ponytail-help` | Consultar a referência de uso. |
+
+Esta instalação usa skills de projeto, com nomes sem o prefixo de plugin
+`ponytail:`. Os hooks de ativação, a persistência de níveis e o painel do Claude
+Code dependem da instalação do plugin no assistente e não são habilitados por
+estes arquivos. Consulte as
+[instruções oficiais de instalação](https://github.com/DietrichGebert/ponytail/blob/96608e078b2d5ea607c5c3b8b5a54d1c1fba6846/INSTALL.md)
+para esses recursos. As opções de configuração e atualização descritas em
+`ponytail-help` referem-se ao plugin; as cópias deste repositório são atualizadas
+manualmente.
+
+Versão incorporada: **5.3.3**, commit
+[`96608e078b2d5ea607c5c3b8b5a54d1c1fba6846`](https://github.com/DietrichGebert/ponytail/tree/96608e078b2d5ea607c5c3b8b5a54d1c1fba6846).
+As instruções e as seis skills foram copiadas sem alterações. A licença MIT do
+Ponytail está em [licenses/ponytail-MIT.txt](licenses/ponytail-MIT.txt) e se aplica
+a esses arquivos.
+
+Os números de `$ponytail-gain` vêm do
+[benchmark do autor](https://github.com/DietrichGebert/ponytail/blob/96608e078b2d5ea607c5c3b8b5a54d1c1fba6846/benchmarks/results/2026-10-07-agentic.md),
+não de medições realizadas neste projeto.
