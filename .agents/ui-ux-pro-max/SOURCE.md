@@ -1,0 +1,23 @@
+# Origem do UI/UX Pro Max
+
+- Projeto: [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill).
+- Versão na origem: `2.15.0`.
+- Commit de origem: `b7d5353e0130feb8c5574ef1251f8a1db1873ccb`.
+- Diretório original: [.claude/skills](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill/tree/b7d5353e0130feb8c5574ef1251f8a1db1873ccb/.claude/skills).
+- Licença: MIT, copyright (c) 2024 Next Level Builder; texto integral em [LICENSE](LICENSE).
+
+As 7 skills (`ui-ux-pro-max`, `banner-design`, `brand`, `design`, `design-system`,
+`slides` e `ui-styling`), com seus scripts e dados, foram copiadas para
+`.agents/skills/<nome>/`.
+
+Única alteração: em `ui-ux-pro-max/SKILL.md`, o caminho
+`${CLAUDE_PLUGIN_ROOT}/.claude/skills/ui-ux-pro-max/scripts/` virou `scripts/`,
+relativo à pasta da skill, como as outras skills do pacote já fazem. A variável só
+existe na instalação como plugin do Claude Code.
+
+Os scripts de busca exigem só Python 3. Os scripts de geração de imagem de
+`design`, `brand` e `banner-design` também pedem `google-genai`, `pillow` e uma
+chave da API Gemini, conforme as instruções de cada skill.
+
+Para atualizar, substitua as pastas pelas de um novo commit, repita a troca de
+caminho acima e registre o novo commit aqui.

@@ -9,7 +9,7 @@ npm run setup
 ```
 
 Esse comando baixa o catálogo, instala o Orca (incluindo a verificação obrigatória
-do Electron) e prepara o Paperclip. As 54 skills já são arquivos do projeto.
+do Electron) e prepara o Paperclip. As 103 skills já são arquivos do projeto.
 No GitHub Codespaces, o ambiente inclui Node.js 24, Rust 1.97.1 e desktop virtual,
 e executa esse mesmo comando ao ser criado.
 
@@ -29,7 +29,7 @@ Os runtimes auxiliares do ECC ficam acessíveis por `npm run ecc -- memory --hel
 e `npm run ecc:canvas -- --help`. Contas, logins e credenciais dos provedores são
 configurados nas próprias aplicações, conforme o uso.
 
-Consulte o [resultado da revisão das seis integrações](docs/INTEGRACOES.md).
+Consulte o [resultado da revisão das integrações](docs/INTEGRACOES.md).
 
 Paperclip integrado em [`paperclip/`](https://github.com/paperclipai/paperclip/tree/7351a9d74ff8e413a1ea1bfd47a1e3c26a81cc06), como submódulo Git fixado no commit `7351a9d74ff8e413a1ea1bfd47a1e3c26a81cc06`.
 
@@ -236,3 +236,48 @@ O catálogo contém documentação e dispensa compilação ou configuração de 
 Os aplicativos listados são instalados individualmente, conforme sua distribuição
 Linux e as instruções de cada projeto. O conteúdo mantém a
 [licença original](awesome-linux-dev/LICENSE).
+
+## Superpowers, skills de Matt Pocock e UI/UX Pro Max
+
+Três coleções de skills estão copiadas em [.agents/skills](.agents/skills) e
+ficam disponíveis ao abrir uma nova sessão do Codex neste repositório:
+
+| Origem | Skills | Exemplos | Origem e licença |
+| --- | --: | --- | --- |
+| [obra/superpowers](https://github.com/obra/superpowers) 7.0.2 | 15 | `$brainstorming`, `$writing-plans`, `$systematic-debugging` | [SOURCE.md](.agents/superpowers/SOURCE.md) |
+| [mattpocock/skills](https://github.com/mattpocock/skills) 1.3.2 | 27 | `$grill-me`, `$to-spec`, `$tdd`, `$code-review` | [SOURCE.md](.agents/mattpocock-skills/SOURCE.md) |
+| [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 2.15.0 | 7 | `$ui-ux-pro-max`, `$design-system`, `$slides` | [SOURCE.md](.agents/ui-ux-pro-max/SOURCE.md) |
+
+Os hooks e as instalações como plugin não fazem parte desta cópia; cada
+`SOURCE.md` explica o que ficou de fora e como atualizar.
+
+## REA
+
+O [REA](https://github.com/morluto/rea) é um servidor MCP de engenharia reversa.
+Ele é registrado nas configurações do assistente, fora deste repositório, por isso
+precisa ser ativado uma vez em cada computador:
+
+```bash
+npm run rea:setup   # registra o MCP e a skill do REA no Codex (pede confirmação)
+npm run rea -- doctor --client codex
+```
+
+Os comandos usam `rea-agents@6.8.0`, que exige Node.js 24.22.1 ou superior na série 24.
+O setup grava em `~/.codex` com backup e aponta para o cache do `npx`; se esse cache
+for limpo, execute `npm run rea:setup` de novo. Para outros assistentes, use
+`npm run rea -- setup` e escolha na lista. Análise de binários nativos usa Ghidra,
+Hopper, IDA ou Kuna já instalados; JavaScript e Electron não precisam deles.
+
+## Catálogos de skills e mods
+
+`npm run catalog:setup` também baixa dois catálogos como submódulos:
+
+- [`claude-melhores-skills/`](https://github.com/aliborhothamud/claude-melhores-skills/tree/2c52b2a320271ff852c6538aa12382d1a45b8649):
+  curadoria em português de ~273 skills, fixada no commit `2c52b2a`. As skills
+  listadas são instaladas a partir das fontes originais. O `instalar.sh` dele
+  instala tudo globalmente em `~/.claude/skills`; revise a lista antes de executar.
+  O repositório não declara licença, por isso nada dele foi copiado para cá.
+- [`awesome-claude-code-mods/`](https://github.com/karanb192/awesome-claude-code-mods/tree/febe9d6d9da9248bfd26831e063abbc4373dc4af):
+  catálogo de mods do Claude Code, fixado no commit `febe9d6`, licença CC0.
+  São cerca de 300 MB. No Claude Code, o buscador do catálogo é instalado com
+  `/plugin install mod-finder --marketplace karanb192/awesome-claude-code-mods`.
