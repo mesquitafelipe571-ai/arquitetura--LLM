@@ -1,0 +1,14 @@
+{
+  "name": "arquitetura-llm",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ambiente de desenvolvimento do Orca para arquitetura--LLM",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "orca:setup": "git submodule update --init --depth 1 -- orca && npm run orca:install",
+    "orca:install": "npm exec --yes --package=pnpm@12.14.0 -- pnpm --dir orca install --frozen-lockfile && npm exec --yes --package=pnpm@12.14.0 -- pnpm --dir orca/mobile install --frozen-lockfile",
+    "orca:dev": "npm exec --yes --package=pnpm@12.14.0 -- pnpm --dir orca run dev"
+  }
+}

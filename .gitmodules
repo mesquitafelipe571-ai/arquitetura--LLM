@@ -1,3 +1,8 @@
 [submodule "paperclip"]
 	path = paperclip
 	url = https://github.com/paperclipai/paperclip.git
+
+[submodule "orca"]
+	path = orca
+	url = https://github.com/stablyai/orca.git
+	shallow = true
