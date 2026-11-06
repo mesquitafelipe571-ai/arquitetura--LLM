@@ -1,5 +1,10 @@
 # Revisão das integrações
 
+Este relatório registra a validação do ambiente de desenvolvimento. O perfil
+opcional de VM tem [validação própria](VALIDACAO.md), catálogo e dados separados.
+Após sua integração, AGENTS.md mantém o texto base Ponytail com instruções
+específicas do projeto; as seis skills Ponytail e sua licença permanecem intactas.
+
 Data: 06/11/2026. Escopo: as seis integrações iniciais encontradas no
 `mesquitafelipe571-ai/arquitetura--LLM`, único repositório próprio disponibilizado
 pela conexão GitHub nesta revisão.

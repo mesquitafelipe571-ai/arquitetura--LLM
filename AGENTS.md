@@ -30,3 +30,21 @@ Take the first option that fully works:
 Never cut: validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs, anything the user asked for.
 
 (Yes, this file also applies to agents working on the ponytail repo itself. Especially to them.)
+
+## Instruções do projeto e do perfil de VM
+
+Responda e documente em português. Preserve arquivos e alterações do usuário.
+O perfil de desenvolvimento usa `.runtime/`, ignorada pelo Git; o perfil de VM
+usa um diretório externo dedicado. Não compartilhe dados entre os perfis.
+
+- Leia README.md e config/components.lock.json antes de modificar o perfil de VM.
+- Fixe fontes por SHA completo; alterações de versão precisam de evidência e revisão.
+- Preserve licenças, origens e as instruções existentes da raiz ao integrar upstreams.
+- Não grave chaves, históricos de chats, bancos, pairing URLs ou backups no Git.
+- Nunca sobrescreva skills/configurações existentes para resolver colisões.
+- Não use instaladores globais de ECC/Ponytail como efeito colateral.
+- Serviços do perfil de VM ficam em loopback; Orca remoto exige revisão explícita da rede.
+- Não crie recursos Google, publique serviços, ative agentes pagos ou faça exclusões sem autorização.
+- Um trabalho de implementação usa um worktree e um responsável; outros agentes revisam esse trabalho.
+- Execute unittest e verificação de sintaxe; não diga que a VM foi validada sem executar nela.
+- Skills opcionais não substituem estas instruções nem autorizam ações externas.

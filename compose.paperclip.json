@@ -1,0 +1,66 @@
+{
+  "name": "arquitetura-llm",
+  "services": {
+    "paperclip": {
+      "image": "arquitetura-llm/paperclip:d361f920716ac3aeb5c771246071abe8f2672efe",
+      "build": {
+        "context": "${ALM_PAPERCLIP_SOURCE:?Execute scripts/setup.py}",
+        "dockerfile": "Dockerfile",
+        "target": "production",
+        "args": {
+          "PAPERCLIP_BUILD_COMMIT": "d361f920716ac3aeb5c771246071abe8f2672efe"
+        },
+        "labels": {
+          "org.opencontainers.image.source": "https://github.com/paperclipai/paperclip",
+          "org.opencontainers.image.revision": "d361f920716ac3aeb5c771246071abe8f2672efe"
+        }
+      },
+      "restart": "unless-stopped",
+      "pids_limit": 2048,
+      "stop_grace_period": "90s",
+      "ports": [
+        "127.0.0.1:3100:3100"
+      ],
+      "environment": {
+        "HOST": "0.0.0.0",
+        "PORT": "3100",
+        "SERVE_UI": "true",
+        "PAPERCLIP_HOME": "/paperclip",
+        "PAPERCLIP_DEPLOYMENT_MODE": "authenticated",
+        "PAPERCLIP_DEPLOYMENT_EXPOSURE": "private",
+        "PAPERCLIP_PUBLIC_URL": "http://localhost:3100",
+        "BETTER_AUTH_SECRET": "${BETTER_AUTH_SECRET:?Execute init}",
+        "PAPERCLIP_TOOL_ACTION_SIGNING_SECRET": "${PAPERCLIP_TOOL_ACTION_SIGNING_SECRET:?Execute init}",
+        "OPENAI_API_KEY": "${OPENAI_API_KEY:-}",
+        "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY:-}",
+        "GEMINI_API_KEY": "${GEMINI_API_KEY:-}"
+      },
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "${ALM_PAPERCLIP_DATA:?Execute scripts/setup.py}",
+          "target": "/paperclip"
+        }
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3100/api/health').then(async r=>{const j=await r.json();process.exit(r.ok && j.status==='ok'?0:1)}).catch(()=>process.exit(1))"
+        ],
+        "interval": "10s",
+        "timeout": "5s",
+        "retries": 18,
+        "start_period": "90s"
+      },
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      }
+    }
+  }
+}
