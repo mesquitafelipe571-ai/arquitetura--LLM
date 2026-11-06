@@ -1,6 +1,6 @@
 # Revisão das integrações
 
-Data: 06/11/2026. Escopo: todas as seis integrações encontradas no
+Data: 06/11/2026. Escopo: as seis integrações iniciais encontradas no
 `mesquitafelipe571-ai/arquitetura--LLM`, único repositório próprio disponibilizado
 pela conexão GitHub nesta revisão.
 
@@ -14,9 +14,15 @@ pela conexão GitHub nesta revisão.
 | Ponytail 5.3.3 | CONFIRMADO: arquivos de projeto íntegros | Seis skills, AGENTS.md e licença comparados com a revisão de origem: oito arquivos idênticos. |
 | i-have-adhd 0.4.1 | CONFIRMADO: skill local íntegra | Skill e licença comparadas com a revisão de origem: dois arquivos idênticos. |
 | Awesome Linux Dev Tools | CONFIRMADO: catálogo disponível | Submódulo baixado na revisão fixada; README e licença CC0 presentes. É um catálogo de referências, sem serviço ou compilação. |
+| Superpowers 7.0.2 | CONFIRMADO: skills locais | 15 skills copiadas sem alterações do commit `22f0b46`; hooks fora da instalação. |
+| Skills de Matt Pocock 1.3.2 | CONFIRMADO: skills locais | As 27 skills listadas no `plugin.json` foram copiadas sem alterações do commit `4ae2317`. |
+| UI/UX Pro Max 2.15.0 | CONFIRMADO: skills locais e busca executada | 7 skills do commit `b7d5353`; caminho do script ajustado para relativo; `scripts/search.py` retornou resultados com Python 3 a partir de `.agents/skills`. |
+| REA 6.8.0 | PENDENTE: registro no Codex | `npm run rea` e `npm run rea:setup` usam `rea-agents@6.8.0`, publicado no npm. O setup grava em `~/.codex` e não foi executado nesta revisão. |
+| claude-melhores-skills | CONFIRMADO: catálogo disponível | Submódulo no commit `2c52b2a`; o repositório não declara licença. |
+| Awesome Claude Code Mods | CONFIRMADO: catálogo disponível | Submódulo no commit `febe9d6`; licença CC0. |
 
-As 54 skills estão disponíveis como arquivos de projeto para uma nova sessão do
-Codex. As 54 possuem frontmatter válido, descrição e nomes únicos. A verificação
+As 103 skills estão disponíveis como arquivos de projeto para uma nova sessão do
+Codex. As 103 possuem frontmatter válido, descrição e nomes únicos. A verificação
 de integridade não representa um teste de cada serviço externo citado pelas skills. A distribuição Codex do ECC possui 47 skills; ela
 tem escopo próprio, documentado em `.agents/ecc/SOURCE.md`.
 
