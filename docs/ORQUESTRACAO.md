@@ -33,6 +33,9 @@ O exemplo [task-handoff.example.json](../config/task-handoff.example.json) defin
 
 ## Pendências de escopo
 
-Quatro títulos de instalação/projetos não continham URL de origem. Eles não foram transformados em componentes por suposição. Adicione-os ao catálogo somente após identificar repositório, versão, licença e instalação. A origem UI UX Pro Max permanece candidata.
+Na preparação original do perfil de VM, quatro títulos não continham URL de
+origem e não foram transformados em componentes por suposição. O catálogo de VM
+mantém UI UX Pro Max como opção manual; o estado atual das skills locais e do
+REA está no [README](../README.md) e no [relatório das integrações](INTEGRACOES.md).
 
 Tarefas de limpeza de documentos não fazem parte da instalação da VM e não autorizam exclusões por este setup.

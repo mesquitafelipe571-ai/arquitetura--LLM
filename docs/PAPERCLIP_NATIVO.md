@@ -1,5 +1,10 @@
 # Operação do Paperclip instalado via npm
 
+Este documento registra uma instalação anterior, de 05/11/2026, em outro ambiente
+gerenciado. O caminho abaixo não é criado pelo merge nem por `npm run setup`.
+O controlador requer os artefatos já preparados dessa instalação; para uma
+instalação nova, escolha um dos perfis documentados no [README](../README.md).
+
 O Paperclip foi instalado e iniciado no ambiente gerenciado desta conversa pelo pacote oficial **paperclipai 2026.1023.0**, com **Node 24.22.2** em um diretório isolado. Isso não representa instalação na VM Google do usuário.
 
 O caminho Docker foi tentado, mas o armazenamento VFS do ambiente excedeu o disco disponível ao extrair a imagem oficial. A instalação npm foi concluída com todas as etapas de instalação habilitadas, após configurar os diretórios XDG dos adaptadores dentro do runtime.

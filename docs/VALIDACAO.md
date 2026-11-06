@@ -1,5 +1,24 @@
 # Validação da entrega
 
+## Reconciliação com a main em 06/11/2026
+
+O perfil de VM foi reconciliado com a main `4479243`, preservando os submódulos,
+as 103 skills locais e os comandos npm. README, AGENTS.md e `.gitignore` combinam
+as duas entregas; os perfis mantêm versões e diretórios de dados separados.
+
+Nesta reconciliação, passaram os 50 testes unittest com Python 3.12.14, a sintaxe
+dos quatro scripts Bash, a análise sintática dos quatro scripts Python e a
+leitura dos seis JSON de configuração dos perfis. `setup.py plan` e a ajuda do
+controlador nativo também passaram. A verificação usou uma cópia local dos
+arquivos de integração; submódulos e skills foram preservados pelas referências
+Git, sem instalar seus runtimes. A CI verifica os testes e os quatro scripts Bash.
+
+Não foram executados bootstrap, instalações, Docker, aplicações, provedores ou
+ações na VM Google durante esta reconciliação. Os resultados abaixo pertencem
+à preparação anterior do perfil e não comprovam o estado deste ambiente.
+
+## Registro de 05/11/2026
+
 Data: 2026-11-05.
 
 ## Executado

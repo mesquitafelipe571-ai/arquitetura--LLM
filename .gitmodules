@@ -1,0 +1,20 @@
+[submodule "paperclip"]
+	path = paperclip
+	url = https://github.com/paperclipai/paperclip.git
+
+[submodule "orca"]
+	path = orca
+	url = https://github.com/stablyai/orca.git
+	shallow = true
+
+[submodule "awesome-linux-dev"]
+	path = awesome-linux-dev
+	url = https://github.com/madbob/awesome-linux-dev.git
+[submodule "claude-melhores-skills"]
+	path = claude-melhores-skills
+	url = https://github.com/aliborhothamud/claude-melhores-skills.git
+	shallow = true
+[submodule "awesome-claude-code-mods"]
+	path = awesome-claude-code-mods
+	url = https://github.com/karanb192/awesome-claude-code-mods.git
+	shallow = true

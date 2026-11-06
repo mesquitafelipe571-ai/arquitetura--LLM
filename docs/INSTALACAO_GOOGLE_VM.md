@@ -10,17 +10,10 @@ Conecte-se com seu usuário normal e sudo. Não rode o gerenciador inteiro como 
 
 ## Obter o código
 
-Após merge na branch principal:
+Use a branch principal:
 
 ```bash
 git clone https://github.com/mesquitafelipe571-ai/arquitetura--LLM.git
-cd arquitetura--LLM
-```
-
-Enquanto a entrega estiver em revisão, use a branch completa:
-
-```bash
-git clone --branch setup/google-vm-organizado https://github.com/mesquitafelipe571-ai/arquitetura--LLM.git
 cd arquitetura--LLM
 ```
 

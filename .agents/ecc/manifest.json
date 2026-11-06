@@ -1,0 +1,469 @@
+{
+  "schema_version": 1,
+  "upstream": {
+    "repository": "https://github.com/affaan-m/ECC",
+    "version": "2.2.3",
+    "commit": "b38be6a7f6350964d59328b52f0624e1d1d552d1",
+    "directory": ".agents/skills"
+  },
+  "skill_count": 47,
+  "license": "MIT",
+  "files": [
+    {
+      "path": ".agents/skills/agent-introspection-debugging/SKILL.md",
+      "sha256": "5357d123cf8cee6dc2e901542a28a19d7ee9e939e34528d27987897318bcfbf6"
+    },
+    {
+      "path": ".agents/skills/agent-introspection-debugging/agents/openai.yaml",
+      "sha256": "80b2eefc3f4f003335804ce3146383464eac16a393d937cc91f7b3a8f7fbc069"
+    },
+    {
+      "path": ".agents/skills/agent-sort/SKILL.md",
+      "sha256": "82325c9fb7a58d7eaeafc4eecaef4a1d9d6c14e2f4d52c61265dd9c78828ebc3"
+    },
+    {
+      "path": ".agents/skills/agent-sort/agents/openai.yaml",
+      "sha256": "75cca9c8642a113b92eb62bd744362a3f7e6d6a4220d61904ddb784e0e1393d8"
+    },
+    {
+      "path": ".agents/skills/api-design/SKILL.md",
+      "sha256": "5568a8b1e2e9ea1cc1433535ba8fcf9c21309b996108887343150d4fc76992e6"
+    },
+    {
+      "path": ".agents/skills/api-design/agents/openai.yaml",
+      "sha256": "46c8bc7b5ccea34cc3ba4f90e36c36c0ad6e8109084ee77911a54bf3d6da1ac5"
+    },
+    {
+      "path": ".agents/skills/article-writing/SKILL.md",
+      "sha256": "6305169f1aaf57e293284aa21bf646d995079ae2921499f7800c7db42d57091f"
+    },
+    {
+      "path": ".agents/skills/article-writing/agents/openai.yaml",
+      "sha256": "61cfe684a8f6018f9f12fd2ab4f29fc27f749dbe53124d55bfcec5fce60cba79"
+    },
+    {
+      "path": ".agents/skills/backend-patterns/SKILL.md",
+      "sha256": "d4d3c9c54b5bf5af3c1711fe16ef28db1538d4c272cfa0e4420da60c368fef02"
+    },
+    {
+      "path": ".agents/skills/backend-patterns/agents/openai.yaml",
+      "sha256": "f9ee88273743b1bc1d0a69c19d2544cc8f579688fc4b4518d68925e3f4a88c7a"
+    },
+    {
+      "path": ".agents/skills/benchmark-methodology/SKILL.md",
+      "sha256": "f2cba14bb87ff43f80c2eaec6311eee7ead4d8b89949864442362eb368acbbac"
+    },
+    {
+      "path": ".agents/skills/benchmark-methodology/agents/openai.yaml",
+      "sha256": "fe04dd9cfefcc14fd2d8330b7b131df9643cda25729a04982e9aeba0d3201b3a"
+    },
+    {
+      "path": ".agents/skills/brand-discovery/SKILL.md",
+      "sha256": "83c94b91d54d8bf1dcebccefce0d86f0dacf19372c65d2b25a03a9d102d1e86d"
+    },
+    {
+      "path": ".agents/skills/brand-discovery/agents/openai.yaml",
+      "sha256": "d1fbd005b15056f1b6ba5b3a2dc9ecaf29dbb974c54af3882c0d49f9e9c600b1"
+    },
+    {
+      "path": ".agents/skills/brand-discovery/references/10_purpose-why.md",
+      "sha256": "d70beb1dcf73512e235a377c59ca43f544de084dd555701f99a65574b17939ea"
+    },
+    {
+      "path": ".agents/skills/brand-discovery/references/20_positioning.md",
+      "sha256": "50e2c71b8b4d6a44d59b45609c06aa258f6c16871a4d2a184f68983433e954c4"
+    },
+    {
+      "path": ".agents/skills/brand-discovery/references/30_audience-niche.md",
+      "sha256": "189e8d41d08df421fa5bad5d15e814334dc8fe706255701b277e258100b6007d"
+    },
+    {
+      "path": ".agents/skills/brand-discovery/references/40_personality-archetype.md",
+      "sha256": "58b04b09cf1e206d1240fc01d8c77c22fcc9b9c0d8ef326ad418476589072182"
+    },
+    {
+      "path": ".agents/skills/brand-discovery/references/50_voice-tone.md",
+      "sha256": "cf69dc9573ed00561cfb8e7e489450ae644b90703a2d9315b77d8629af69bde3"
+    },
+    {
+      "path": ".agents/skills/brand-discovery/references/60_narrative-story.md",
+      "sha256": "46a6184f00ffa8d6900d59d58164f5e767012bc12dd67dc2b2ba53976d6811b9"
+    },
+    {
+      "path": ".agents/skills/brand-discovery/references/70_founder-tension.md",
+      "sha256": "88e7149f2ace5d3f726d33e5fb7ca2caddb7e3301574e849517e16277590ab39"
+    },
+    {
+      "path": ".agents/skills/brand-discovery/references/90_SYNTHESIS.md",
+      "sha256": "04d0215bb054685ab8f6956f8369a7eb9d39e16acd1f7ae5ffe46725f2c00c61"
+    },
+    {
+      "path": ".agents/skills/brand-voice/SKILL.md",
+      "sha256": "63bb7231f1ec358dcd6b4d9c8bceb212d3c2475be2dd2b8336e3c265bc6d5c03"
+    },
+    {
+      "path": ".agents/skills/brand-voice/agents/openai.yaml",
+      "sha256": "1ece788cc1f61f7f9e877556b9ad89c35dc6898cbcf30ce5eb3f210f3d431cb1"
+    },
+    {
+      "path": ".agents/skills/brand-voice/references/voice-profile-schema.md",
+      "sha256": "3c5c2b04fd4b68642d2d3279829541bc56d211fdefc3498e86c1486abee8261b"
+    },
+    {
+      "path": ".agents/skills/bun-runtime/SKILL.md",
+      "sha256": "27c101ca25477e7e70442a465d803395910c7264e321157b0ad30bb40e2d319e"
+    },
+    {
+      "path": ".agents/skills/bun-runtime/agents/openai.yaml",
+      "sha256": "a467a198dcc9115b801075ddba6851de5f9529e8dab3ac80e19d7d3b2eca08ec"
+    },
+    {
+      "path": ".agents/skills/change-impact/SKILL.md",
+      "sha256": "b8d8a11417af8b84e93983a8eb682e3b9a16d04f926778eb635c96e90019bf18"
+    },
+    {
+      "path": ".agents/skills/change-impact/agents/openai.yaml",
+      "sha256": "f38a1b420cf57b51954e661f0c1a5e7ee6d9e9cb4cfc49a9a8fa4af5724dbab5"
+    },
+    {
+      "path": ".agents/skills/coding-standards/SKILL.md",
+      "sha256": "7295014cdb95589b28e9ac687e0c40a7fd329288e18a0e6fb6c5b1ed58437a0d"
+    },
+    {
+      "path": ".agents/skills/coding-standards/agents/openai.yaml",
+      "sha256": "647a4e888d750eb11e3c2b54190b68ea9eb7155f4f5dceb128e27221e4202d10"
+    },
+    {
+      "path": ".agents/skills/competitive-platform-analysis/SKILL.md",
+      "sha256": "c0487e265a1a78a18891c8f95afc68b4f77a7cee56b0e7d5eedbd66cf9c874ff"
+    },
+    {
+      "path": ".agents/skills/competitive-platform-analysis/agents/openai.yaml",
+      "sha256": "6f1ff157fcbd32e8e982771be73f833d77bfb113ca01b2a22908989850ccb742"
+    },
+    {
+      "path": ".agents/skills/competitive-report-structure/SKILL.md",
+      "sha256": "a983e68bd3eaaaead38aa4cd047b2ac5b2553fe16e873da9fb5573cc8bc5b8bd"
+    },
+    {
+      "path": ".agents/skills/competitive-report-structure/agents/openai.yaml",
+      "sha256": "52f3e00a4f0c085f484a6d659f8ab6e159470d78a1a7971d771e90b6bb80d566"
+    },
+    {
+      "path": ".agents/skills/content-engine/SKILL.md",
+      "sha256": "1daa87ef009908ac3851230bf366f87d6fde3da90372ff3f21069044a79e100b"
+    },
+    {
+      "path": ".agents/skills/content-engine/agents/openai.yaml",
+      "sha256": "536c59acaf086405e078d393ae9ce5eb661d2b2d4442669eeae9059eb11eeb64"
+    },
+    {
+      "path": ".agents/skills/context-and-decisions/LICENSE",
+      "sha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5"
+    },
+    {
+      "path": ".agents/skills/context-and-decisions/SKILL.md",
+      "sha256": "b48edce72b47828fed94d7836237566e1b46f464050a799728b0cb7e41f11267"
+    },
+    {
+      "path": ".agents/skills/context-and-decisions/agents/openai.yaml",
+      "sha256": "6058402767aa7ecd39825c833002d368f9573927e615336378900e30bdb9cc60"
+    },
+    {
+      "path": ".agents/skills/context-and-decisions/references/source.md",
+      "sha256": "8ccc04835bd5992a9fff2f8a8aa3a06d2d3a1403c510c13883da56c35fd7f06e"
+    },
+    {
+      "path": ".agents/skills/context-and-decisions/templates/context.example.md",
+      "sha256": "97218e527f3b86be7423276409dd04c342c47a845df02da78ef4bbae8e02198b"
+    },
+    {
+      "path": ".agents/skills/crosspost/SKILL.md",
+      "sha256": "fc136701621edcfceb2c3d8c7529120c32d39b4e57142941e0d55b08d252e78b"
+    },
+    {
+      "path": ".agents/skills/crosspost/agents/openai.yaml",
+      "sha256": "c25468fca15e3b23dcc4069f7f1a7986b9b4955911f4d3ca2c6858416de80cc6"
+    },
+    {
+      "path": ".agents/skills/deep-research/SKILL.md",
+      "sha256": "e42c74a515e9c2a2f662f7846402c1ccd8b2bd278cba84450ff0960b07f0f995"
+    },
+    {
+      "path": ".agents/skills/deep-research/agents/openai.yaml",
+      "sha256": "365e8b0370f67cf52b793593736da891a809ac49ef06b07f4b8b8a897c32fb3e"
+    },
+    {
+      "path": ".agents/skills/dmux-workflows/SKILL.md",
+      "sha256": "75eef4455c91b14c2dd67196f4be8b50e53bbbc82b6d060d5aa6c0a58e8c4daa"
+    },
+    {
+      "path": ".agents/skills/dmux-workflows/agents/openai.yaml",
+      "sha256": "169e5435508e6f802c9aee09008077bae8e991cfcd77ea788379e2a87e03360d"
+    },
+    {
+      "path": ".agents/skills/docs-governance/SKILL.md",
+      "sha256": "46f1a9fb999db9dfb8eb952b495b1a83723afaadb0ee8e43b98f813bc5ba5ab0"
+    },
+    {
+      "path": ".agents/skills/docs-governance/agents/openai.yaml",
+      "sha256": "d8de4057269826ade4a261615bd0e8420a2abea35b15ac99ae9ff9ce01155911"
+    },
+    {
+      "path": ".agents/skills/docs-governance/references/artifact-role-contract.md",
+      "sha256": "ea861b28882416f6028382f663a98bf4e9faa3588080eaf50a94f95c3198ae43"
+    },
+    {
+      "path": ".agents/skills/docs-governance/scripts/audit-docs.py",
+      "sha256": "d2b61d11d2576f377e79defaf41dce4cde43b816d78f1e36bed8ae5c57026375"
+    },
+    {
+      "path": ".agents/skills/docs-governance/scripts/markdown_links.py",
+      "sha256": "148cc371d8143bd5070a9a5c5a1a7cc3e142acfad53c7dae4c4c5f9896ec0b20"
+    },
+    {
+      "path": ".agents/skills/docs-governance/scripts/module_audit.py",
+      "sha256": "9404f0740bb1d320626d03cc06bec0a8e9ada96f659c239ba87204e5dcb3ee47"
+    },
+    {
+      "path": ".agents/skills/documentation-lookup/SKILL.md",
+      "sha256": "e171317c95add368192bfe127eff5873dacc55c7669db4e12b0bf03277ea9e67"
+    },
+    {
+      "path": ".agents/skills/documentation-lookup/agents/openai.yaml",
+      "sha256": "84b64c4a05c6b142a522def6aad665ef1ac21c23c74785c6eac2f4a933e14e8b"
+    },
+    {
+      "path": ".agents/skills/e2e-testing/SKILL.md",
+      "sha256": "8cfa22c35e5370c1f85400921d27e259cc99ba67a890625412bf2fc650a1d038"
+    },
+    {
+      "path": ".agents/skills/e2e-testing/agents/openai.yaml",
+      "sha256": "980dd8a3447f207ef9ddc047ef74f2978499ec66ea607213a3e4982f1494c268"
+    },
+    {
+      "path": ".agents/skills/ecc-conventions/SKILL.md",
+      "sha256": "d52acc0f98017c9de571520f1f4877394309cac181a4048e48dbd924ff77d6b9"
+    },
+    {
+      "path": ".agents/skills/ecc-conventions/agents/openai.yaml",
+      "sha256": "6689b86ea5b4d89880d595ef0d33f249e85056dc8546e431b0f6435466e6a887"
+    },
+    {
+      "path": ".agents/skills/eval-harness/SKILL.md",
+      "sha256": "49a5a10975860bb2d7e3c4e260ff19b6580e43f5fbc7770b32dece02dde48e49"
+    },
+    {
+      "path": ".agents/skills/eval-harness/agents/openai.yaml",
+      "sha256": "d62e64db25157bd18cc15239f4aa2747076aee1a35aac324e2bb47a80b2fd292"
+    },
+    {
+      "path": ".agents/skills/exa-search/SKILL.md",
+      "sha256": "7d9004b9a874a9bdbb6025fd7cdd0b416b9e25b7ecfc8fca7bc7852392a7fb05"
+    },
+    {
+      "path": ".agents/skills/exa-search/agents/openai.yaml",
+      "sha256": "6c89c21e418c8039b6ded24b72c55dce9bd11a2a579c06cd7fb5cab414984d29"
+    },
+    {
+      "path": ".agents/skills/fal-ai-media/SKILL.md",
+      "sha256": "fa1016998c7e73b14f584dab9ebcaaff9a5b2197854814375c73b58a6048f48e"
+    },
+    {
+      "path": ".agents/skills/fal-ai-media/agents/openai.yaml",
+      "sha256": "408751bd2a393995c0eb61e9abbe499d2a157369a34eb4d57939446a82bde56f"
+    },
+    {
+      "path": ".agents/skills/frontend-patterns/SKILL.md",
+      "sha256": "722866e1106ca51a6eb7f6dd163554d5fa3a30fe9beb5fdbc075ab3a84ae883b"
+    },
+    {
+      "path": ".agents/skills/frontend-patterns/agents/openai.yaml",
+      "sha256": "d4aed493c056590554115adb6c6bd2675bcde8dda2bfc7e6437ec7837fb6ef16"
+    },
+    {
+      "path": ".agents/skills/frontend-slides/SKILL.md",
+      "sha256": "3d05c5e983e9d046ccc9336237dde02918e74fb0cf1787dbfeddac3d802f5071"
+    },
+    {
+      "path": ".agents/skills/frontend-slides/STYLE_PRESETS.md",
+      "sha256": "f3448493022f8fa3f858319b14c0c48a35d441864dc78a2411f7938c28e7a265"
+    },
+    {
+      "path": ".agents/skills/frontend-slides/agents/openai.yaml",
+      "sha256": "1ad26b5eaab526dc6f51554cb1aab34ffcdbc0db5a91d8ed9618846f9cce4206"
+    },
+    {
+      "path": ".agents/skills/investor-materials/SKILL.md",
+      "sha256": "11797289d40f893053fee569b9a5922222d35f931e7bc38ba9268845a29cc164"
+    },
+    {
+      "path": ".agents/skills/investor-materials/agents/openai.yaml",
+      "sha256": "0544a808ab35040b63a3679973b40a2a5760dab8dc4c0418429aa492b754a54a"
+    },
+    {
+      "path": ".agents/skills/investor-outreach/SKILL.md",
+      "sha256": "592568dae2182091e66505ad2eab2a1316ab17b461aa483723ebbb12e3d5f254"
+    },
+    {
+      "path": ".agents/skills/investor-outreach/agents/openai.yaml",
+      "sha256": "fc8a54221ccdbd5a6b16704b144d611c37eeec2205056db78c3e00fe77ea2d1f"
+    },
+    {
+      "path": ".agents/skills/market-research/SKILL.md",
+      "sha256": "bcccf6d1976ca9cebb08b5b80e53b76fc01d13698ad4cac544955d9dbe5bee03"
+    },
+    {
+      "path": ".agents/skills/market-research/agents/openai.yaml",
+      "sha256": "27ec6c3bc8101a39a8acbf88025446f8287b1315281273b73e90910567969ab7"
+    },
+    {
+      "path": ".agents/skills/mcp-dependency-review/SKILL.md",
+      "sha256": "de1943e53a17dfec493e92ab5f0c89eb0783c131e11dbd9cd36076f82527f279"
+    },
+    {
+      "path": ".agents/skills/mcp-dependency-review/agents/openai.yaml",
+      "sha256": "002bacf9a303dd6b823f403743ace711f354dfddc92c692eaa72805d32a22935"
+    },
+    {
+      "path": ".agents/skills/mcp-server-patterns/SKILL.md",
+      "sha256": "a740cb21444aec71800aafb94beedc4045c0ad33f20dee1f5f3acd567a300a8d"
+    },
+    {
+      "path": ".agents/skills/mcp-server-patterns/agents/openai.yaml",
+      "sha256": "ffde209a180b2c00ef3c356f3f4d7b8b187ce1f040da5176d23151d48abda599"
+    },
+    {
+      "path": ".agents/skills/mle-workflow/SKILL.md",
+      "sha256": "9366d2b47d58e6bd1b9426d40a36c88efd1ba93919623b5002185cc80be87ecb"
+    },
+    {
+      "path": ".agents/skills/mle-workflow/agents/openai.yaml",
+      "sha256": "bc0871115ac3525faa7382f67bfacd1aabad74f9ebe8394da102f2dacbfd758e"
+    },
+    {
+      "path": ".agents/skills/module-governance/SKILL.md",
+      "sha256": "9cf89d924847c5241d53f858181612ee76e1e5c2d4ad16afda03d3f4c8080e98"
+    },
+    {
+      "path": ".agents/skills/module-governance/agents/openai.yaml",
+      "sha256": "25ea9a8eeeadf454ba9519bfeb405d938f183d083b924d5fc6a3d93fc8dd463c"
+    },
+    {
+      "path": ".agents/skills/module-regression/SKILL.md",
+      "sha256": "5c3db104f8e4aec868d010fa9354ec64b4c138557a59d13d7355fc9eacdcc846"
+    },
+    {
+      "path": ".agents/skills/module-regression/agents/openai.yaml",
+      "sha256": "c451e98671786af0761e89f440aa01e5745ca6d9747e742febfba77c27b2f25b"
+    },
+    {
+      "path": ".agents/skills/module-regression/templates/REGRESSION.example.md",
+      "sha256": "5a12a499eae38389ca4c12dbdb2789e9ac7ad894c3d3723b2c3580d3b2ae8284"
+    },
+    {
+      "path": ".agents/skills/nextjs-turbopack/SKILL.md",
+      "sha256": "2beabec4326fc32e652db21378bae5f704c931a6ff50d0496b9c9f1c8340f82d"
+    },
+    {
+      "path": ".agents/skills/nextjs-turbopack/agents/openai.yaml",
+      "sha256": "05cf64df6a26ba90aafe7243bd7570326e51aef92fd87ad7954fc2ecd1d459ed"
+    },
+    {
+      "path": ".agents/skills/plan-canvas/SKILL.md",
+      "sha256": "45b208f8551ccc3736f9030ca0f18ede7df6a8e9c6e49e3c8848a705700a9f8b"
+    },
+    {
+      "path": ".agents/skills/plan-canvas/agents/openai.yaml",
+      "sha256": "5af7468d3fac36a5053b0ace2937255379c4eefd3ba36a4761ad232a0a5c54fc"
+    },
+    {
+      "path": ".agents/skills/product-capability/SKILL.md",
+      "sha256": "1e2386179de6f5f53703076170fd98b07eb23e5e998950be34ec53769895e085"
+    },
+    {
+      "path": ".agents/skills/product-capability/agents/openai.yaml",
+      "sha256": "309df4ea5eae19e835d18cf91d169fb9a9395a760718c19a3e18ecca94399f12"
+    },
+    {
+      "path": ".agents/skills/security-review/SKILL.md",
+      "sha256": "81d7a4cbf8509963539cbe2e3d3ecbde33077d9fa63bc7c8f6d09e7eb7531743"
+    },
+    {
+      "path": ".agents/skills/security-review/agents/openai.yaml",
+      "sha256": "40a07bb9a3933a13d4403e59d72426d5cc25ddd67a91f6fabee6f03c0721266b"
+    },
+    {
+      "path": ".agents/skills/skill-host-compat/SKILL.md",
+      "sha256": "c0ee3dc8ae4c65ea3134da9969f0e8e12e7c30cb682c618be467b128bc4e2d36"
+    },
+    {
+      "path": ".agents/skills/skill-host-compat/agents/openai.yaml",
+      "sha256": "b18128ee6e78f49b7b50262159f99039b59b62f3ee504fdde7e282e3ad92e0a6"
+    },
+    {
+      "path": ".agents/skills/strategic-compact/SKILL.md",
+      "sha256": "bf1429dbc4ece055ba2ff79b9dc3e926cfa1a39101a88ee8467de062d1a0e7f3"
+    },
+    {
+      "path": ".agents/skills/strategic-compact/agents/openai.yaml",
+      "sha256": "a91a8a63ad957b1d2429881a8d26d074b450179cc4ad1a5661797f06d0913a1c"
+    },
+    {
+      "path": ".agents/skills/tdd-workflow/SKILL.md",
+      "sha256": "e9507695657b05f26dd62127f1d6ff58e4015d624df65dd4d7e07f6470317393"
+    },
+    {
+      "path": ".agents/skills/tdd-workflow/agents/openai.yaml",
+      "sha256": "d68700053a6f3a4a65ec18e34bcef58e75986b5f8ae19f6e20e7412ccbd895a4"
+    },
+    {
+      "path": ".agents/skills/test-collaboration/SKILL.md",
+      "sha256": "741138330940e2c9d3cc7bec9e671787f24a361ff89be44e09a56abc8e10dcfa"
+    },
+    {
+      "path": ".agents/skills/test-collaboration/agents/openai.yaml",
+      "sha256": "2585007296bb4e6dd77ab04b200392b023619d69135f986992e649a90047c77c"
+    },
+    {
+      "path": ".agents/skills/test-collaboration/templates/TESTS.example.md",
+      "sha256": "0f8fc6bbffa386f5901055ab86598ae38ef0a9026542a22d0be93b865c5d31a8"
+    },
+    {
+      "path": ".agents/skills/unified-memory/SKILL.md",
+      "sha256": "a605fe83aef50b4005e6dc853ce90fec22f80df769cfe02189d2d924396b80f3"
+    },
+    {
+      "path": ".agents/skills/unified-memory/agents/openai.yaml",
+      "sha256": "0966ba9fc7059cf7b5e890e414f7df6b750e967687e9d4f7e4ae1fef0733e370"
+    },
+    {
+      "path": ".agents/skills/verification-loop/SKILL.md",
+      "sha256": "f6e87522c6ca40473c005a87225344760be632ff363eb9343b675db11a584583"
+    },
+    {
+      "path": ".agents/skills/verification-loop/agents/openai.yaml",
+      "sha256": "6ec7745a73b6370a72dd96cdab7bdc71f3a383416d87ddfa943e91226d7c0559"
+    },
+    {
+      "path": ".agents/skills/video-editing/SKILL.md",
+      "sha256": "765558c820d0b6f8e4424b55ca1cf13bf9163a1ec572851d1db229693dc8e2ad"
+    },
+    {
+      "path": ".agents/skills/video-editing/agents/openai.yaml",
+      "sha256": "17b0a22b732b1174177af53592a8ebaaeaddd97537df4b038f81fba0f6e95354"
+    },
+    {
+      "path": ".agents/skills/x-api/SKILL.md",
+      "sha256": "e36c246b1bb5d78d6201fcbc501c7b698db83d32e09c25ce2400e45422392c96"
+    },
+    {
+      "path": ".agents/skills/x-api/agents/openai.yaml",
+      "sha256": "1418a6ff8cd646d59ac4b74cbb0c98b6dcfb91c74fa716f7b609a5fc2b0b55e4"
+    },
+    {
+      "path": ".agents/ecc/LICENSE",
+      "sha256": "326146379f01bb137c0a5d3c54770c1aa31076705c8b88a7f6b26a460f6221b2"
+    }
+  ]
+}

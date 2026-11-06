@@ -1,12 +1,20 @@
-# Runtime pertence a um diretório externo.
+/.runtime/
+/.env
+/.env.*
+!/.env.example
+
+node_modules/
+npm-debug.log*
+.DS_Store
 .env
+.env.local
+
+# Arquivos locais do perfil opcional de VM e dos testes Python.
 .env.*
 !.env.example
 __pycache__/
 *.py[cod]
 .pytest_cache/
-.runtime/
-data/
-backups/
-logs/
-node_modules/
+/data/
+/backups/
+/logs/

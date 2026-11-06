@@ -1,10 +1,17 @@
 # Componentes e decisões
 
+Este catálogo pertence ao perfil opcional de VM, operado por `scripts/setup.py`.
+Ele preserva suas revisões próprias de Paperclip e Orca; não atualiza os
+submódulos usados por `npm run setup`. As skills já presentes neste repositório
+têm suas próprias origens em `.agents/`; a exportação abaixo destina-se a outros
+projetos e recusa colisões. Consulte o [README](../README.md) para o ambiente de desenvolvimento.
+
 As origens e revisões estão em [components.lock.json](../config/components.lock.json), verificadas em 2026-11-05. Cada componente conserva seu checkout e licença MIT. O instalador não cria um monorepo com os arquivos de terceiros.
 
 ## Paperclip
 
-Origem: https://github.com/paperclipai/paperclip  
+Origem: https://github.com/paperclipai/paperclip
+
 Commit: `d361f920716ac3aeb5c771246071abe8f2672efe`.
 
 O Compose deriva do [quickstart oficial fixado](https://github.com/paperclipai/paperclip/blob/d361f920716ac3aeb5c771246071abe8f2672efe/docker/docker-compose.quickstart.yml), com:
@@ -22,7 +29,8 @@ Node >=24.11, pnpm 9.15.4 e Rust ficam no build/container. Não instale essas ve
 
 ## Orca opcional
 
-Origem: https://github.com/stablyai/orca  
+Origem: https://github.com/stablyai/orca
+
 Release: `1.4.250`; código: `b98a0fba16561fadc06868fe3e8710781d705efd`.
 
 Verifique o download sem instalar:

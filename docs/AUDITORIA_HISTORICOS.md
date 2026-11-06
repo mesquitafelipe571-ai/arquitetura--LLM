@@ -41,4 +41,8 @@ Nenhum comando do histórico é executado. Links e instruções importados são 
 
 ## Limite atual
 
-Os testes usam fixtures sintéticas. Nenhum histórico real da conta foi lido e a identidade do REA permanece pendente. Um plugin com apenas instruções ou scripts locais não remove bloqueios de rede nem cria uma API de histórico remoto.
+Os testes usam fixtures sintéticas. Nenhum histórico real da conta foi lido.
+O [README](../README.md#rea) identifica o REA atualmente integrado; o leitor
+de históricos não confirma que menções antigas se referem a esse mesmo projeto.
+Um plugin com apenas instruções ou scripts locais não remove bloqueios de rede
+nem cria uma API de histórico remoto.
