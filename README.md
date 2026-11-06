@@ -126,3 +126,22 @@ Para atualizar o Orca, escolha e revise uma nova revisão dentro de `orca/`, con
 A configuração foi conferida contra o [guia oficial de instalação](https://github.com/stablyai/orca/blob/6ff6b39e837da842df6977fcfe5e4a560fb0e748/.github/CONTRIBUTING.md). A instalação completa, a construção do container e a abertura da interface ainda precisam de validação: o ambiente de execução desta sessão estava indisponível ao preparar estes arquivos.
 
 A configuração não inicia nem cria um Codespace por conta própria. Para usar agentes dentro do Orca, configure as CLIs e as autenticações dos provedores que você pretende utilizar. O código do Orca mantém sua [licença MIT](https://github.com/stablyai/orca/blob/6ff6b39e837da842df6977fcfe5e4a560fb0e748/LICENSE).
+
+## ECC para Codex
+
+O [ECC](https://github.com/affaan-m/ECC) está instalado neste projeto por meio
+das **47 skills da distribuição para Codex**, em
+[.agents/skills](.agents/skills). Os arquivos estão versionados no próprio
+repositório e ficam disponíveis após um clone normal.
+
+Para usar:
+
+1. Abra uma nova sessão do Codex na pasta deste repositório.
+2. Digite o nome da skill junto do pedido, por exemplo:
+   `$verification-loop confira as alterações`, `$tdd-workflow implemente esta
+   função` ou `$security-review revise este código`.
+
+Versão de origem: **ECC 2.2.3**. Consulte a
+[origem, o escopo e as dependências opcionais](.agents/ecc/SOURCE.md), o
+[manifesto de integridade](.agents/ecc/manifest.json) e a
+[licença MIT](.agents/ecc/LICENSE).
