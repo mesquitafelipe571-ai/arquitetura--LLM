@@ -1,28 +1,43 @@
 {
-  "name": "arquitetura--LLM / Orca",
+  "name": "arquitetura--LLM / Orca e Paperclip",
   "build": {
     "dockerfile": "Dockerfile"
   },
   "features": {
-    "ghcr.io/devcontainers/features/desktop-lite:1": {}
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "node"
+    },
+    "ghcr.io/devcontainers/features/desktop-lite:1": {},
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "1.97.1",
+      "profile": "minimal",
+      "components": "rustfmt"
+    }
   },
   "remoteUser": "node",
   "containerEnv": {
-    "ORCA_PNPM_GLOBAL_VIRTUAL_STORE": "0"
+    "ORCA_PNPM_GLOBAL_VIRTUAL_STORE": "0",
+    "NODE_USE_ENV_PROXY": "1",
+    "CARGO_BUILD_JOBS": "2"
   },
   "runArgs": [
     "--shm-size=1g"
   ],
   "forwardPorts": [
-    6080
+    6080,
+    3100
   ],
   "portsAttributes": {
     "6080": {
       "label": "Desktop do Orca",
       "onAutoForward": "notify"
+    },
+    "3100": {
+      "label": "Paperclip",
+      "onAutoForward": "notify"
     }
   },
-  "postCreateCommand": "npm run orca:setup",
+  "postCreateCommand": "npm run setup",
   "hostRequirements": {
     "cpus": 4,
     "memory": "8gb",

@@ -18,7 +18,7 @@ if ! command -v rustup >/dev/null; then
   exit 1
 fi
 
-git -C "$PAPERCLIP_REPO_ROOT" submodule update --init --recursive -- paperclip
+git -C "$PAPERCLIP_REPO_ROOT" submodule update --init --recursive --depth 1 -- paperclip
 cd "$PAPERCLIP_REPO_ROOT/paperclip"
 mkdir -p "$PAPERCLIP_RUNTIME_ROOT/bin"
 if command -v corepack >/dev/null; then
@@ -50,8 +50,18 @@ node --import ./cli/node_modules/tsx/dist/loader.mjs --input-type=module -e '
 # Use the same setup routine as `paperclipai run`, saving config without starting
 # a second server or installing a system service.
 node --import ./cli/node_modules/tsx/dist/loader.mjs --input-type=module -e '
+  const { existsSync } = await import("node:fs");
+  const { default: assert } = await import("node:assert/strict");
   const { onboard } = await import("./cli/src/commands/onboard.ts");
+  const { writePaperclipEnvEntries } = await import("./cli/src/config/env.ts");
+  const { bootstrapDevRunnerWorktreeEnv } = await import("./server/src/dev-runner-worktree.ts");
   await onboard({ yes: true, installService: false, invokedByRun: true });
+  if (!existsSync(".paperclip/.env")) {
+    writePaperclipEnvEntries({ PAPERCLIP_HOME: process.env.PAPERCLIP_HOME }, ".paperclip/.env");
+    const probe = {};
+    assert.equal(bootstrapDevRunnerWorktreeEnv(process.cwd(), probe).missingEnv, false);
+    assert.equal(probe.PAPERCLIP_HOME, process.env.PAPERCLIP_HOME);
+  }
 '
 pnpm db:migrate
 printf '\nPaperclip instalado. Dados: %s\nInicie com: %s/scripts/start-paperclip.sh\n' "$PAPERCLIP_HOME" "$PAPERCLIP_REPO_ROOT"

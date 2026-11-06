@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/javascript-node:5.2.5-24-bookworm
+FROM node:24-bookworm
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

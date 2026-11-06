@@ -2,13 +2,21 @@
   "name": "arquitetura-llm",
   "version": "0.1.0",
   "private": true,
-  "description": "Ambiente de desenvolvimento do Orca para arquitetura--LLM",
+  "description": "Ambiente de desenvolvimento do Orca e Paperclip para arquitetura--LLM",
   "engines": {
-    "node": "24.x"
+    "node": ">=24.11 <25"
   },
   "scripts": {
+    "setup": "npm run catalog:setup && npm run orca:setup && npm run paperclip:setup",
+    "catalog:setup": "git submodule update --init --depth 1 -- awesome-linux-dev",
     "orca:setup": "git submodule update --init --depth 1 -- orca && npm run orca:install",
-    "orca:install": "npm exec --yes --package=pnpm@12.14.0 -- pnpm --dir orca install --frozen-lockfile && npm exec --yes --package=pnpm@12.14.0 -- pnpm --dir orca/mobile install --frozen-lockfile",
-    "orca:dev": "npm exec --yes --package=pnpm@12.14.0 -- pnpm --dir orca run dev"
+    "orca:install": "npm exec --yes --package=pnpm@12.14.0 -- pnpm --dir orca install --frozen-lockfile && npm exec --yes --package=pnpm@12.14.0 -- pnpm --dir orca/mobile install --frozen-lockfile && npm run orca:runtime",
+    "orca:runtime": "npm exec --yes --package=pnpm@12.14.0 -- pnpm --dir orca run ensure:electron-runtime",
+    "orca:dev": "npm exec --yes --package=pnpm@12.14.0 -- pnpm --dir orca run dev",
+    "orca:dev:container": "npm exec --yes --package=pnpm@12.14.0 -- pnpm --dir orca run dev --noSandbox",
+    "paperclip:setup": "bash scripts/install-paperclip.sh",
+    "paperclip:dev": "bash scripts/start-paperclip.sh",
+    "ecc": "npm exec --yes --package=ecc-universal@2.2.3 -- ecc",
+    "ecc:canvas": "npm exec --yes --package=ecc-universal@2.2.3 -- ecc-plan-canvas"
   }
 }

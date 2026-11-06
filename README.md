@@ -1,5 +1,36 @@
 # arquitetura--LLM
 
+## Preparar todas as integrações
+
+No Linux/macOS, instale os requisitos nativos descritos abaixo e execute:
+
+```bash
+npm run setup
+```
+
+Esse comando baixa o catálogo, instala o Orca (incluindo a verificação obrigatória
+do Electron) e prepara o Paperclip. As 54 skills já são arquivos do projeto.
+No GitHub Codespaces, o ambiente inclui Node.js 24, Rust 1.97.1 e desktop virtual,
+e executa esse mesmo comando ao ser criado.
+
+Para iniciar, use dois terminais:
+
+```bash
+npm run orca:dev:container  # Codespaces/Dev Container
+npm run paperclip:dev      # http://localhost:3100
+```
+
+Em um desktop local, use `npm run orca:dev`. O comando com sufixo `:container`
+desativa o sandbox do Electron para o ambiente de desenvolvimento isolado;
+reserve-o para esse ambiente. No Codespaces, abra o desktop pela porta 6080 e o
+Paperclip pela porta 3100; mantenha ambas privadas.
+
+Os runtimes auxiliares do ECC ficam acessíveis por `npm run ecc -- memory --help`
+e `npm run ecc:canvas -- --help`. Contas, logins e credenciais dos provedores são
+configurados nas próprias aplicações, conforme o uso.
+
+Consulte o [resultado da revisão das seis integrações](docs/INTEGRACOES.md).
+
 Paperclip integrado em [`paperclip/`](https://github.com/paperclipai/paperclip/tree/7351a9d74ff8e413a1ea1bfd47a1e3c26a81cc06), como submódulo Git fixado no commit `7351a9d74ff8e413a1ea1bfd47a1e3c26a81cc06`.
 
 ## Instalação
@@ -70,11 +101,11 @@ O código oficial fica no submódulo `orca/`, fixado no commit [`6ff6b39e837d`](
 ### Usar no GitHub Codespaces
 
 1. Abra **Code → Codespaces → Create codespace on main**. A configuração solicita 4 CPUs, 8 GB de RAM e 32 GB de armazenamento.
-2. Aguarde a criação do ambiente. O comando `npm run orca:setup` baixa o submódulo e instala as dependências da raiz e de `mobile/`, incluindo a compilação dos módulos nativos.
+2. Aguarde a criação do ambiente. O comando `npm run setup` baixa os três submódulos, instala Orca e Paperclip e verifica o runtime Electron. O Rust do Paperclip já faz parte do ambiente.
 3. No terminal do Codespace, execute:
 
    ```bash
-   npm run orca:dev
+   npm run orca:dev:container
    ```
 
 4. Abra a aba **Ports**, acesse a porta **6080 — Desktop do Orca**, clique em **Connect** e use a senha padrão `vscode`. A janela do Orca aparece nesse desktop. Mantenha a porta com visibilidade **Private**.
@@ -83,7 +114,7 @@ A primeira instalação pode demorar vários minutos. Se a criação for interro
 
 ### Usar no computador
 
-Instale **Git** e **Node.js 24**. Com nvm, use `nvm install` e `nvm use` depois de clonar. O pnpm é obtido automaticamente por `npm exec`, sem instalação global.
+Instale **Git** e **Node.js 24**. Com nvm, use `nvm install` e `nvm use` depois de clonar. O pnpm é obtido automaticamente por `npm exec`, sem instalação global. Em redes com proxy, use `NODE_USE_ENV_PROXY=1 npm run orca:setup`; o container já configura essa opção.
 
 Também são necessários os requisitos nativos da sua plataforma:
 
@@ -115,15 +146,17 @@ Os mesmos arquivos `.devcontainer/` podem ser usados no VS Code com a extensão 
 | --- | --- |
 | `npm run orca:setup` | Baixa a revisão fixada do Orca e instala suas dependências. |
 | `npm run orca:install` | Repete a instalação das dependências de um submódulo já baixado. |
-| `npm run orca:dev` | Inicia o Orca em desenvolvimento no desktop disponível. |
+| `npm run orca:runtime` | Verifica o binário Electron e os módulos nativos; falha se não estiverem prontos. |
+| `npm run orca:dev` | Inicia o Orca em desenvolvimento no desktop local. |
+| `npm run orca:dev:container` | Inicia o Orca no desktop do Codespaces/Dev Container. |
 
 O Bun usado pelos testes é uma dependência fixada do Orca e é instalado pelo pnpm. A criação de pacotes Linux de distribuição exige ferramentas adicionais, incluindo Docker para o helper de clipboard; consulte o guia oficial antes de gerar esses pacotes.
 
 Para atualizar o Orca, escolha e revise uma nova revisão dentro de `orca/`, confira os requisitos e o `packageManager` dela e registre o novo ponteiro do submódulo neste repositório. Os comandos de setup não acompanham automaticamente mudanças em `main`.
 
-### Estado da preparação
+### Validação da instalação
 
-A configuração foi conferida contra o [guia oficial de instalação](https://github.com/stablyai/orca/blob/6ff6b39e837da842df6977fcfe5e4a560fb0e748/.github/CONTRIBUTING.md). A instalação completa, a construção do container e a abertura da interface ainda precisam de validação: o ambiente de execução desta sessão estava indisponível ao preparar estes arquivos.
+A instalação da raiz e de `mobile/`, o carregamento dos módulos nativos do Electron, a compilação em desenvolvimento e a inicialização do Orca foram verificados em 06/11/2026. A imagem base do container também foi construída, e as features de desktop e Rust foram instaladas e verificadas em contêiner isolado. O [relatório das integrações](docs/INTEGRACOES.md) detalha as evidências e as verificações que dependem de serviços externos.
 
 A configuração não inicia nem cria um Codespace por conta própria. Para usar agentes dentro do Orca, configure as CLIs e as autenticações dos provedores que você pretende utilizar. O código do Orca mantém sua [licença MIT](https://github.com/stablyai/orca/blob/6ff6b39e837da842df6977fcfe5e4a560fb0e748/LICENSE).
 
