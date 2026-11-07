@@ -501,6 +501,44 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "[(3, 'Tarefa')]")
 
+    def test_run_single_query_accepts_copies_from_same_run_only(self):
+        # Workers paralelos compartilham .claude/commands: a cópia de outro worker da mesma execução vale.
+        for selected, expected in (("demo-skill-feedc0de-11111111", "True"), ("demo-skill-0badf00d-22222222", "False")):
+            with self.subTest(selected), tempfile.TemporaryDirectory() as tmp:
+                event = {"type": "assistant", "message": {"content": [
+                    {"type": "tool_use", "name": "Skill", "input": {"skill": selected}}]}}
+                result = run_in(SKILLS / "skill-creator", f"""
+                    import io, json
+                    from unittest import mock
+                    from scripts import run_eval
+                    class Done:
+                        stdout = io.BytesIO({(json.dumps(event) + chr(10) + json.dumps({"type": "result"})).encode()!r})
+                        def poll(self):
+                            return 0
+                    with mock.patch.object(run_eval.subprocess, "Popen", return_value=Done()):
+                        print(run_eval.run_single_query("q", "demo", "d", 5, {tmp!r}, run_tag="feedc0de"))
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), expected)
+
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_eval_review_recipe_keeps_script_intact(self):
+        skill_md = (SKILLS / "skill-creator/SKILL.md").read_text()
+        recipe = re.search(r"```python\n(\s*import html, json\n.*?)```", skill_md, re.S).group(1)
+        items = [{"query": 'gere <script>console.log("hi")</script> em HTML', "should_trigger": True}]
+        scope = {"template": (SKILLS / "skill-creator/assets/eval_review.html").read_text(),
+                 "eval_items": items, "skill_name": "x</title><b>", "skill_description": "<img src=x onerror=1>"}
+        exec(textwrap.dedent(recipe), scope)
+        page = scope["page"]
+        self.assertNotIn("<img", page)
+        self.assertNotIn("</title><b>", page)
+        script = re.search(r"<script>(.*?)</script>", page, re.S).group(1)  # o primeiro </script> encerra o elemento
+        data = re.search(r"const EVAL_DATA = (.*?);\n", script).group(1)
+        result = subprocess.run(["node", "-e", f"process.stdout.write(JSON.stringify({data}))"],
+                                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), items)
+
     def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
         with tempfile.TemporaryDirectory() as tmp:
             run = Path(tmp) / "eval-1/with_skill/run-1"

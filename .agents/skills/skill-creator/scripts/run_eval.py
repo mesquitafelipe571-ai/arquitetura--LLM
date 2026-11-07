@@ -39,6 +39,7 @@ def run_single_query(
     timeout: int,
     project_root: str,
     model: str | None = None,
+    run_tag: str | None = None,
 ) -> bool:
     """Run a single query and return whether the skill was triggered.
 
@@ -49,7 +50,10 @@ def run_single_query(
     full assistant message, which only arrives after tool execution.
     """
     unique_id = uuid.uuid4().hex[:8]
-    clean_name = f"{skill_name}-skill-{unique_id}"
+    # Parallel workers share .claude/commands: a copy written by another query of the same
+    # run (same description, same run_tag) is still this skill, so any of them counts.
+    match_name = f"{skill_name}-skill-{run_tag or unique_id}"
+    clean_name = f"{match_name}-{unique_id}"
     project_commands_dir = Path(project_root) / ".claude" / "commands"
     command_file = project_commands_dir / f"{clean_name}.md"
 
@@ -144,11 +148,11 @@ def run_single_query(
                             delta = se.get("delta", {})
                             if delta.get("type") == "input_json_delta":
                                 accumulated_json += delta.get("partial_json", "")
-                                if clean_name in accumulated_json:
+                                if match_name in accumulated_json:
                                     return True
 
                         elif se_type == "content_block_stop" and pending_tool_name:
-                            if clean_name in accumulated_json:
+                            if match_name in accumulated_json:
                                 return True
                             pending_tool_name = None
 
@@ -160,9 +164,9 @@ def run_single_query(
                                 continue
                             tool_name = content_item.get("name", "")
                             tool_input = content_item.get("input", {})
-                            if tool_name == "Skill" and clean_name in tool_input.get("skill", ""):
+                            if tool_name == "Skill" and match_name in tool_input.get("skill", ""):
                                 return True
-                            if tool_name == "Read" and clean_name in tool_input.get("file_path", ""):
+                            if tool_name == "Read" and match_name in tool_input.get("file_path", ""):
                                 return True
 
                     elif event.get("type") == "result":
@@ -195,6 +199,7 @@ def run_eval(
 ) -> dict:
     """Run the full eval set and return results."""
     results = []
+    run_tag = uuid.uuid4().hex[:8]
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         future_to_info = {}
@@ -208,6 +213,7 @@ def run_eval(
                     timeout,
                     str(project_root),
                     model,
+                    run_tag,
                 )
                 future_to_info[future] = (item, run_idx)
 
