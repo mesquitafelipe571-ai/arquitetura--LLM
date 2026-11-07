@@ -378,15 +378,16 @@ class DOCXSchemaValidator(BaseSchemaValidator):
                     )
                 }
 
-                marker_ids = range_starts | range_ends | references
-                invalid_refs = marker_ids - comment_ids
-                for comment_id in sorted(
-                    invalid_refs, key=lambda x: int(x) if x and x.isdigit() else 0
-                ):
-                    if comment_id:  
-                        errors.append(
-                            f'  document.xml: marker id="{comment_id}" references non-existent comment'
-                        )
+            # Without a comments part every marker points nowhere, so the check runs either way.
+            marker_ids = range_starts | range_ends | references
+            invalid_refs = marker_ids - comment_ids
+            for comment_id in sorted(
+                invalid_refs, key=lambda x: int(x) if x and x.isdigit() else 0
+            ):
+                if comment_id:
+                    errors.append(
+                        f'  document.xml: marker id="{comment_id}" references non-existent comment'
+                    )
 
         except (lxml.etree.XMLSyntaxError, Exception) as e:
             errors.append(f"  Error parsing XML: {e}")

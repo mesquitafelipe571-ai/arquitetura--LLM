@@ -143,6 +143,7 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   A busca é feita no XML já interpretado, para que `WEBSERV&#73;CE` não escape da checagem.
   Também vale para qualquer entrada XML do pacote, pelo conteúdo e não pelo nome (`sheet1.XML`),
   para fórmulas ODF em atributos, e um arquivo que não é ZIP é recusado.
+  O conteúdo é reconhecido como XML mesmo com qualquer quantidade de espaços antes da primeira tag, em qualquer codificação.
   O `feedback.json` também deixou de ser seguido: um link nele fazia o salvamento
   sobrescrever o arquivo de destino; agora a gravação substitui o link.
   Planilhas também deixaram de entrar como HTML: `sheet_to_html()` levava um

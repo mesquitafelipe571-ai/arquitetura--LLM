@@ -595,6 +595,24 @@ class OfficeSkillTests(unittest.TestCase):
                     self.assertEqual(result.stdout.strip().splitlines()[-1], expected)
 
     @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
+    def test_docx_comment_markers_need_comments_part(self):
+        # Sem word/comments.xml, a referência ao comentário 42 aponta para nada e tem de falhar.
+        w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        doc = (f'<w:document xmlns:w="{w}"><w:body><w:p><w:commentRangeStart w:id="42"/><w:r><w:t>A</w:t></w:r>'
+               '<w:commentRangeEnd w:id="42"/><w:r><w:commentReference w:id="42"/></w:r></w:p></w:body></w:document>')
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:
+                (Path(tmp) / "word").mkdir()
+                (Path(tmp) / "word/document.xml").write_text(doc)
+                result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                    from validators.docx import DOCXSchemaValidator
+                    print(DOCXSchemaValidator({tmp!r}).validate_comment_markers())
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('marker id="42" references non-existent comment', result.stdout)
+                self.assertEqual(result.stdout.strip().splitlines()[-1], "False")
+
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
     def test_pptx_slide_baseline_excuses_only_the_same_part(self):
         # O original já tinha <p:txBody> vazio em slide1; o mesmo defeito novo em slide2 tem de aparecer.
         err = "Element '{http://schemas.openxmlformats.org/presentationml/2006/main}txBody': Missing child element(s)."
@@ -2523,6 +2541,22 @@ class XlsxPdfTests(unittest.TestCase):
         for line in lines[:-1]:
             self.assertTrue(line.endswith("True True"), line)
         self.assertEqual(lines[-1], "False False")
+
+    def test_xlsx_network_scan_skips_long_leading_whitespace(self):
+        # 300 espaços antes de <worksheet> continuam sendo XML válido: o scanner tem de ver a fórmula.
+        result = run_in(SKILLS / "xlsx/scripts", """
+            import recalc
+            xml = " " * 300 + '<worksheet><c><f>WEBSERVICE("http://127.0.0.1:1234/")</f></c></worksheet>'
+            for enc in ("utf-8", "utf-16-le", "utf-32-be"):
+                data = xml.encode(enc)
+                print(enc, recalc._looks_like_xml(data), recalc._calls_network(data))
+            print(recalc._looks_like_xml(b" " * 1000))
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        lines = result.stdout.strip().splitlines()
+        for line in lines[:-1]:
+            self.assertTrue(line.endswith("True True"), line)
+        self.assertEqual(lines[-1], "False")
 
     def test_xlsx_recalc_counts_only_real_error_cells(self):
         with tempfile.TemporaryDirectory() as tmp:

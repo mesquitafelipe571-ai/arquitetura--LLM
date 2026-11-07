@@ -154,15 +154,19 @@ _XML_ENCODINGS = ("utf-8-sig", "utf-16", "utf-16-be", "utf-16-le", "utf-32", "ut
 def _looks_like_xml(data: bytes) -> bool:
     """XML in any encoding a parser autodetects (XML 1.0, appendix F), with or without a BOM:
     UTF-16BE without BOM starts with 00 3c, so a byte-prefix check would let it through."""
-    head = data[:256]
     for encoding in _XML_ENCODINGS:
+        decoder = codecs.getincrementaldecoder(encoding)()
         try:
-            # Incremental and not final: a multi-byte character cut at the end of head is fine.
-            text = codecs.getincrementaldecoder(encoding)().decode(head)
+            # Chunk by chunk up to the first non-blank character: any amount of leading whitespace
+            # is valid XML; incremental, so a multi-byte character cut between chunks is fine.
+            for i in range(0, len(data), 256):
+                text = decoder.decode(data[i:i + 256]).lstrip(" \t\r\n\ufeff")
+                if text:
+                    if text.startswith("<"):
+                        return True
+                    break
         except UnicodeError:  # 3.12's utf-16/32 decoders raise the base class when the BOM is missing
             continue
-        if text.lstrip(" \t\r\n\ufeff").startswith("<"):
-            return True
     return False
 
 
