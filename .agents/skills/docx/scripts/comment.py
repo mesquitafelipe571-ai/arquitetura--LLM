@@ -114,14 +114,28 @@ def _append_xml(xml_path: Path, root_tag: str, content: str) -> None:
     xml_path.write_text(output, encoding="utf-8")
 
 
-def _find_para_id(comments_path: Path, comment_id: int) -> str | None:
+def _find_para_id(comments_path: Path, comment_id: int) -> tuple[str | None, bool]:
+    """(paraId of the comment, assigned_now). w14:paraId is optional in WordprocessingML: a comment
+    without one gets one on its last paragraph, so a reply can point at it."""
     dom = defusedxml.minidom.parseString(comments_path.read_text(encoding="utf-8"))
     for c in dom.getElementsByTagNameNS(NS["w"], "comment"):
         if c.getAttributeNS(NS["w"], "id") == str(comment_id):
-            for p in c.getElementsByTagNameNS(NS["w"], "p"):
+            paragraphs = c.getElementsByTagNameNS(NS["w"], "p")
+            for p in paragraphs:
                 if pid := p.getAttributeNS(NS["w14"], "paraId"):
-                    return pid
-    return None
+                    return pid, False
+            if not paragraphs:
+                return None, False
+            pid = _generate_hex_id()
+            root = dom.documentElement
+            if not root.hasAttribute("xmlns:w14"):
+                root.setAttribute("xmlns:w14", NS["w14"])
+            paragraphs[-1].setAttributeNS(NS["w14"], "w14:paraId", pid)
+            comments_path.write_text(
+                _encode_smart_quotes(dom.toxml(encoding="UTF-8").decode("utf-8")), encoding="utf-8"
+            )
+            return pid, True
+    return None, False
 
 
 def _next_comment_id(comments_path: Path) -> int:
@@ -292,9 +306,10 @@ def add_comment(
     if comment_id is None:
         comment_id = _next_comment_id(comments)
 
-    parent_para = None
+    parent_para, parent_needs_ex = None, False
     if parent_id is not None:
-        parent_para = _find_para_id(comments, parent_id) if comments.exists() else None
+        if comments.exists():
+            parent_para, parent_needs_ex = _find_para_id(comments, parent_id)
         if not parent_para:
             raise ValueError(f"parent comment {parent_id} not found")
 
@@ -316,6 +331,9 @@ def add_comment(
 
     if not ext.exists():
         shutil.copy(TEMPLATE_DIR / "commentsExtended.xml", ext)
+    if parent_needs_ex:
+        # The parent just got its paraId; register it before the reply that points at it.
+        _append_xml(ext, "w15:commentsEx", f'<w15:commentEx w15:paraId="{parent_para}" w15:done="0"/>')
     if parent_para is not None:
         _append_xml(
             ext, "w15:commentsEx",

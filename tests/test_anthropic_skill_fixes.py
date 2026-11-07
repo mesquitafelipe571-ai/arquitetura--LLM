@@ -650,6 +650,31 @@ class OfficeSkillTests(unittest.TestCase):
             w = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}id"
             self.assertEqual([c.get(w) for c in ET.parse(root / "word/comments1.xml").getroot()], ["0", "1"])
 
+    def test_docx_comment_replies_to_comment_without_para_id(self):
+        # w14:paraId é opcional; o comentário 0 existe sem ele e a resposta precisa funcionar.
+        w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        w14 = "{http://schemas.microsoft.com/office/word/2010/wordml}paraId"
+        w15 = "http://schemas.microsoft.com/office/word/2012/wordml"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "word").mkdir()
+            (root / "word/comments.xml").write_text(
+                f'<w:comments xmlns:w="{w}"><w:comment w:id="0" w:author="A">'
+                '<w:p><w:r><w:t>original</w:t></w:r></w:p></w:comment></w:comments>')
+            result = run_in(SKILLS / "docx/scripts", f"""
+                from comment import add_comment
+                print(add_comment({tmp!r}, "resposta", parent_id=0)[0])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "1")
+            comments = ET.parse(root / "word/comments.xml").getroot()
+            parent_pid = comments.find(f"{{{w}}}comment").find(f"{{{w}}}p").get(w14)
+            self.assertTrue(parent_pid)
+            ex = ET.parse(root / "word/commentsExtended.xml").getroot()
+            entries = [(e.get(f"{{{w15}}}paraId"), e.get(f"{{{w15}}}paraIdParent")) for e in ex]
+            self.assertIn((parent_pid, None), entries)
+            self.assertEqual([p for _, p in entries if p], [parent_pid])
+
     def test_docx_comment_creates_missing_document_rels(self):
         with tempfile.TemporaryDirectory() as tmp:
             (Path(tmp) / "word").mkdir()
