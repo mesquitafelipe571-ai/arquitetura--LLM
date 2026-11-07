@@ -64,6 +64,9 @@ def calculate_stats(values: list[float]) -> dict:
     }
 
 
+BASELINE_CONFIGS = {"without_skill", "old_skill"}
+
+
 def load_run_results(benchmark_dir: Path) -> dict:
     """
     Load all run results from a benchmark directory.
@@ -178,7 +181,9 @@ def load_run_results(benchmark_dir: Path) -> dict:
 
                 results[config].append(result)
 
-    return results
+    # The delta is "first config minus second": the version under test must come before its
+    # baseline, whatever the alphabetical order of the directories (old_skill < with_skill).
+    return dict(sorted(results.items(), key=lambda item: item[0] in BASELINE_CONFIGS))
 
 
 def aggregate_results(results: dict) -> dict:

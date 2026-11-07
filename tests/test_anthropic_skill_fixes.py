@@ -724,6 +724,22 @@ class SkillCreatorTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)["reviews"][0]["feedback"], "nota")
 
+    def test_benchmark_delta_puts_version_under_test_first(self):
+        # old_skill vem antes de with_skill em ordem alfabética; o delta não pode sair invertido.
+        with tempfile.TemporaryDirectory() as tmp:
+            for config, rate in (("with_skill", 1.0), ("old_skill", 0.0)):
+                d = Path(tmp) / "eval-0" / config
+                (d / "outputs").mkdir(parents=True)
+                (d / "grading.json").write_text(json.dumps({"summary": {"pass_rate": rate}}))
+            result = run_in(SKILLS / "skill-creator", f"""
+                from pathlib import Path
+                from scripts.aggregate_benchmark import aggregate_results, load_run_results
+                results = load_run_results(Path({tmp!r}))
+                print(list(results), aggregate_results(results)["delta"]["pass_rate"])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "['with_skill', 'old_skill'] +1.00")
+
     def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
         with tempfile.TemporaryDirectory() as tmp:
             run = Path(tmp) / "eval-1/with_skill/run-1"
