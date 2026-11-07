@@ -126,7 +126,9 @@ def build_run(root: Path, run_dir: Path) -> dict | None:
     output_files: list[dict] = []
     if outputs_dir.is_dir():
         # Artifacts can live in subfolders (outputs/site/index.html); show them by relative path.
-        real_outputs = outputs_dir.resolve()
+        # Where outputs/ must really be: a link on outputs/ or any folder above it, up to the
+        # workspace, would otherwise turn an outside directory into the trusted root.
+        real_outputs = root.resolve() / outputs_dir.relative_to(root)
         for f in sorted(outputs_dir.rglob("*")):
             if f.is_file() and f.name not in METADATA_FILES:
                 name = f.relative_to(outputs_dir).as_posix()

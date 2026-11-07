@@ -105,6 +105,10 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   apontado pela revisão de segurança do Codex): um run de terceiro podia criar em
   `outputs/` um link para `secret.env` e o conteúdo ia para o HTML mostrado ao
   usuário. Agora links e caminhos que saem de `outputs/` não são lidos.
+- **XSS pelas contagens do `grading.json`** (`skill-creator/eval-viewer/viewer.html`,
+  apontado pela revisão do Codex): `passed`/`failed`/`total` iam sem escape para o
+  HTML; agora só números finitos são exibidos. Na mesma rodada, um `outputs/` que
+  fosse link deixou de servir de raiz confiável para o visualizador.
 - Testes em `tests/test_anthropic_skill_fixes.py`, que falham com os arquivos
   originais. Pendente: reportar à origem.
 

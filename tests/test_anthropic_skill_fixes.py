@@ -856,6 +856,46 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(outputs["ok.txt"]["content"], "resultado")
             self.assertEqual(outputs["link.txt"]["type"], "error")
 
+    def test_viewer_rejects_outputs_dir_that_is_a_link(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            private = Path(tmp) / "private"
+            private.mkdir()
+            (private / "secret.env").write_text("TOKEN=segredo")
+            run = Path(tmp) / "ws/eval-0/with_skill"
+            run.mkdir(parents=True)
+            (run / "outputs").symlink_to(private, target_is_directory=True)
+            result = run_in(SKILLS / "skill-creator/eval-viewer", f"""
+                import json
+                from pathlib import Path
+                from generate_review import find_runs
+                print(json.dumps([r["outputs"] for r in find_runs(Path({str(Path(tmp) / "ws")!r}))]))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotIn("segredo", result.stdout)
+            self.assertNotIn("VE9LRU4", result.stdout)  # "TOKEN" em base64
+
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_viewer_grade_counts_cannot_inject_html(self):
+        html = (SKILLS / "skill-creator/eval-viewer/viewer.html").read_text()
+        body = re.search(r"function renderGrades\(run\) \{.*?\n    \}", html, re.S).group(0)
+        esc = re.search(r"function escapeHtml\(text\) \{.*?\n    \}", html, re.S).group(0)
+        script = textwrap.dedent("""
+            const els = {};
+            const document = {
+              getElementById(id) { return els[id] || (els[id] = {style: {}, classList: {add() {}, remove() {}}}); },
+              createElement() { return { set textContent(t) { this.t = String(t); },
+                get innerHTML() { return this.t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); } }; },
+            };
+        """) + esc + "\n" + body + textwrap.dedent("""
+            renderGrades({grading: {summary: {pass_rate: 1, passed: '<img src=x onerror="globalThis.injected=true">',
+                                              failed: 0, total: 1}, expectations: []}});
+            process.stdout.write(els["grades-content"].innerHTML);
+        """)
+        result = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("<img", result.stdout)
+        self.assertIn("0 passed, 0 failed of 1", result.stdout)
+
     def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
         with tempfile.TemporaryDirectory() as tmp:
             run = Path(tmp) / "eval-1/with_skill/run-1"
@@ -1082,6 +1122,29 @@ class XlsxPdfTests(unittest.TestCase):
             """)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue((out / "page_1.png").exists())
+
+    def test_pdf_annotations_follow_page_rotation(self):
+        from pypdf import PdfReader, PdfWriter
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, fields = (Path(tmp) / n for n in ("rot.pdf", "out.pdf", "fields.json"))
+            w = PdfWriter()
+            w.add_blank_page(600, 800).rotation = 90  # exibida como 800x600
+            with open(src, "wb") as f:
+                w.write(f)
+            fields.write_text(json.dumps({
+                "pages": [{"page_number": 1, "image_width": 800, "image_height": 600}],
+                "form_fields": [{"page_number": 1, "entry_bounding_box": [100, 100, 200, 120],
+                                 "entry_text": {"text": "Smith", "font_size": 10}}]}))
+            result = run_in(SKILLS / "pdf/scripts", f"""
+                from fill_pdf_form_with_annotations import fill_pdf_form
+                fill_pdf_form({str(src)!r}, {str(fields)!r}, {str(out)!r})
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            page = PdfReader(out).pages[0]
+            self.assertEqual(page.rotation % 360, 0)
+            rect = [float(v) for v in page["/Annots"][0].get_object()["/Rect"]]
+            # Na página exibida (800x600): x 100-200, y 100-120 a partir do topo -> 480-500 a partir da base.
+            self.assertEqual(rect, [100.0, 480.0, 200.0, 500.0])
 
     def test_pdf_choice_options_accept_plain_strings(self):
         result = run_in(SKILLS / "pdf/scripts", """

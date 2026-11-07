@@ -39,9 +39,15 @@ def fill_pdf_form(input_pdf_path, fields_json_path, output_pdf_path):
     writer = PdfWriter()
     
     writer.append(reader)
-    
+
+    # Coordinates are measured on the page as displayed; bake /Rotate into the content so the
+    # page's own coordinate system matches what was measured (and the MediaBox is the shown size).
+    for page in writer.pages:
+        if page.rotation % 360:
+            page.transfer_rotation_to_content()
+
     pdf_dimensions = {}
-    for i, page in enumerate(reader.pages):
+    for i, page in enumerate(writer.pages):
         mediabox = page.mediabox
         pdf_dimensions[i + 1] = [mediabox.width, mediabox.height]
     
