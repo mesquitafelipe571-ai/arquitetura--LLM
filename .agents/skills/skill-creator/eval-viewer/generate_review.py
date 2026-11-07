@@ -256,7 +256,7 @@ def load_previous_iteration(workspace: Path) -> dict[str, dict]:
     # Load feedback
     feedback_map: dict[str, str] = {}
     feedback_path = workspace / "feedback.json"
-    if feedback_path.exists():
+    if _workspace_file(workspace, feedback_path):  # a link could pull another feedback.json into the page
         try:
             data = json.loads(feedback_path.read_text())
             feedback_map = {

@@ -791,6 +791,30 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip().splitlines()[-1], "['my-skill/SKILL.md']")
 
+    def test_viewer_previous_iteration_ignores_linked_feedback(self):
+        # Um feedback.json da iteração anterior que é link levava o feedback de outro lugar para o HTML.
+        with tempfile.TemporaryDirectory() as tmp:
+            prev = Path(tmp) / "prev"
+            prev.mkdir()
+            (Path(tmp) / "private.json").write_text(json.dumps(
+                {"reviews": [{"run_id": "r", "feedback": "SENTINELA"}]}))
+            (prev / "feedback.json").symlink_to(Path(tmp) / "private.json")
+            result = run_in(SKILLS / "skill-creator/eval-viewer", f"""
+                from pathlib import Path
+                from generate_review import load_previous_iteration
+                print(load_previous_iteration(Path({str(prev)!r})))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotIn("SENTINELA", result.stdout)
+            (prev / "feedback.json").unlink()
+            (prev / "feedback.json").write_text(json.dumps({"reviews": [{"run_id": "r", "feedback": "ok"}]}))
+            result = run_in(SKILLS / "skill-creator/eval-viewer", f"""
+                from pathlib import Path
+                from generate_review import load_previous_iteration
+                print(load_previous_iteration(Path({str(prev)!r}))["r"]["feedback"])
+            """)
+            self.assertEqual(result.stdout.strip(), "ok")
+
     def test_viewer_static_refuses_linked_benchmark(self):
         # Um benchmark.json que é link levava o JSON de fora do workspace para o HTML estático.
         script = SKILLS / "skill-creator/eval-viewer/generate_review.py"
