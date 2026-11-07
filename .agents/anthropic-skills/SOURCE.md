@@ -167,6 +167,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `office/validators/docx.py` (3 cópias) | Com o relacionamento do documento apontando para `comments1.xml`, `validate_comment_markers()` ignorava a parte e acusava os marcadores como órfãos | A parte de comentários vem do relacionamento do tipo `comments` de `document.xml`; o nome fixo `comments.xml` fica como alternativa |
 | `mcp-builder/scripts/connections.py` | Uma ferramenta que respondia só em `structuredContent` (`content: []`) chegava ao modelo como `[]` | `call_tool()` devolve o `structuredContent` quando não há conteúdo, e o `evaluation.py` o serializa em JSON |
 | `web-artifacts-builder/scripts/init-artifact.sh` (segurança) | O nome do projeto era concatenado na expressão do `sed`: `x;touch marker/e` fechava a substituição e a flag GNU `e` executava o comando | O nome precisa ser um slug (`[A-Za-z0-9][A-Za-z0-9._-]*`), validado antes de qualquer `pnpm`, `cd` ou `sed` |
+| `claude-api/shared/preserved-thinking-migration/drop_block_probe.py`, `prefix_diff.py` (segurança) | `--json probe.json` abria a saída com `"w"` e sobrescrevia o alvo de um link; captures e arquivos do `--scan` que fossem links eram lidos e impressos | `--json` grava em temporário e usa `os.replace` (recusando pasta-link acima); captures que sejam links são recusados e o `--scan` pula arquivos-link |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

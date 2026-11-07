@@ -206,6 +206,43 @@ class OfficeSkillTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual(result.stdout.strip().splitlines()[-1], expected, result.stdout)
 
+    def test_migration_helpers_refuse_links(self):
+        # --json num link não sobrescreve o alvo; captures e arquivos do --scan que sejam links não são lidos.
+        probe_dir = SKILLS / "claude-api/shared/preserved-thinking-migration"
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
+            victim = Path(outside) / "victim.txt"
+            victim.write_text("do usuário")
+            secret = Path(outside) / "secret.py"
+            secret.write_text('if text.startswith("SEGREDO"):\n    pass\n')
+            (Path(tmp) / "probe.json").symlink_to(victim)
+            (Path(tmp) / "exports").symlink_to(outside)
+            (Path(tmp) / "cap.jsonl").symlink_to(victim)
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            (repo / "leak.py").symlink_to(secret)
+            result = run_in(probe_dir, f"""
+                import os
+                from drop_block_probe import write_json_replace, load_capture
+                from prefix_diff import load_requests, main
+                write_json_replace({str(Path(tmp) / "probe.json")!r}, {{"ok": 1}})
+                for call in (lambda: write_json_replace({str(Path(tmp) / "exports/r.json")!r}, {{}}),
+                             lambda: load_capture({str(Path(tmp) / "cap.jsonl")!r}),
+                             lambda: load_requests([{str(Path(tmp) / "cap.jsonl")!r}])):
+                    try:
+                        call()
+                    except SystemExit as e:
+                        print("recusado:", e)
+                main(["--scan", {str(repo)!r}])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(victim.read_text(), "do usuário")
+            self.assertFalse((Path(tmp) / "probe.json").is_symlink())
+            self.assertEqual(json.loads((Path(tmp) / "probe.json").read_text()), {"ok": 1})
+            self.assertEqual(result.stdout.count("recusado:"), 3, result.stdout)
+            self.assertIn("0 file(s) read", result.stdout)
+            self.assertNotIn("SEGREDO", result.stdout)
+            self.assertEqual(sorted(os.listdir(outside)), ["secret.py", "victim.txt"])
+
     def test_drop_block_probe_unparsable_200_is_not_evaluated(self):
         # Uma página HTML com status 200 nunca passou pela verificação: None, não uma lista vazia (limpa).
         probe_dir = SKILLS / "claude-api/shared/preserved-thinking-migration"

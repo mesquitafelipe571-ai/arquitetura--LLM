@@ -99,6 +99,7 @@ import os
 import re
 import socket
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -143,7 +144,34 @@ STREAM_ERROR_STATUSES = {"invalid_request_error": 400, "authentication_error": 4
 # ----------------------------------------------------------------------------- capture loading
 
 
+def refuse_link(path, what="capture file"):
+    """A link in a third-party workspace would make a read or write reach a file outside it."""
+    if os.path.islink(path):
+        raise SystemExit("%s is a symlink; refusing to use it as the %s" % (path, what))
+
+
+def write_json_replace(path, obj):
+    """Write beside path and replace it: a link at path is swapped out, never written through."""
+    path = os.path.abspath(path)
+    parent = os.path.dirname(path)
+    # A linked folder above the output would still put the write outside the workspace.
+    p = parent
+    while len(os.path.normpath(p).split(os.sep)) > 2 and p != os.getcwd():
+        refuse_link(p, "--json output folder")
+        p = os.path.dirname(p)
+    fd, tmp = tempfile.mkstemp(prefix="." + os.path.basename(path) + ".", suffix=".tmp", dir=parent)
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(obj, f, indent=2)
+        os.replace(tmp, path)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
+
+
 def iter_lines(path):
+    refuse_link(path)
     with open(path, "r", encoding="utf-8") as f:
         for n, line in enumerate(f, 1):
             line = line.strip()
@@ -1031,9 +1059,8 @@ def main(argv=None):
 
     def flush():
         if args.json:
-            with open(args.json, "w") as f:
-                json.dump({"mode": args.mode, "betas": betas, "results": all_results,
-                           "summaries": [{k: v for k, v in s.items() if k != "_results"} for s in summaries]}, f, indent=2)
+            write_json_replace(args.json, {"mode": args.mode, "betas": betas, "results": all_results,
+                               "summaries": [{k: v for k, v in s.items() if k != "_results"} for s in summaries]})
 
     if args.json:
         try:

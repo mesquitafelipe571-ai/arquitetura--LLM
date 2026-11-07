@@ -127,6 +127,8 @@ def load_requests(paths):
     out = []
 
     def add_file(p, default_conv):
+        if os.path.islink(p):  # a link in a third-party capture dir would read a file outside it
+            raise SystemExit("%s is a symlink; refusing to read it" % p)
         with open(p, "r", encoding="utf-8") as f:
             if p.endswith(".jsonl"):
                 conv = os.path.splitext(p)[0]
@@ -1468,6 +1470,8 @@ def run_scan(args):
             if not fn.endswith(exts):
                 continue
             path = os.path.join(dirpath, fn)
+            if os.path.islink(path):  # os.walk does not follow linked dirs; linked files are skipped too
+                continue
             try:
                 with open(path, "r", encoding="utf-8", errors="replace") as f:
                     lines = f.read().split("\n")
