@@ -32,6 +32,14 @@ def find_project_root() -> Path:
     return current
 
 
+def _calls_skill(tool_name: str, tool_input, match_name: str) -> bool:
+    """A Skill call whose `skill` (or a Read whose `file_path`) names the command under test."""
+    if not isinstance(tool_input, dict):
+        return False
+    field = {"Skill": "skill", "Read": "file_path"}.get(tool_name)
+    return bool(field) and match_name in str(tool_input.get(field, ""))
+
+
 def run_single_query(
     query: str,
     skill_name: str,
@@ -153,11 +161,15 @@ def run_single_query(
                             delta = se.get("delta", {})
                             if delta.get("type") == "input_json_delta":
                                 accumulated_json += delta.get("partial_json", "")
-                                if match_name in accumulated_json:
-                                    return True
 
                         elif se_type == "content_block_stop" and pending_tool_name:
-                            if match_name in accumulated_json:
+                            # Only the field that names the skill counts: another skill's args may
+                            # mention this one, so the raw JSON is not searched.
+                            try:
+                                tool_input = json.loads(accumulated_json or "{}")
+                            except json.JSONDecodeError:
+                                tool_input = {}
+                            if _calls_skill(pending_tool_name, tool_input, match_name):
                                 return True
                             pending_tool_name = None
 
@@ -167,11 +179,7 @@ def run_single_query(
                         for content_item in message.get("content", []):
                             if content_item.get("type") != "tool_use":
                                 continue
-                            tool_name = content_item.get("name", "")
-                            tool_input = content_item.get("input", {})
-                            if tool_name == "Skill" and match_name in tool_input.get("skill", ""):
-                                return True
-                            if tool_name == "Read" and match_name in tool_input.get("file_path", ""):
+                            if _calls_skill(content_item.get("name", ""), content_item.get("input", {}), match_name):
                                 return True
 
                     elif event.get("type") == "result":
@@ -190,6 +198,8 @@ def run_single_query(
             code = process.wait(timeout=5)
             if code:
                 raise RuntimeError(f"claude -p exited with code {code}")
+            # Exit 0 with neither a trigger nor a `result` event: the output was cut short.
+            raise RuntimeError("claude -p ended without a result")
         finally:
             # Clean up process on any exit path (return, exception, timeout)
             if process.poll() is None:

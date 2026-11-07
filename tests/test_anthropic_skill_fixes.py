@@ -1869,6 +1869,47 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "True")
 
+    def test_run_eval_trigger_needs_skill_field_and_a_result(self):
+        # Outra skill citando o nome nos args não é disparo; sair sem `result` é erro, não "não disparou".
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run_in(SKILLS / "skill-creator", f"""
+                import io, json, sys, types
+                from unittest import mock
+                from scripts import run_eval
+                def events(*evs):
+                    data = "".join(json.dumps(e) + "\\n" for e in evs).encode()
+                    class Proc:
+                        stdout = io.BytesIO(data)
+                        returncode = 0
+                        def poll(self):
+                            return 0
+                        def wait(self, timeout=None):
+                            return 0
+                        def kill(self):
+                            pass
+                    return lambda cmd, **kw: Proc()
+                def stream(name, partial):
+                    return [{{"type": "stream_event", "event": {{"type": "content_block_start",
+                             "content_block": {{"type": "tool_use", "name": name}}}}}},
+                            {{"type": "stream_event", "event": {{"type": "content_block_delta",
+                             "delta": {{"type": "input_json_delta", "partial_json": partial}}}}}},
+                            {{"type": "stream_event", "event": {{"type": "content_block_stop"}}}}]
+                done = {{"type": "result", "subtype": "success"}}
+                for evs in (stream("Skill", '{{"skill": "code-review", "args": "review demo-skill-feedc0de"}}') + [done],
+                            stream("Skill", '{{"skill": "demo-skill-feedc0de-x"}}'),
+                            [{{"type": "system", "subtype": "init"}}]):
+                    with mock.patch.object(run_eval.subprocess, "Popen", events(*evs)), \\
+                         mock.patch.object(run_eval.select, "select", lambda r, w, x, t: (r, [], [])), \\
+                         mock.patch.object(run_eval.os, "read", lambda fd, n: b""):
+                        try:
+                            print(run_eval.run_single_query("q", "demo", "d", 5, {tmp!r}, run_tag="feedc0de"))
+                        except RuntimeError as e:
+                            print("erro:", e)
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines()[-3:],
+                             ["False", "True", "erro: claude -p ended without a result"])
+
     def test_claude_subprocesses_get_no_free_tools(self):
         # O SKILL.md/consulta pode vir de terceiro: improve sem ferramentas, run_eval só com Skill/Read; sem MCP.
         with tempfile.TemporaryDirectory() as tmp:
@@ -1893,7 +1934,10 @@ class SkillCreatorTests(unittest.TestCase):
                 with mock.patch.object(improve_description.subprocess, "run", fake_run):
                     improve_description._call_claude("p", None)
                 with mock.patch.object(run_eval.subprocess, "Popen", fake_popen):
-                    run_eval.run_single_query("q", "demo", "d", 5, {tmp!r})
+                    try:  # o processo falso não emite nada: só o argv importa aqui
+                        run_eval.run_single_query("q", "demo", "d", 5, {tmp!r})
+                    except RuntimeError:
+                        pass
                 print(json.dumps(seen))
             """)
             self.assertEqual(result.returncode, 0, result.stderr)
