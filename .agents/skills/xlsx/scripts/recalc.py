@@ -232,13 +232,10 @@ def _recalc_with_profile(filename, abs_path, timeout, profile_dir: Path):
                 continue
             for row in ws.iter_rows():
                 for cell in row:
-                    if cell.value is not None and isinstance(cell.value, str):
-                        for err in excel_errors:
-                            if err in cell.value:
-                                location = f"{sheet_name}!{cell.coordinate}"
-                                error_details[err].append(location)
-                                total_errors += 1
-                                break
+                    # Only real error cells count; text that merely mentions "#VALUE!" is not an error.
+                    if cell.data_type == "e" and cell.value in error_details:
+                        error_details[cell.value].append(f"{sheet_name}!{cell.coordinate}")
+                        total_errors += 1
 
         result = {
             "status": "success" if total_errors == 0 else "errors_found",

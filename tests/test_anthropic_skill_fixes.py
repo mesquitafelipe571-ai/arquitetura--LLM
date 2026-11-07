@@ -247,6 +247,61 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.split(), ["84852", "10"])
 
+    def test_viewer_sorts_runs_without_eval_id(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, meta in (("eval-a", {"eval_id": 1}), ("eval-b", None)):
+                run = Path(tmp) / name
+                (run / "outputs").mkdir(parents=True)
+                (run / "outputs/out.txt").write_text("x")
+                if meta:
+                    (run / "eval_metadata.json").write_text(json.dumps(meta))
+            result = run_in(SKILLS / "skill-creator/eval-viewer", f"""
+                from pathlib import Path
+                from generate_review import find_runs
+                print([r.get("eval_id") for r in find_runs(Path({tmp!r}))])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "[1, None]")
+
+
+@unittest.skipUnless(importlib.util.find_spec("openpyxl") and importlib.util.find_spec("pypdf"),
+                     "openpyxl/pypdf não instalados")
+class XlsxPdfTests(unittest.TestCase):
+    def test_xlsx_recalc_counts_only_real_error_cells(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            book = Path(tmp) / "book.xlsx"
+            result = run_in(SKILLS / "xlsx/scripts", f"""
+                import os, subprocess
+                from pathlib import Path
+                from unittest import mock
+                from openpyxl import Workbook
+                import recalc
+                wb = Workbook()
+                wb.active["A1"] = "Como corrigir #VALUE!"
+                wb.active["A2"] = "#DIV/0!"
+                wb.save({str(book)!r})
+                def fake_run(cmd, **kw):
+                    st = os.stat({str(book)!r})
+                    os.utime({str(book)!r}, ns=(st.st_atime_ns, st.st_mtime_ns + 10**9))
+                    return subprocess.CompletedProcess(cmd, 0, "", "")
+                with mock.patch.object(recalc, "setup_libreoffice_macro", return_value=("file:///p", None)), \\
+                     mock.patch.object(recalc.subprocess, "run", side_effect=fake_run):
+                    out = recalc._recalc_with_profile({str(book)!r}, {str(book)!r}, 30, Path({tmp!r}))
+                print(out["total_errors"], sorted(out["error_summary"]))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "1 ['#DIV/0!']")
+
+    def test_pdf_choice_options_accept_plain_strings(self):
+        result = run_in(SKILLS / "pdf/scripts", """
+            from extract_form_field_info import make_field_dict
+            d = make_field_dict({"/FT": "/Ch", "/_States_": ["Red", ["g", "Green"], "M"]}, "f")
+            print(d["choice_options"])
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(),
+                         "[{'value': 'Red', 'text': 'Red'}, {'value': 'g', 'text': 'Green'}, {'value': 'M', 'text': 'M'}]")
+
 
 @unittest.skipIf(sys.platform == "win32", "grupo de processos POSIX")
 class WithServerTests(unittest.TestCase):

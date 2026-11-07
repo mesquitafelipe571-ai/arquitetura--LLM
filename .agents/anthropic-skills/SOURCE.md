@@ -33,6 +33,9 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `mcp-builder/scripts/evaluation.py` | Resultados do SDK MCP (modelos pydantic) quebravam o `json.dumps` | Serializa com `model_dump(mode="json")` |
 | `skill-creator/scripts/aggregate_benchmark.py` | Com a duração já no `grading.json`, ignorava `total_tokens` do `timing.json` e usava `output_chars` | Lê a contagem real de tokens independentemente da duração |
 | `skill-creator/scripts/run_eval.py` | A saída que chegava junto com o fim do processo era descartada sem passar pelo parser | Processa o restante da saída antes de sair do laço |
+| `xlsx/scripts/recalc.py` | Texto que só mencionava `#VALUE!` era contado como erro e bloqueava a entrega | Conta só células de erro (`data_type == "e"`) com o código exato |
+| `skill-creator/eval-viewer/generate_review.py` | Execução sem `eval_id` (`None`) quebrava a ordenação com `TypeError` | `None` vai para o fim da ordenação |
+| `pdf/scripts/extract_form_field_info.py` | Opções simples (`"Red"`) viravam `R`/`e`; opções de 1 caractere davam `IndexError` | String vale como valor e texto; pares continuam indexados |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

@@ -61,7 +61,8 @@ def find_runs(workspace: Path) -> list[dict]:
     """Recursively find directories that contain an outputs/ subdirectory."""
     runs: list[dict] = []
     _find_runs_recursive(workspace, workspace, runs)
-    runs.sort(key=lambda r: (r.get("eval_id", float("inf")), r["id"]))
+    # build_run() stores eval_id=None when metadata is missing; None cannot be compared with ints.
+    runs.sort(key=lambda r: (float("inf") if r.get("eval_id") is None else r["eval_id"], r["id"]))
     return runs
 
 
