@@ -17,6 +17,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 from scripts.quick_validate import validate_skill
+from scripts.utils import refuse_linked_folder
 
 # Patterns to exclude when packaging skills.
 EXCLUDE_DIRS = {"__pycache__", "node_modules"}
@@ -81,6 +82,11 @@ def package_skill(skill_path, output_dir=None):
     # Determine output location
     skill_name = skill_path.name
     if output_dir:
+        try:
+            refuse_linked_folder(output_dir)  # resolve() would follow it out of the workspace
+        except ValueError as e:
+            print(f"❌ {e}")
+            return None
         output_path = Path(output_dir).resolve()
         output_path.mkdir(parents=True, exist_ok=True)
     else:

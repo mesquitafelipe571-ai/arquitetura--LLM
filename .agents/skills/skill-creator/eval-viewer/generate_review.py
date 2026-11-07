@@ -50,6 +50,21 @@ MIME_OVERRIDES = {
 }
 
 
+def refuse_linked_folder(folder) -> None:
+    """os.replace swaps a link planted at an output file, but a linked folder at or above it would
+    still make the write land outside the workspace."""
+    path = Path(os.path.abspath(folder))
+    cwd = Path(os.getcwd())
+    # Inside the working directory the user picked the root; elsewhere every folder counts except
+    # top-level ones, which only an admin creates (macOS /tmp and /var are links).
+    stop = cwd if path.is_relative_to(cwd) else None
+    for p in (path, *path.parents):
+        if p == stop or len(p.parts) <= 2:
+            break
+        if p.is_symlink():
+            raise ValueError(f"output folder goes through a symlink: {p}")
+
+
 def get_mime_type(path: Path) -> str:
     ext = path.suffix.lower()
     if ext in MIME_OVERRIDES:
@@ -411,6 +426,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 if not isinstance(data, dict) or "reviews" not in data:
                     raise ValueError("Expected JSON object with 'reviews' key")
                 # Write a temp file and move it into place: replaces a link at feedback.json, never its target.
+                refuse_linked_folder(self.feedback_path.parent)
                 fd, tmp = tempfile.mkstemp(prefix=".feedback.", suffix=".tmp", dir=self.feedback_path.parent)
                 try:
                     with os.fdopen(fd, "w") as fh:
@@ -489,6 +505,7 @@ def main() -> None:
 
     if args.static:
         html = generate_html(runs, skill_name, previous, benchmark)
+        refuse_linked_folder(args.static.parent)
         args.static.parent.mkdir(parents=True, exist_ok=True)
         # Temp file + os.replace: a link at the output path is replaced, never its target written.
         fd, tmp = tempfile.mkstemp(prefix=".review.", suffix=".tmp", dir=args.static.parent)

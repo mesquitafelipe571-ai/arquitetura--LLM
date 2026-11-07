@@ -240,6 +240,7 @@ def create_grids(
             suffix = output_path.suffix
             grid_filename = output_path.parent / f"{stem}-{chunk_idx + 1}{suffix}"
 
+        refuse_linked_path(grid_filename.parent, "output folder")  # os.replace swaps a link at the file only
         grid_filename.parent.mkdir(parents=True, exist_ok=True)
         # Save beside the target and replace it: a link planted at the output path is never followed.
         fd, tmp = tempfile.mkstemp(prefix=f".{grid_filename.name}.", suffix=grid_filename.suffix,

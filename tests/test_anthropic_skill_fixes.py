@@ -620,6 +620,31 @@ class OfficeSkillTests(unittest.TestCase):
                 self.assertIn("input file goes through a symlink", result.stdout)
             self.assertEqual(secret.read_bytes(), before)
 
+    def test_writers_refuse_linked_output_folder(self):
+        # exports -> pasta externa: os.replace trocaria outside/<arquivo>; cada gravador recusa antes de criar o temporário.
+        cases = {
+            "pdf/scripts": "from _replace_write import replacing\nwith replacing(out / 'r.json') as tmp:\n    open(tmp, 'w').write('x')",
+            "docx/scripts": "from accept_changes import accept_changes\nr = accept_changes(str(src), str(out / 'r.docx'))\nraise ValueError(r[1])",
+            "skill-creator": "from scripts.utils import write_text_replace\nwrite_text_replace(out / 'r.html', 'x')",
+        }
+        for where, code in cases.items():
+            with self.subTest(where), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
+                src = Path(tmp) / "in.docx"
+                with zipfile.ZipFile(src, "w") as z:
+                    z.writestr("word/document.xml", "<w:document/>")
+                (Path(tmp) / "exports").symlink_to(outside)
+                result = run_in(SKILLS / where, f"""
+                    from pathlib import Path
+                    out, src = Path({str(Path(tmp) / "exports")!r}), Path({str(src)!r})
+                    try:
+                        exec({code!r})
+                    except ValueError as e:
+                        print("recusado:", e)
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("output folder goes through a symlink", result.stdout)
+                self.assertEqual(os.listdir(outside), [])
+
     def test_docx_refuses_linked_folder_outside_cwd(self):
         # workspace/docs -> pasta privada, com o script rodando fora do workspace: a pasta-link também conta.
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:

@@ -311,9 +311,25 @@ def parse_env_vars(env_list: list[str]) -> dict[str, str]:
     return env
 
 
+def refuse_linked_folder(folder) -> None:
+    """os.replace swaps a link planted at an output file, but a linked folder at or above it would
+    still make the write land outside the workspace."""
+    path = Path(os.path.abspath(folder))
+    cwd = Path(os.getcwd())
+    # Inside the working directory the user picked the root; elsewhere every folder counts except
+    # top-level ones, which only an admin creates (macOS /tmp and /var are links).
+    stop = cwd if path.is_relative_to(cwd) else None
+    for p in (path, *path.parents):
+        if p == stop or len(p.parts) <= 2:
+            break
+        if p.is_symlink():
+            raise ValueError(f"output folder goes through a symlink: {p}")
+
+
 def write_report(path: Path, report: str) -> None:
     """Write beside the target and replace it: a link planted at the output path is never followed."""
     path = Path(path)
+    refuse_linked_folder(path.parent)
     fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
     try:
         with os.fdopen(fd, "w") as fh:

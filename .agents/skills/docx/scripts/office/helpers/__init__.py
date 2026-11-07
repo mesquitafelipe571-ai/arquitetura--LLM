@@ -102,7 +102,7 @@ def refuse_linked_path(target: Path, what: str = "extraction destination") -> No
     # top-level ones, which only an admin creates (macOS /tmp and /var are links).
     stop = cwd if path.is_relative_to(cwd) else None
     for p in (path, *path.parents):
-        if p is not path and (p == stop or len(p.parts) <= 2):
+        if p == stop or len(p.parts) <= 2:
             break
         if p.is_symlink():
             raise ValueError(f"{what} goes through a symlink: {p}")

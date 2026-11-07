@@ -53,6 +53,7 @@ def accept_changes(
 
     work_path = None
     try:
+        refuse_linked_path(output_path.parent, "output folder")  # os.replace swaps a link at the file only
         output_path.parent.mkdir(parents=True, exist_ok=True)
         # Work on a temp copy beside the output and move it into place at the end: copying straight
         # to output_file would follow a planted link there and overwrite its target.
