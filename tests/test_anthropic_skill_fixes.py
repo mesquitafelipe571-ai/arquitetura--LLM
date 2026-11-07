@@ -1667,7 +1667,8 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             improve, evaluate = json.loads(result.stdout.strip().splitlines()[-1])
             self.assertEqual(improve[improve.index("--tools") + 1], "")
-            self.assertEqual(evaluate[evaluate.index("--tools") + 1], "Skill,Read")
+            # Sem Read: uma consulta de terceiro leria um arquivo local e o vazaria pelo disparo da skill.
+            self.assertEqual(evaluate[evaluate.index("--tools") + 1], "Skill")
             self.assertIn("--strict-mcp-config", improve)
             self.assertIn("--strict-mcp-config", evaluate)
 

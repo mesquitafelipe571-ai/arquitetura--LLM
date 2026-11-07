@@ -127,7 +127,7 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   O HTML do `--static` também deixou de seguir um link no caminho de saída.
   Pelo mesmo motivo, `docx/scripts/accept_changes.py` passou a trabalhar numa cópia temporária
   e a substituir o destino com `os.replace()`, em vez de copiar direto para um `out.docx` que fosse link.
-  Os subprocessos `claude -p` do skill-creator rodam sem ferramentas (`improve_description.py`) ou só com `Skill`/`Read` (`run_eval.py`), sempre com `--strict-mcp-config`: um `SKILL.md` de terceiro não comanda Bash, escrita nem rede.
+  Os subprocessos `claude -p` do skill-creator rodam sem ferramentas (`improve_description.py`) ou só com `Skill` (`run_eval.py`; sem `Read`, uma consulta não lê arquivos locais para vazá-los pelo disparo), sempre com `--strict-mcp-config`: um `SKILL.md` de terceiro não comanda Bash, escrita nem rede.
   Os relatórios do skill-creator (`benchmark.json`/`.md`, `results.json`, `report.html`, o `--report` do `run_loop.py`, logs) a grade de miniaturas do `pptx/scripts/thumbnail.py` as saídas de `pdf/scripts` (PDFs, JSON e imagens) e o relatório `-o` do `mcp-builder/scripts/evaluation.py` seguem a mesma regra.
   O `pptx/scripts/clean.py` recusa limpar, sem apagar nada, um pacote que contenha qualquer link.
   O `docx/scripts/comment.py` faz a mesma conferência nas partes de comentários antes de alterá-las.

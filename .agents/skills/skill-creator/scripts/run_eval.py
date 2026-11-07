@@ -77,9 +77,9 @@ def run_single_query(
             "--output-format", "stream-json",
             "--verbose",
             "--include-partial-messages",
-            # Triggering is detected from Skill/Read calls; no other tool or MCP server is needed,
-            # so a query or skill text cannot drive Bash, Write or the network.
-            "--tools", "Skill,Read",
+            # Only Skill: triggering is the Skill call. Read would let a query from a third-party eval
+            # set read a local file and leak it bit by bit through whether the skill fired.
+            "--tools", "Skill",
             "--strict-mcp-config",
         ]
         if model:
