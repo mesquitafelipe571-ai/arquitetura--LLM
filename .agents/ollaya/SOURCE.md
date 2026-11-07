@@ -6,7 +6,10 @@
 - Diretório original: [skills/ollaya-decisions](https://github.com/ollaya-dev/ollaya/tree/a8bce962dc8219e696604403a5c2a30e6c9523f0/skills/ollaya-decisions).
 - Licença: Apache-2.0; texto integral em [LICENSE](LICENSE).
 
-A skill foi copiada sem alterações. Ao trocar a versão do Ollaya, atualize a skill,
+A skill foi copiada com uma única alteração: quando nenhuma interface do Ollaya está
+disponível, ela indica `npm run ollaya:install` (instalador fixado por commit e SHA-256,
+com confirmação) em vez de `curl -fsSL https://ollaya.dev/install.sh | sh`, que não é
+fixado. Ao trocar a versão do Ollaya, atualize a skill (refazendo essa troca),
 `VERSION` e `SOURCE_SHA` em `scripts/ollaya.sh`.
 
 O instalador (`scripts/install.sh` do mesmo commit) é baixado por SHA completo,

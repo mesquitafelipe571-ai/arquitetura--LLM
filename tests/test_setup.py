@@ -40,6 +40,12 @@ class SetupTests(unittest.TestCase):
         # Nem leitura: Read/Grep deixariam um item injetado trazer chaves de .runtime/ para a resposta.
         self.assertEqual(tools, {"mcp__ollaya__decide", "mcp__ollaya__list_models", "mcp__ollaya__show_model"})
 
+    def test_ollaya_skill_points_to_pinned_installer(self):
+        # AGENTS.md: fontes fixadas por SHA; a skill não pode mandar rodar o instalador de URL mutável.
+        skill = (REPO / ".agents/skills/ollaya-decisions/SKILL.md").read_text(encoding="utf-8")
+        self.assertNotIn("ollaya.dev/install.sh", skill)
+        self.assertIn("npm run ollaya:install", skill)
+
     def test_decisao_agents_do_not_depend_on_reading_files(self):
         # Sem Read (Claude) e sem shell (Codex), mandar ler a skill falharia: o guia vai no prompt.
         for path in (".claude/agents/decisao.md", ".codex/agents/decisao.toml"):

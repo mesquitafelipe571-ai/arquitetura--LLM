@@ -50,8 +50,8 @@ Check which of these is available, in this order.
      -d '{"model": "laya", "state": "…", "questions": {…}}'
    ```
 
-If none is available, tell the user how to install Ollaya:
-`curl -fsSL https://ollaya.dev/install.sh | sh`.
+If none is available, tell the user how to install Ollaya in this project:
+`npm run ollaya:install` (pinned installer, checked by SHA-256, asks before running).
 
 ## Picking a model
 
