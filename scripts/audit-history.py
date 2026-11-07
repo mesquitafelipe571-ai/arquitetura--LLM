@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Extract repository references from explicitly supplied local histories. No network."""
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -10,6 +11,9 @@ import stat
 
 MAX_DEPTH = 64
 MAX_EVIDENCE = 10000
+# Locators are retained per evidence and repeated in the report; bound their size, not only their count.
+MAX_KEY_CHARS = 128
+MAX_EVIDENCE_BYTES = 4 * 1024 * 1024
 REPO_PATTERN = re.compile(
     r"(?P<prefix>https?://(?:www\.)?github\.com/|https?://raw\.githubusercontent\.com/|git@github\.com[:/])"
     r"(?P<owner>[A-Za-z0-9][A-Za-z0-9-]{0,38})/(?P<repo>[A-Za-z0-9_.-]{1,100})",
@@ -37,6 +41,13 @@ def repository_links(text):
         result.setdefault(name.lower(), {"repository": name, "url": "https://github.com/" + name})
     return list(result.values())
 
+def key_segment(key):
+    encoded = json.dumps(str(key), ensure_ascii=False)
+    if len(encoded) <= MAX_KEY_CHARS:
+        return "[" + encoded + "]"
+    digest = hashlib.sha256(str(key).encode("utf-8", "surrogatepass")).hexdigest()[:16]
+    return '["#sha256:' + digest + '"]'
+
 def text_units(value, location="$", depth=0):
     if depth > MAX_DEPTH:
         raise ValueError("nesting_limit")
@@ -47,7 +58,7 @@ def text_units(value, location="$", depth=0):
             yield from text_units(item, location + "[" + str(i) + "]", depth + 1)
     elif isinstance(value, dict):
         for key, item in value.items():
-            yield from text_units(item, location + "[" + json.dumps(str(key), ensure_ascii=False) + "]", depth + 1)
+            yield from text_units(item, location + key_segment(key), depth + 1)
 
 def has_symlink(path):
     return any(part.is_symlink() for part in (path, *path.parents))
@@ -88,6 +99,7 @@ class Auditor:
         self.skipped = []
         self.pagination = []
         self.evidence_count = 0
+        self.evidence_bytes = 0
 
     def session(self, key, sid=None):
         if key not in self.sessions:
@@ -107,6 +119,9 @@ class Auditor:
             self.evidence_count += len(links) + int(rea)
             if self.evidence_count > MAX_EVIDENCE:
                 raise ValueError("evidence_limit")
+            self.evidence_bytes += len(locator) + len(file)
+            if self.evidence_bytes > MAX_EVIDENCE_BYTES:
+                raise ValueError("evidence_bytes_limit")
             evidence = {"file": file, "locator": locator, "origin": role}
             for link in links:
                 session["references"].append({**link, "evidence": evidence})
@@ -148,7 +163,7 @@ class Auditor:
             self.session(key, sid)["source_files"].add(file)
             for node_id, node in mapping.items():
                 if isinstance(node, dict) and isinstance(node.get("message"), dict):
-                    loc = location + '["mapping"][' + json.dumps(str(node_id)) + ']["message"]'
+                    loc = location + '["mapping"]' + key_segment(node_id) + '["message"]'
                     self.consume(key, node["message"], file, loc, sid)
             return
         self.consume(key, record, file, location, sid)
@@ -214,7 +229,7 @@ class Auditor:
             self.files.append({"file": file, "fully_parsed": len(self.errors) == before})
         except (OSError, UnicodeError, ValueError, RecursionError) as exc:
             reason = str(exc) if isinstance(exc, ValueError) and str(exc) in {
-                "nesting_limit", "evidence_limit", "unsupported_json_structure", "unsupported_session_structure"
+                "nesting_limit", "evidence_limit", "evidence_bytes_limit", "unsupported_json_structure", "unsupported_session_structure"
             } else type(exc).__name__
             self.errors.append({"file": file, "reason": reason})
 

@@ -10,8 +10,8 @@ disponível na sessão. Não houve painel de verificação independente.
 Lido integralmente: `scripts/` (setup.py, paperclip-native.py, install-orca.py,
 check-repo.py, scripts shell), `.github/workflows/`, `.devcontainer/`,
 `compose.paperclip.json`, `config/components.lock.json`, `.codex/`, `.claude/`,
-`package.json` e `.gitmodules`. Lido parcialmente: `scripts/audit-history.py`
-(as primeiras 80 linhas, que fazem a análise da entrada).
+`package.json` e `.gitmodules`. `scripts/audit-history.py` foi lido só em parte (80 linhas) na revisão manual;
+a falha abaixo estava no trecho que não foi lido.
 
 Busca por padrões de risco, sem leitura linha a linha, em `.agents/skills/`
 (scripts copiados de terceiros): `shell=True`, `os.system`, `eval`/`exec`,
@@ -20,10 +20,30 @@ Busca por padrões de risco, sem leitura linha a linha, em `.agents/skills/`
 Fora do escopo: o código-fonte dos submódulos (Orca, Paperclip e catálogos),
 que pertence a outros projetos e não estava baixado.
 
-## Resultado
+## Vulnerabilidade encontrada pela revisão de segurança do Codex
 
-Nenhuma vulnerabilidade explorável encontrada no código do projeto. Pontos
-verificados:
+**Esgotamento de memória no leitor local de históricos** (`scripts/audit-history.py`,
+gravidade média, só disponibilidade local). Introduzida no commit `62b9547`
+(PR #1); corrigida no PR #4.
+
+- **Causa:** `text_units()` copiava a chave inteira de um dicionário JSON para o
+  localizador de cada item da lista abaixo dela, e `consume()` guardava esses
+  localizadores. Os limites existentes contavam profundidade e quantidade de
+  evidências, mas não bytes.
+- **Exploração:** um JSON de ~300 KB com uma chave de 256 KiB e 1.024 links, aberto
+  por quem roda o leitor, encerrava o processo com `MemoryError` (reproduzido com
+  limite de 128 MiB). Exige que a pessoa execute o leitor sobre o arquivo; não há
+  serviço remoto envolvido.
+- **Correção:** chaves com mais de 128 caracteres viram `#sha256:<16 hex>` no
+  localizador (também nos IDs de `mapping`), e a soma dos localizadores guardados
+  tem limite de 4 MiB, que gera o erro `evidence_bytes_limit` em vez de derrubar o
+  processo. Testes em `tests/test_history_audit.py`; o mesmo ataque passa a
+  terminar com código 0.
+
+## Resultado da revisão manual
+
+Fora o item acima, nenhuma vulnerabilidade explorável foi encontrada no código
+do projeto. Pontos verificados:
 
 - Comandos externos são chamados com lista de argumentos, sem shell; nenhum
   `shell=True`.

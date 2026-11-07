@@ -173,6 +173,28 @@ class HistoryAuditTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 2)
         self.assertFalse(json.loads(proc.stdout)["all_provided_files_parsed"])
 
+    def test_long_keys_do_not_amplify_locators(self):
+        key = "k" * 262144
+        links = ["https://github.com/owner/repo-%d" % i for i in range(1024)]
+        self.file("exports/long-key.json", json.dumps({key: links}))
+        self.file("exports/long-node.json", json.dumps({"mapping": {key: {"message": {
+            "author": {"role": "user"}, "content": links[0]}}}}))
+        result = self.report(self.root / "exports")
+        self.assertEqual(result["errors"], [])
+        locators = [r["evidence"]["locator"] for s in result["sessions"] for r in s["references"]]
+        self.assertEqual(len(locators), 1025)
+        self.assertLess(max(map(len, locators)), 200)
+        self.assertTrue(all("#sha256:" in loc for loc in locators))
+
+    def test_evidence_byte_budget_stops_with_reported_error(self):
+        path = self.file("budget.json", json.dumps({"a" * 100: ["https://github.com/o/r%d" % i for i in range(50)]}))
+        original = audit.MAX_EVIDENCE_BYTES
+        audit.MAX_EVIDENCE_BYTES = 2000
+        self.addCleanup(setattr, audit, "MAX_EVIDENCE_BYTES", original)
+        result = self.report(path)
+        self.assertEqual(result["errors"], [{"file": str(path.absolute()), "reason": "evidence_bytes_limit"}])
+        self.assertFalse(result["all_provided_files_parsed"])
+
     def test_duplicate_input_path_only_read_once(self):
         source = self.file("session.json", '{"message":"https://github.com/example/a"}')
         result = audit.Auditor().audit([source, source])
