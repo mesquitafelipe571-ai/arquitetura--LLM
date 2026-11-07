@@ -93,6 +93,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `skill-creator/eval-viewer/viewer.html` (segurança) | Planilhas eram mostradas com `sheet_to_html()` via `innerHTML`; um hyperlink `javascript:` numa célula virava `<a href>` e executava no visualizador | A tabela é montada pelo DOM com `textContent` (`sheet_to_json`), sem links |
 | `docx/scripts/comment.py` | Usava sempre `word/comments.xml`; num documento cuja relação aponta para outra parte (ex.: `comments1.xml`), repetia o ID 0, criava uma segunda relação de comentários e não achava o comentário-pai | Resolve as quatro partes de comentários pela relação existente antes de calcular IDs, achar o pai e registrar tipos de conteúdo |
 | `claude-api/shared/evals/report/build-report-lite.mjs` | Uma variante em que todas as tentativas falharam (só `errors.jsonl`) era descartada; o relatório e o `scores.tsv` omitiam a rodada e as falhas | Só descarta a variante sem resultados e sem erros; a pontuação fica em branco e as falhas aparecem |
+| `skill-creator/eval-viewer/generate_review.py` (segurança) | `--benchmark` passava por `resolve()` e seguia um `benchmark.json` que fosse link, embutindo qualquer JSON legível no HTML | O benchmark só é lido como arquivo regular dentro do workspace (`_workspace_file`); um link é recusado com erro |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

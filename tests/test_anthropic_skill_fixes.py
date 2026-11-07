@@ -772,6 +772,28 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip().splitlines()[-1], "['my-skill/SKILL.md']")
 
+    def test_viewer_static_refuses_linked_benchmark(self):
+        # Um benchmark.json que é link levava o JSON de fora do workspace para o HTML estático.
+        script = SKILLS / "skill-creator/eval-viewer/generate_review.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp) / "ws"
+            (ws / "eval-0/outputs").mkdir(parents=True)
+            (ws / "eval-0/outputs/out.txt").write_text("ok")
+            (Path(tmp) / "private.json").write_text('{"segredo": "SENTINELA"}')
+            (ws / "benchmark.json").symlink_to(Path(tmp) / "private.json")
+            out = Path(tmp) / "view.html"
+            run = lambda: subprocess.run([sys.executable, str(script), str(ws), "--benchmark",
+                                          str(ws / "benchmark.json"), "--static", str(out)],
+                                         capture_output=True, text=True, timeout=60)
+            result = run()
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertFalse(out.exists() and "SENTINELA" in out.read_text())
+            (ws / "benchmark.json").unlink()
+            (ws / "benchmark.json").write_text('{"normal": "BENCH"}')
+            result = run()
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("BENCH", out.read_text())
+
     def test_viewer_reads_eval_metadata_above_numbered_runs(self):
         with tempfile.TemporaryDirectory() as tmp:
             run = Path(tmp) / "eval-3/with_skill/run-1"

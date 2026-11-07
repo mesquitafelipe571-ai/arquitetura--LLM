@@ -116,6 +116,7 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   fosse link deixou de servir de raiz confiável para o visualizador.
   Depois, `grading.json`, `eval_metadata.json` e `transcript.md` também passaram
   a ser lidos só quando são arquivos regulares dentro do workspace.
+  O `--benchmark` segue a mesma regra: um `benchmark.json` que seja link é recusado.
   O `feedback.json` também deixou de ser seguido: um link nele fazia o salvamento
   sobrescrever o arquivo de destino; agora a gravação substitui o link.
   Planilhas também deixaram de entrar como HTML: `sheet_to_html()` levava um

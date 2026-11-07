@@ -94,6 +94,16 @@ def _workspace_file(root: Path, path: Path) -> bool:
     return path.is_file() and not path.is_symlink() and path.resolve() == expected
 
 
+def _load_benchmark(workspace: Path, path: Path | None) -> dict | None:
+    """benchmark.json only as a regular file inside the workspace, like the other run data."""
+    if path is None or not _workspace_file(workspace, path):
+        return None
+    try:
+        return json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
 def build_run(root: Path, run_dir: Path) -> dict | None:
     """Build a run dict with prompt, outputs, and grading data."""
     prompt = ""
@@ -357,12 +367,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
         if path == "/" or path == "/index.html":
             # Regenerate HTML on each request (re-scans workspace for new outputs)
             runs = find_runs(self.workspace)
-            benchmark = None
-            if self.benchmark_path and self.benchmark_path.exists():
-                try:
-                    benchmark = json.loads(self.benchmark_path.read_text())
-                except (json.JSONDecodeError, OSError):
-                    pass
+            benchmark = _load_benchmark(self.workspace, self.benchmark_path)
             html = generate_html(runs, self.skill_name, self.previous, benchmark)
             content = html.encode("utf-8")
             self.send_response(200)
@@ -456,13 +461,20 @@ def main() -> None:
     if args.previous_workspace:
         previous = load_previous_iteration(args.previous_workspace.resolve())
 
-    benchmark_path = args.benchmark.resolve() if args.benchmark else None
-    benchmark = None
-    if benchmark_path and benchmark_path.exists():
+    benchmark_path = None
+    if args.benchmark:
+        # Not resolve(): that would follow a planted benchmark.json link to any readable JSON.
         try:
-            benchmark = json.loads(benchmark_path.read_text())
-        except (json.JSONDecodeError, OSError):
-            pass
+            benchmark_path = workspace / args.benchmark.absolute().relative_to(args.workspace.absolute())
+        except ValueError:
+            benchmark_path = None
+        if benchmark_path is None or (
+            os.path.lexists(benchmark_path) and not _workspace_file(workspace, benchmark_path)
+        ):
+            print(f"Error: --benchmark must be a regular file inside {workspace} (links are refused)",
+                  file=sys.stderr)
+            sys.exit(1)
+    benchmark = _load_benchmark(workspace, benchmark_path)
 
     if args.static:
         html = generate_html(runs, skill_name, previous, benchmark)
