@@ -14,6 +14,46 @@ setup = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(setup)
 
 class SetupTests(unittest.TestCase):
+    def test_codex_decisao_agent_disables_shell_and_extensions(self):
+        # O perfil Codex herda as ferramentas da sessão; sem shell, um item injetado não roda comandos.
+        import tomllib
+        data = tomllib.loads((REPO / ".codex/agents/decisao.toml").read_text(encoding="utf-8"))
+        self.assertEqual(data["features"], {"shell_tool": False, "apps": False, "plugins": False,
+                                            "request_permissions_tool": False})
+
+    def test_codex_decisao_skill_requires_session_without_rea(self):
+        # O agente herda os MCPs da sessão: com itens de terceiros, só numa sessão sem o REA.
+        skill = (REPO / ".agents/skills/decisao/SKILL.md").read_text(encoding="utf-8")
+        readme = (REPO / "README.md").read_text(encoding="utf-8")
+        for text in (skill, readme):
+            self.assertIn("codex -c mcp_servers.rea.enabled=false", text)
+        import tomllib
+        config = tomllib.loads((REPO / ".codex/config.toml").read_text(encoding="utf-8"))
+        self.assertIn("rea", config["mcp_servers"])  # o comando acima desliga um servidor que existe
+
+    def test_decisao_agent_has_closed_tool_list(self):
+        # Sem `tools` o subagente herda Bash/Write/WebFetch/MCPs; um item injetado agiria com eles.
+        text = (REPO / ".claude/agents/decisao.md").read_text(encoding="utf-8")
+        front = text.split("---", 2)[1]
+        line = next(l for l in front.splitlines() if l.startswith("tools:"))
+        tools = {t.strip() for t in line.split(":", 1)[1].split(",")}
+        # Nem leitura: Read/Grep deixariam um item injetado trazer chaves de .runtime/ para a resposta.
+        self.assertEqual(tools, {"mcp__ollaya__decide", "mcp__ollaya__list_models", "mcp__ollaya__show_model"})
+
+    def test_ollaya_skill_points_to_pinned_installer(self):
+        # AGENTS.md: fontes fixadas por SHA; a skill não pode mandar rodar o instalador de URL mutável.
+        skill = (REPO / ".agents/skills/ollaya-decisions/SKILL.md").read_text(encoding="utf-8")
+        self.assertNotIn("ollaya.dev/install.sh", skill)
+        self.assertIn("npm run ollaya:install", skill)
+
+    def test_decisao_agents_do_not_depend_on_reading_files(self):
+        # Sem Read (Claude) e sem shell (Codex), mandar ler a skill falharia: o guia vai no prompt.
+        for path in (".claude/agents/decisao.md", ".codex/agents/decisao.toml"):
+            text = (REPO / path).read_text(encoding="utf-8")
+            self.assertNotIn("leia\n`.agents/skills/ollaya-decisions/SKILL.md`", text)
+            self.assertIn("Você não lê arquivos", text)
+            self.assertIn("`triage` (`message`)", text)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

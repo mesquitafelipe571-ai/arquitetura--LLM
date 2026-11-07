@@ -15,6 +15,8 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
+      - name: Dependências dos testes das skills Office
+        run: python3 -m pip install defusedxml==0.7.1 openpyxl==3.1.5 pypdf==6.17.0 numpy==2.5.3 pillow==12.3.0
       - name: Testes do instalador
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
       - name: Sintaxe e plano
