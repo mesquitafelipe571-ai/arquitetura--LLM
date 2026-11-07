@@ -384,6 +384,69 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "True")
 
+    def test_run_single_query_keeps_reading_after_other_tools(self):
+        # Read de outro arquivo antes do Skill, nos dois formatos de saída (mensagem completa e streaming).
+        read = {"type": "tool_use", "name": "Read", "input": {"file_path": "/tmp/context.md"}}
+        skill = {"type": "tool_use", "name": "Skill", "input": {"skill": "demo-skill-abcdef12"}}
+        def block(cb):
+            return {"type": "stream_event", "event": {"type": "content_block_start", "content_block": cb}}
+        def delta(text):
+            return {"type": "stream_event", "event": {"type": "content_block_delta",
+                    "delta": {"type": "input_json_delta", "partial_json": text}}}
+        stop = {"type": "stream_event", "event": {"type": "content_block_stop"}}
+        streams = {
+            "assistant": [{"type": "assistant", "message": {"content": [read, skill]}}],
+            "stream": [block({"type": "tool_use", "name": "Grep"}), stop,
+                       block({"type": "tool_use", "name": "Read"}), delta('{"file_path": "/tmp/context.md"}'), stop,
+                       {"type": "stream_event", "event": {"type": "message_stop"}},
+                       block({"type": "tool_use", "name": "Skill"}), delta('{"skill": "demo-skill-abcdef12"}'), stop],
+        }
+        for name, events in streams.items():
+            with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
+                payload = "\n".join(json.dumps(e) for e in events)
+                result = run_in(SKILLS / "skill-creator", f"""
+                    import io, uuid
+                    from unittest import mock
+                    from scripts import run_eval
+                    class Done:
+                        stdout = io.BytesIO({payload.encode()!r})
+                        def poll(self):
+                            return 0
+                    with mock.patch.object(run_eval.uuid, "uuid4", return_value=uuid.UUID("abcdef12" + "0" * 24)), \\
+                         mock.patch.object(run_eval.subprocess, "Popen", return_value=Done()):
+                        print(run_eval.run_single_query("q", "demo", "d", 5, {tmp!r}))
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), "True")
+
+    def test_package_skill_skips_its_own_output_inside_the_skill(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            skill = Path(tmp) / "my-skill"
+            skill.mkdir()
+            (skill / "SKILL.md").write_text("---\nname: my-skill\ndescription: x\n---\n")
+            result = run_in(SKILLS / "skill-creator", f"""
+                import sys, types, zipfile
+                sys.modules["scripts.quick_validate"] = types.SimpleNamespace(validate_skill=lambda p: (True, "ok"))
+                from scripts.package_skill import package_skill
+                out = package_skill({str(skill)!r}, {str(skill / "dist")!r})
+                print(sorted(zipfile.ZipFile(out).namelist()))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines()[-1], "['my-skill/SKILL.md']")
+
+    def test_viewer_reads_eval_metadata_above_numbered_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp) / "eval-3/with_skill/run-1"
+            (run / "outputs").mkdir(parents=True)
+            (Path(tmp) / "eval-3/eval_metadata.json").write_text(json.dumps({"eval_id": 3, "prompt": "Tarefa"}))
+            result = run_in(SKILLS / "skill-creator/eval-viewer", f"""
+                from pathlib import Path
+                from generate_review import find_runs
+                print([(r.get("eval_id"), r.get("prompt")) for r in find_runs(Path({tmp!r}))])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "[(3, 'Tarefa')]")
+
     def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
         with tempfile.TemporaryDirectory() as tmp:
             run = Path(tmp) / "eval-1/with_skill/run-1"

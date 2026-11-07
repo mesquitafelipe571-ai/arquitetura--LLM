@@ -91,6 +91,8 @@ def package_skill(skill_path, output_dir=None):
         with zipfile.ZipFile(skill_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
             # Walk through the skill directory, excluding build artifacts
             for file_path in skill_path.rglob('*'):
+                if file_path == skill_filename:
+                    continue  # the archive being written, when the output dir is inside the skill
                 # A link could pull in any file the process can read (e.g. credentials).
                 if file_path.is_symlink() or not file_path.resolve().is_relative_to(skill_path):
                     raise ValueError(f"symbolic link not allowed in a skill: {file_path}")
