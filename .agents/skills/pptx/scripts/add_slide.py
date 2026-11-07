@@ -208,8 +208,18 @@ def _add_to_content_types(unpacked_dir: Path, dest: str) -> None:
     new_override = f'<Override PartName="/ppt/slides/{dest}" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>'
 
     if f'PartName="/ppt/slides/{dest}"' not in content_types:
-        content_types = content_types.replace("</Types>", f"  {new_override}\n</Types>")
+        content_types = _append_to_root(content_types, "Types", new_override)
         content_types_path.write_text(content_types, encoding="utf-8")
+
+
+def _append_to_root(xml: str, root_local: str, element: str) -> str:
+    """Insert element before the root's closing tag, reusing the root's namespace prefix."""
+    closing = list(re.finditer(rf"</([\w.-]+:)?{root_local}\s*>", xml))
+    if not closing:
+        _die(f"closing </{root_local}> tag not found; the part was not changed")
+    prefix = closing[-1].group(1) or ""
+    pos = closing[-1].start()
+    return f"{xml[:pos]}  {element.replace('<', '<' + prefix, 1)}\n{xml[pos:]}"
 
 
 def _add_to_presentation_rels(unpacked_dir: Path, dest: str) -> str:
@@ -226,14 +236,14 @@ def _add_to_presentation_rels(unpacked_dir: Path, dest: str) -> str:
     rid = f"rId{max(used) + 1 if used else 1}"
 
     new_rel = f'<Relationship Id="{rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/{dest}"/>'
-    pres_rels = pres_rels.replace("</Relationships>", f"  {new_rel}\n</Relationships>")
+    pres_rels = _append_to_root(pres_rels, "Relationships", new_rel)
     pres_rels_path.write_text(pres_rels, encoding="utf-8")
 
     return rid
 
 
 def _find_slide_relationship(pres_rels: str, slide_name: str) -> str | None:
-    for m in re.finditer(r"<Relationship\b[^>]*>", pres_rels):
+    for m in re.finditer(r"<(?:[\w.-]+:)?Relationship\b[^>]*>", pres_rels):
         element = m.group(0)
         if re.search(rf'Target="(?:/ppt/)?slides/{re.escape(slide_name)}"', element):
             id_match = re.search(r'\bId="([^"]+)"', element)

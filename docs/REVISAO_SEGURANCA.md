@@ -87,6 +87,11 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   servia prompts e saídas e aceitava gravação de `feedback.json` para qualquer
   usuário local, contornando as permissões dos arquivos. Agora cada execução gera
   um token aleatório exigido em todas as rotas.
+- **Empacotador seguia links simbólicos** (`skill-creator/scripts/package_skill.py`,
+  apontado pela revisão de segurança do Codex): `is_file()` e `ZipFile.write()`
+  seguiam links, então uma skill recebida com um link para `credentials.env`
+  levava o segredo para dentro do `.skill` entregue. Agora o empacotamento para
+  em qualquer link ou caminho que saia da pasta da skill e apaga o arquivo parcial.
 - Testes em `tests/test_anthropic_skill_fixes.py`, que falham com os arquivos
   originais. Pendente: reportar à origem.
 

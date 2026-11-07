@@ -91,6 +91,9 @@ def package_skill(skill_path, output_dir=None):
         with zipfile.ZipFile(skill_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
             # Walk through the skill directory, excluding build artifacts
             for file_path in skill_path.rglob('*'):
+                # A link could pull in any file the process can read (e.g. credentials).
+                if file_path.is_symlink() or not file_path.resolve().is_relative_to(skill_path):
+                    raise ValueError(f"symbolic link not allowed in a skill: {file_path}")
                 if not file_path.is_file():
                     continue
                 arcname = file_path.relative_to(skill_path.parent)
@@ -104,6 +107,7 @@ def package_skill(skill_path, output_dir=None):
         return skill_filename
 
     except Exception as e:
+        skill_filename.unlink(missing_ok=True)
         print(f"❌ Error creating .skill file: {e}")
         return None
 

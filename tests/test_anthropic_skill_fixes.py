@@ -10,6 +10,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+import xml.etree.ElementTree as ET
 import zipfile
 
 SKILLS = Path(__file__).resolve().parents[1] / ".agents/skills"
@@ -97,6 +98,53 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "[]")
             self.assertTrue((root / "ppt/media/image1.png").exists())
+
+    def test_pptx_add_slide_registers_in_prefixed_rels_and_types(self):
+        rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "ppt/_rels").mkdir(parents=True)
+            (root / "ppt/presentation.xml").write_text(
+                '<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"'
+                f' xmlns:r="{rel_ns}"><p:sldIdLst><p:sldId id="256" r:id="rId1"/></p:sldIdLst></p:presentation>')
+            (root / "ppt/_rels/presentation.xml.rels").write_text(
+                '<pkg:Relationships xmlns:pkg="http://schemas.openxmlformats.org/package/2006/relationships">'
+                f'<pkg:Relationship Id="rId1" Type="{rel_ns}/slide" Target="slides/slide1.xml"/></pkg:Relationships>')
+            (root / "[Content_Types].xml").write_text(
+                '<ct:Types xmlns:ct="http://schemas.openxmlformats.org/package/2006/content-types"></ct:Types>')
+            result = run_in(SKILLS / "pptx/scripts", f"""
+                from pathlib import Path
+                from add_slide import _add_to_content_types, _add_to_presentation_rels
+                _add_to_content_types(Path({tmp!r}), "slide2.xml")
+                print(_add_to_presentation_rels(Path({tmp!r}), "slide2.xml"))
+                print(_add_to_presentation_rels(Path({tmp!r}), "slide1.xml"))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.split(), ["rId2", "rId1"])
+            ns = {"pkg": "http://schemas.openxmlformats.org/package/2006/relationships",
+                  "ct": "http://schemas.openxmlformats.org/package/2006/content-types"}
+            rels = ET.parse(root / "ppt/_rels/presentation.xml.rels").getroot()
+            self.assertEqual([r.get("Target") for r in rels.findall("pkg:Relationship", ns)],
+                             ["slides/slide1.xml", "slides/slide2.xml"])
+            types = ET.parse(root / "[Content_Types].xml").getroot()
+            self.assertEqual([o.get("PartName") for o in types.findall("ct:Override", ns)],
+                             ["/ppt/slides/slide2.xml"])
+
+    def test_docx_comment_declares_namespaces_used_by_new_comment(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            comments = Path(tmp) / "comments.xml"
+            comments.write_text('<w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                                '<w:comment w:id="0"/></w:comments>')
+            result = run_in(SKILLS / "docx/scripts", f"""
+                from pathlib import Path
+                from comment import _append_xml
+                _append_xml(Path({str(comments)!r}), "w:comments",
+                            '<w:comment w:id="1"><w:p w14:paraId="0000ABCD"/></w:comment>')
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            root = ET.parse(comments).getroot()  # falha com "unbound prefix" sem a declaração
+            w14 = "{http://schemas.microsoft.com/office/word/2010/wordml}paraId"
+            self.assertEqual([p.get(w14) for p in root.iter() if p.get(w14)], ["0000ABCD"])
 
     def test_docx_accept_changes_timeout_is_an_error(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -234,6 +282,26 @@ class McpEvaluationTests(unittest.TestCase):
         self.assertEqual(result.stdout.strip(), "ok")
 
 
+    def test_cli_examples_keep_eval_file_after_repeatable_options(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "eval.xml").write_text("<evaluation/>")
+            result = run_in(SKILLS / "mcp-builder/scripts", f"""
+                import asyncio, os, sys, types
+                os.chdir({tmp!r})
+                def fake_connection(**kw):
+                    print(sorted((k, v) for k, v in kw.items() if v))
+                    raise SystemExit(0)
+                sys.modules["anthropic"] = types.SimpleNamespace(Anthropic=object)
+                sys.modules["connections"] = types.SimpleNamespace(create_connection=fake_connection)
+                import evaluation
+                sys.argv = ["evaluation.py", "-t", "stdio", "-c", "python", "-a", "my_server.py",
+                            "-e", "A=1", "-e", "B=2", "eval.xml"]
+                asyncio.run(evaluation.main())
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("('args', ['my_server.py'])", result.stdout)
+            self.assertIn("('env', {'A': '1', 'B': '2'})", result.stdout)
+
 class SkillCreatorTests(unittest.TestCase):
     def test_viewer_data_cannot_close_script_element(self):
         result = run_in(SKILLS / "skill-creator/eval-viewer", """
@@ -299,6 +367,42 @@ class SkillCreatorTests(unittest.TestCase):
             """)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.split(), ["84852", "10"])
+
+    def test_benchmark_reads_documented_layout_without_run_dirs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for config, rate in (("with_skill", 1.0), ("without_skill", 0.5)):
+                d = Path(tmp) / "eval-0" / config
+                (d / "outputs").mkdir(parents=True)
+                (d / "grading.json").write_text(json.dumps({"summary": {"pass_rate": rate}}))
+            result = run_in(SKILLS / "skill-creator", f"""
+                from pathlib import Path
+                from scripts.aggregate_benchmark import load_run_results
+                r = load_run_results(Path({tmp!r}))
+                print(sorted((k, [(x["run_number"], x["pass_rate"]) for x in v]) for k, v in r.items()))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(),
+                             "[('with_skill', [(1, 1.0)]), ('without_skill', [(1, 0.5)])]")
+
+    def test_package_skill_rejects_symlinks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            secret = Path(tmp) / "credentials.env"
+            secret.write_text("TOKEN=segredo")
+            skill = Path(tmp) / "my-skill"
+            skill.mkdir()
+            (skill / "SKILL.md").write_text("---\nname: my-skill\ndescription: x\n---\n")
+            (skill / "notes.txt").symlink_to(secret)
+            out = Path(tmp) / "dist"
+            result = run_in(SKILLS / "skill-creator", f"""
+                import sys, types
+                sys.modules["scripts.quick_validate"] = types.SimpleNamespace(validate_skill=lambda p: (True, "ok"))
+                from scripts.package_skill import package_skill
+                print(package_skill({str(skill)!r}, {str(out)!r}))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("symbolic link not allowed", result.stdout)
+            self.assertEqual(result.stdout.strip().splitlines()[-1], "None")
+            self.assertFalse((out / "my-skill.skill").exists())
 
     def test_viewer_sorts_runs_without_eval_id(self):
         with tempfile.TemporaryDirectory() as tmp:

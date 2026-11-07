@@ -475,8 +475,7 @@ python scripts/evaluation.py \
 
 ```
 usage: evaluation.py [-h] [-t {stdio,sse,http}] [-m MODEL] [-c COMMAND]
-                     [-a ARGS [ARGS ...]] [-e ENV [ENV ...]] [-u URL]
-                     [-H HEADERS [HEADERS ...]] [-o OUTPUT]
+                     [-a ARGS] [-e ENV] [-u URL] [-H HEADERS] [-o OUTPUT]
                      eval_file
 
 positional arguments:
@@ -490,12 +489,12 @@ optional arguments:
 
 stdio options:
   -c, --command         Command to run MCP server (e.g., python, node)
-  -a, --args            Arguments for the command (e.g., server.py)
-  -e, --env             Environment variables in KEY=VALUE format
+  -a, --args            Argument for the command (e.g., server.py); repeat for more
+  -e, --env             Environment variable in KEY=VALUE format; repeatable
 
 sse/http options:
   -u, --url             MCP server URL
-  -H, --header          HTTP headers in 'Key: Value' format
+  -H, --header          HTTP header in 'Key: Value' format; repeatable
 ```
 
 ## Output
