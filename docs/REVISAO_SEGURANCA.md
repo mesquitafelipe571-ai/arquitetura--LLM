@@ -40,6 +40,28 @@ gravidade média, só disponibilidade local). Introduzida no commit `62b9547`
   processo. Testes em `tests/test_history_audit.py`; o mesmo ataque passa a
   terminar com código 0.
 
+## Injeção de código no gerador de tokens (skill de terceiros)
+
+**Execução de código pela configuração Tailwind gerada**
+(`.agents/skills/design-system/scripts/generate-tokens.cjs`, encontrada pela
+revisão de segurança do Codex). Veio com a cópia da skill UI/UX Pro Max
+(`nextlevelbuilder/ui-ux-pro-max-skill` em `b7d5353`) e existe também no projeto
+de origem.
+
+- **Causa:** com `--format tailwind`, o gerador serializava as cores com
+  `JSON.stringify` e trocava todas as `"` por `'`, sem escapar as aspas simples já
+  presentes nos nomes. Um nome de token como `x':(globalThis.__TOKEN_POC=1337),//`
+  fechava a string e injetava uma expressão que rodava ao carregar o módulo.
+- **Exploração:** exige que alguém gere a configuração Tailwind a partir de um
+  `tokens.json` com nomes manipulados e depois carregue o módulo (build do
+  frontend). Nenhum fluxo do repositório faz isso automaticamente; a integração
+  da skill de marca usa só o formato CSS e nomes fixos.
+- **Correção:** a troca de aspas foi removida (o JSON já é JavaScript válido) e
+  cada nome de token precisa seguir `^[A-Za-z0-9_.-]+$`; nomes fora disso
+  interrompem a geração com erro. O template da própria skill continua gerando um
+  módulo válido. Teste em `tests/test_generate_tokens.py`, que falha sem a correção.
+- **Pendente:** reportar ao projeto de origem.
+
 ## Resultado da revisão manual
 
 Fora o item acima, nenhuma vulnerabilidade explorável foi encontrada no código

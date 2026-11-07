@@ -15,6 +15,14 @@ As 7 skills (`ui-ux-pro-max`, `banner-design`, `brand`, `design`, `design-system
 relativo à pasta da skill, como as outras skills do pacote já fazem. A variável só
 existe na instalação como plugin do Claude Code.
 
+Segunda alteração, de segurança: em `design-system/scripts/generate-tokens.cjs`,
+a saída `--format tailwind` trocava `"` por `'` no resultado do `JSON.stringify`,
+e um nome de token com aspa simples injetava código no módulo gerado. A troca foi
+removida e os nomes de token passam a aceitar só letras, dígitos, `_`, `.` e `-`
+(teste em `tests/test_generate_tokens.py`). A falha existe no commit de origem
+acima; reporte-a ao projeto original e, ao atualizar a skill, confira se a
+correção foi incorporada antes de sobrescrever este arquivo.
+
 Os scripts de busca exigem só Python 3. Os scripts de geração de imagem de
 `design`, `brand` e `banner-design` também pedem `google-genai`, `pillow` e uma
 chave da API Gemini, conforme as instruções de cada skill.
