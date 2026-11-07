@@ -3237,6 +3237,20 @@ class XlsxPdfTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip().splitlines(), ["True", "None", "True", "False True"])
 
+    def test_pdf_editable_combo_accepts_free_text(self):
+        # Combo + Edit (/Ff bits 18 e 19) aceita texto fora das opções; sem Edit, "Green" continua recusado.
+        result = run_in(SKILLS / "pdf/scripts", """
+            from extract_form_field_info import make_field_dict
+            from fill_fillable_fields import validation_error_for_field_value
+            combo = {"/FT": "/Ch", "/_States_": ["Red", "Blue"]}
+            editable = make_field_dict({**combo, "/Ff": (1 << 17) | (1 << 18)}, "c")
+            fixed = make_field_dict({**combo, "/Ff": 1 << 17}, "c")
+            print(editable.get("editable"), validation_error_for_field_value(editable, "Green"))
+            print("editable" in fixed, validation_error_for_field_value(fixed, "Green") is not None)
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip().splitlines(), ["True None", "False True"])
+
     def test_pdf_inputs_refuse_links(self):
         # in.pdf como link para um PDF local: o PDF copiado iria para a saída devolvida ao terceiro.
         from pypdf import PdfWriter

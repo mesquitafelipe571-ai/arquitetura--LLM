@@ -48,6 +48,7 @@ If the PDF has fillable form fields:
       // Other choice options
     ],
     "multi_select": true // Only present when several options can be selected; then "value" may be a list of option values
+    "editable": true // Only present on a combo box that also accepts free text; then "value" may be any string
   }
 ]
 ```

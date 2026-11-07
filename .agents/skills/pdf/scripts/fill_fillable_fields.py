@@ -72,6 +72,9 @@ def validation_error_for_field_value(field_info, field_value):
         choice_values = [opt["value"] for opt in field_info["choice_options"]]
         # A multi-select list takes a list of options; pypdf writes it as an array in /V.
         values = field_value if field_info.get("multi_select") and isinstance(field_value, list) else [field_value]
+        # An editable combo box takes any text, not only its options (PDF 32000-1, 12.7.4.4).
+        if field_info.get("editable") and isinstance(field_value, str):
+            return None
         if any(value not in choice_values for value in values):
             return f'ERROR: Invalid value "{field_value}" for choice field "{field_id}". Valid values are: {choice_values}'
     return None

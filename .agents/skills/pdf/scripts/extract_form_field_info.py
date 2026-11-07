@@ -49,6 +49,8 @@ def make_field_dict(field, field_id):
         ]
         if int(field.get("/Ff", 0)) & (1 << 21):  # MultiSelect: the value may be a list of options
             field_dict["multi_select"] = True
+        if int(field.get("/Ff", 0)) & (1 << 17 | 1 << 18) == 1 << 17 | 1 << 18:  # Combo + Edit: free text allowed
+            field_dict["editable"] = True
     else:
         field_dict["type"] = f"unknown ({ft})"
     return field_dict
