@@ -99,20 +99,22 @@ def run_single_query(
 
         try:
             while time.time() - start_time < timeout:
-                if process.poll() is not None:
+                # Output that arrives with the process exit (or EOF) still goes through the parser below.
+                done = process.poll() is not None
+                if done:
                     remaining = process.stdout.read()
-                    if remaining:
-                        buffer += remaining.decode("utf-8", errors="replace")
-                    break
+                    buffer += (remaining or b"").decode("utf-8", errors="replace") + "\n"
+                else:
+                    ready, _, _ = select.select([process.stdout], [], [], 1.0)
+                    if not ready:
+                        continue
 
-                ready, _, _ = select.select([process.stdout], [], [], 1.0)
-                if not ready:
-                    continue
-
-                chunk = os.read(process.stdout.fileno(), 8192)
-                if not chunk:
-                    break
-                buffer += chunk.decode("utf-8", errors="replace")
+                    chunk = os.read(process.stdout.fileno(), 8192)
+                    if not chunk:
+                        done = True
+                        buffer += "\n"
+                    else:
+                        buffer += chunk.decode("utf-8", errors="replace")
 
                 while "\n" in buffer:
                     line, buffer = buffer.split("\n", 1)
@@ -169,6 +171,9 @@ def run_single_query(
 
                     elif event.get("type") == "result":
                         return triggered
+
+                if done:
+                    break
         finally:
             # Clean up process on any exit path (return, exception, timeout)
             if process.poll() is None:

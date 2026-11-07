@@ -210,6 +210,25 @@ class SkillCreatorTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.split(), ["False", "3", "0", "0"])
 
+    def test_run_single_query_parses_output_left_at_exit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run_in(SKILLS / "skill-creator", f"""
+                import io, json, uuid
+                from unittest import mock
+                from scripts import run_eval
+                event = {{"type": "assistant", "message": {{"content": [
+                    {{"type": "tool_use", "name": "Skill", "input": {{"skill": "demo-skill-abcdef12"}}}}]}}}}
+                class Done:  # processo que já terminou, com a última linha ainda no pipe
+                    stdout = io.BytesIO(json.dumps(event).encode())
+                    def poll(self):
+                        return 0
+                with mock.patch.object(run_eval.uuid, "uuid4", return_value=uuid.UUID("abcdef12" + "0" * 24)), \\
+                     mock.patch.object(run_eval.subprocess, "Popen", return_value=Done()):
+                    print(run_eval.run_single_query("q", "demo", "d", 5, {tmp!r}))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "True")
+
     def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
         with tempfile.TemporaryDirectory() as tmp:
             run = Path(tmp) / "eval-1/with_skill/run-1"
