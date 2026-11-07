@@ -53,10 +53,15 @@ def get_field_info(reader: PdfReader):
     possible_radio_names = set()
 
     for field_id, field in fields.items():
-        if field.get("/Kids"):
+        kids = field.get("/Kids")
+        if kids:
             if field.get("/FT") == "/Btn":
                 possible_radio_names.add(field_id)
-            continue
+                continue
+            # Kids with their own /T are child fields (this is a container); kids without
+            # /T are just the widgets of this terminal field, which must be kept.
+            if any("/T" in kid.get_object() for kid in kids):
+                continue
         field_info_by_id[field_id] = make_field_dict(field, field_id)
 
 

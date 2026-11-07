@@ -29,7 +29,7 @@ def _slide_rids(pres_rels_path: Path, unpacked_dir: Path) -> dict[str, str]:
     rels_dom = defusedxml.minidom.parse(str(pres_rels_path))
 
     rids: dict[str, str] = {}
-    for rel in rels_dom.getElementsByTagName("Relationship"):
+    for rel in rels_dom.getElementsByTagNameNS("*", "Relationship"):
         if rel.getAttribute("Type") != SLIDE_REL_TYPE:
             continue
         part = opc_target(
@@ -120,7 +120,7 @@ def remove_orphaned_slides(unpacked_dir: Path) -> list[str]:
         source_part = rels_source_part(pres_rels_path, unpacked_dir)
         changed = False
 
-        for rel in list(rels_dom.getElementsByTagName("Relationship")):
+        for rel in list(rels_dom.getElementsByTagNameNS("*", "Relationship")):
             if rel.getAttribute("Type") != SLIDE_REL_TYPE:
                 continue
             part = opc_target(
@@ -161,7 +161,7 @@ def _referenced_by(rels_files, unpacked_dir: Path) -> set:
     for rels_file in rels_files:
         source_part = rels_source_part(rels_file, unpacked_dir)
         dom = defusedxml.minidom.parse(str(rels_file))
-        for rel in dom.getElementsByTagName("Relationship"):
+        for rel in dom.getElementsByTagNameNS("*", "Relationship"):
             part = opc_target(
                 rel.getAttribute("Target"), source_part, rel.getAttribute("TargetMode")
             )
@@ -251,7 +251,7 @@ def update_content_types(unpacked_dir: Path, removed_files: list[str]) -> None:
     dom = defusedxml.minidom.parse(str(ct_path))
     changed = False
 
-    for override in list(dom.getElementsByTagName("Override")):
+    for override in list(dom.getElementsByTagNameNS("*", "Override")):
         part_name = override.getAttribute("PartName").lstrip("/")
         if part_name in removed_files:
             if override.parentNode:

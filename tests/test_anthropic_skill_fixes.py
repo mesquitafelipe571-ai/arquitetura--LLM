@@ -47,6 +47,34 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual(result.stdout.strip(), "[]")
             self.assertTrue((root / "ppt/slides/slide1.xml").exists())
 
+    def test_pptx_clean_keeps_media_referenced_with_prefixed_rels(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for d in ("ppt/_rels", "ppt/slides/_rels", "ppt/media"):
+                (root / d).mkdir(parents=True)
+            rel_type = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+            (root / "ppt/presentation.xml").write_text(
+                '<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"'
+                f' xmlns:r="{rel_type}"><p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst>'
+                '</p:presentation>')
+            (root / "ppt/_rels/presentation.xml.rels").write_text(
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                f'<Relationship Id="rId2" Type="{rel_type}/slide" Target="slides/slide1.xml"/></Relationships>')
+            (root / "ppt/slides/slide1.xml").write_text("<x/>")
+            (root / "ppt/slides/_rels/slide1.xml.rels").write_text(
+                '<r:Relationships xmlns:r="http://schemas.openxmlformats.org/package/2006/relationships">'
+                f'<r:Relationship Id="rId1" Type="{rel_type}/image" Target="../media/image1.png"/>'
+                '</r:Relationships>')
+            (root / "ppt/media/image1.png").write_bytes(b"png")
+            result = run_in(SKILLS / "pptx/scripts", f"""
+                from pathlib import Path
+                from clean import clean_unused_files
+                print(clean_unused_files(Path({tmp!r})))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "[]")
+            self.assertTrue((root / "ppt/media/image1.png").exists())
+
     def test_docx_accept_changes_timeout_is_an_error(self):
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "in.docx"
@@ -339,6 +367,24 @@ class XlsxPdfTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "1 ['#DIV/0!']")
 
+    def test_pdf_keeps_text_field_with_separate_widget(self):
+        result = run_in(SKILLS / "pdf/scripts", """
+            from extract_form_field_info import get_field_info
+            class Obj(dict):
+                def get_object(self):
+                    return self
+            field = Obj({"/FT": "/Tx", "/T": "name"})
+            widget = Obj({"/Parent": field, "/Rect": [0, 0, 10, 10]})
+            field["/Kids"] = [widget]
+            class Reader:
+                pages = [{"/Annots": [widget]}]
+                def get_fields(self):
+                    return {"name": field}
+            print([f["field_id"] for f in get_field_info(Reader())])
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "['name']")
+
     def test_pdf_choice_options_accept_plain_strings(self):
         result = run_in(SKILLS / "pdf/scripts", """
             from extract_form_field_info import make_field_dict
@@ -349,6 +395,31 @@ class XlsxPdfTests(unittest.TestCase):
         self.assertEqual(result.stdout.strip(),
                          "[{'value': 'Red', 'text': 'Red'}, {'value': 'g', 'text': 'Green'}, {'value': 'M', 'text': 'M'}]")
 
+
+
+@unittest.skipUnless(importlib.util.find_spec("numpy") and importlib.util.find_spec("PIL"),
+                     "numpy/Pillow não instalados")
+class GifBuilderTests(unittest.TestCase):
+    def test_emoji_frame_reduction_keeps_animation_duration(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run_in(SKILLS / "slack-gif-creator", f"""
+                import sys, types
+                seen = {{}}
+                def imwrite(path, frames, duration, loop):  # imageio substituído: só registra
+                    seen["duration"] = duration
+                    open(path, "wb").write(b"gif")
+                sys.modules["imageio"] = types.ModuleType("imageio")
+                sys.modules["imageio.v3"] = types.SimpleNamespace(imwrite=imwrite)
+                import numpy as np
+                from core.gif_builder import GIFBuilder
+                b = GIFBuilder(128, 128, fps=12)
+                for i in range(24):
+                    b.add_frame(np.full((128, 128, 3), i * 10, dtype=np.uint8))
+                info = b.save({str(Path(tmp) / "e.gif")!r}, optimize_for_emoji=True)
+                print(round(seen["duration"] * info["frame_count"]), info["duration_seconds"])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.splitlines()[-1].split(), ["2000", "2.0"])
 
 @unittest.skipIf(sys.platform == "win32", "grupo de processos POSIX")
 class WithServerTests(unittest.TestCase):

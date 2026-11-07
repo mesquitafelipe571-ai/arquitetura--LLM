@@ -179,6 +179,8 @@ class GIFBuilder:
         if not self.frames:
             raise ValueError("No frames to save. Add frames with add_frame() first.")
 
+        frame_step = 1
+
         output_path = Path(output_path)
 
         # Remove duplicate frames to reduce file size
@@ -216,12 +218,13 @@ class GIFBuilder:
                 self.frames = [
                     self.frames[i] for i in range(0, len(self.frames), keep_every)
                 ]
+                frame_step = keep_every
 
         # Optimize colors with global palette
         optimized_frames = self.optimize_colors(num_colors, use_global_palette=True)
 
-        # Calculate frame duration in milliseconds
-        frame_duration = 1000 / self.fps
+        # Calculate frame duration in milliseconds; dropped frames lengthen the kept ones
+        frame_duration = 1000 / self.fps * frame_step
 
         # Save GIF
         imageio.imwrite(
@@ -242,7 +245,7 @@ class GIFBuilder:
             "dimensions": f"{self.width}x{self.height}",
             "frame_count": len(optimized_frames),
             "fps": self.fps,
-            "duration_seconds": len(optimized_frames) / self.fps,
+            "duration_seconds": len(optimized_frames) * frame_duration / 1000,
             "colors": num_colors,
         }
 
