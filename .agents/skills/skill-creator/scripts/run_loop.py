@@ -33,9 +33,13 @@ def split_eval_set(eval_set: list[dict], holdout: float, seed: int = 42) -> tupl
     random.shuffle(trigger)
     random.shuffle(no_trigger)
 
-    # Calculate split points
-    n_trigger_test = max(1, int(len(trigger) * holdout))
-    n_no_trigger_test = max(1, int(len(no_trigger) * holdout))
+    # Hold out at least one case per group, but never a group's last one: with an empty
+    # train set run_loop() reports "all passed" without ever optimizing.
+    def n_test(n: int) -> int:
+        return min(max(1, int(n * holdout)), n - 1) if n > 1 else 0
+
+    n_trigger_test = n_test(len(trigger))
+    n_no_trigger_test = n_test(len(no_trigger))
 
     # Split
     test_set = trigger[:n_trigger_test] + no_trigger[:n_no_trigger_test]
@@ -72,6 +76,8 @@ def run_loop(
     else:
         train_set = eval_set
         test_set = []
+    if not train_set:
+        raise ValueError("the eval set has no queries left for training; add queries or lower --holdout")
 
     history = []
     exit_reason = "unknown"
