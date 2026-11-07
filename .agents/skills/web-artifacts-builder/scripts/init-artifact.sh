@@ -43,6 +43,12 @@ if [ -z "$1" ]; then
 fi
 
 PROJECT_NAME="$1"
+# A slug only: the name goes into a sed expression and a directory name, where `/`, `&`,
+# `\` or a newline would turn it into sed code (GNU `e` runs commands) or a flag.
+if [[ ! "$PROJECT_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+  echo "❌ Error: project name must be letters, digits, '.', '_' or '-' (starting with a letter or digit)"
+  exit 1
+fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPONENTS_TARBALL="$SCRIPT_DIR/shadcn-components.tar.gz"
 

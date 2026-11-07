@@ -1518,6 +1518,26 @@ class McpEvaluationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip().splitlines(), ["{'answer': 42}", "['texto']", "['texto']"])
 
+class WebArtifactsBuilderTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_init_artifact_rejects_name_that_is_sed_code(self):
+        # x;touch marker/e virava código sed (flag GNU e); o nome é recusado antes de qualquer pnpm.
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            (bin_dir / "pnpm").write_text("#!/bin/sh\ntouch \"$(dirname \"$0\")/pnpm-called\"\n")
+            (bin_dir / "pnpm").chmod(0o755)
+            env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"}
+            script = SKILLS / "web-artifacts-builder/scripts/init-artifact.sh"
+            for name in ("x;touch marker/e\n#/app", "a/b", "-x", "ok&"):
+                with self.subTest(name=name):
+                    result = subprocess.run(["bash", str(script), name], cwd=tmp, env=env,
+                                            capture_output=True, text=True, timeout=60)
+                    self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                    self.assertIn("project name must be", result.stdout)
+                    self.assertFalse((bin_dir / "pnpm-called").exists())
+                    self.assertFalse((Path(tmp) / "marker").exists())
+
 class SkillCreatorTests(unittest.TestCase):
     def test_package_skill_does_not_follow_link_at_output_path(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -166,6 +166,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `claude-api/shared/evals/report/runner-scaffold.mjs` | Uma repetição da baseline com `stop_reason: max_tokens` virava a referência permanente do pairwise, embora ficasse fora das médias como `truncated` | A referência só é congelada a partir de uma execução com status `ok`; uma repetição válida posterior a fornece |
 | `office/validators/docx.py` (3 cópias) | Com o relacionamento do documento apontando para `comments1.xml`, `validate_comment_markers()` ignorava a parte e acusava os marcadores como órfãos | A parte de comentários vem do relacionamento do tipo `comments` de `document.xml`; o nome fixo `comments.xml` fica como alternativa |
 | `mcp-builder/scripts/connections.py` | Uma ferramenta que respondia só em `structuredContent` (`content: []`) chegava ao modelo como `[]` | `call_tool()` devolve o `structuredContent` quando não há conteúdo, e o `evaluation.py` o serializa em JSON |
+| `web-artifacts-builder/scripts/init-artifact.sh` (segurança) | O nome do projeto era concatenado na expressão do `sed`: `x;touch marker/e` fechava a substituição e a flag GNU `e` executava o comando | O nome precisa ser um slug (`[A-Za-z0-9][A-Za-z0-9._-]*`), validado antes de qualquer `pnpm`, `cd` ou `sed` |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.
