@@ -235,6 +235,26 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual(len(types), 4)
             self.assertEqual(parts.count("/word/comments.xml"), 1)
 
+    def test_docx_merge_runs_keeps_namespaces_declared_on_merged_run(self):
+        w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "word").mkdir()
+            (Path(tmp) / "word/document.xml").write_text(
+                f'<w:document xmlns:w="{w}"><w:body><w:p>'
+                '<w:r><w:t>texto</w:t></w:r>'
+                f'<w:r xmlns:a="{a}"><w:drawing><a:graphic/></w:drawing></w:r>'
+                '</w:p></w:body></w:document>')
+            result = run_in(SKILLS / "docx/scripts", f"""
+                from merge_runs import merge_runs
+                print(merge_runs({tmp!r}))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            root = ET.parse(Path(tmp) / "word/document.xml").getroot()  # "unbound prefix" sem a correção
+            runs = root.findall(f".//{{{w}}}r")
+            self.assertEqual(len(runs), 1)
+            self.assertIsNotNone(runs[0].find(f".//{{{a}}}graphic"))
+
     def test_docx_accept_changes_timeout_is_an_error(self):
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "in.docx"
@@ -739,6 +759,13 @@ class SkillCreatorTests(unittest.TestCase):
             """)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "['with_skill', 'old_skill'] +1.00")
+
+    def test_viewer_never_kills_the_process_on_its_port(self):
+        # A porta ocupada cai no fallback para uma porta livre; o script não envia sinal a ninguém.
+        source = (SKILLS / "skill-creator/eval-viewer/generate_review.py").read_text()
+        for forbidden in ("os.kill", "lsof", "_kill_port"):
+            self.assertNotIn(forbidden, source)
+        self.assertIn('HTTPServer(("127.0.0.1", 0), handler)', source)
 
     def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
         with tempfile.TemporaryDirectory() as tmp:

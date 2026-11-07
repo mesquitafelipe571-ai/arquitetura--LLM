@@ -204,10 +204,17 @@ def _can_merge(run1, run2) -> bool:
 
 
 def _merge_run_content(target, source):
+    # Namespaces declared on the source run are in scope for its children; carry them along,
+    # or the moved content ends up with unbound prefixes once the source run is removed.
+    ns_decls = [(a.name, a.value) for a in source.attributes.values()
+                if a.name == "xmlns" or a.name.startswith("xmlns:")] if source.attributes else []
     for child in list(source.childNodes):
         if child.nodeType == child.ELEMENT_NODE:
             name = child.localName or child.tagName
             if name != "rPr" and not name.endswith(":rPr"):
+                for decl, uri in ns_decls:
+                    if not child.hasAttribute(decl):
+                        child.setAttribute(decl, uri)
                 target.appendChild(child)
 
 
