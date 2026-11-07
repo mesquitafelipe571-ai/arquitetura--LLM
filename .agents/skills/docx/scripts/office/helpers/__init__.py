@@ -89,7 +89,21 @@ def check_archive_limits(zf: zipfile.ZipFile) -> None:
             raise ValueError(f"suspicious compression ratio for archive entry: {m.filename!r}")
 
 
+def _refuse_linked_destination(dest: Path) -> None:
+    """A linked dest (or folder above it) would make resolve() trust a directory outside the workspace."""
+    path = Path(os.path.abspath(dest))
+    cwd = Path(os.getcwd())
+    # shortcut: ancestors outside the working directory are not checked (system temp dirs such as
+    # macOS /tmp are links); move the check to an explicit root if callers extract elsewhere.
+    for p in (path, *path.parents):
+        if p is not path and (p == cwd or not p.is_relative_to(cwd)):
+            break
+        if p.is_symlink():
+            raise ValueError(f"extraction destination goes through a symlink: {p}")
+
+
 def safe_extract(zf: zipfile.ZipFile, dest: Path) -> None:
+    _refuse_linked_destination(dest)
     dest = dest.resolve()
     check_archive_limits(zf)
     members = zf.infolist()

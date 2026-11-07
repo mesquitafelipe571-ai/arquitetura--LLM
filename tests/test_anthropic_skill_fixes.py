@@ -322,6 +322,36 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual(len(runs), 1)
             self.assertIsNotNone(runs[0].find(f".//{{{a}}}graphic"))
 
+    def test_office_safe_extract_refuses_linked_destination(self):
+        # unpacked -> victim (ou uma pasta acima que seja link): a extração escreveria fora do workspace.
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:
+                doc = Path(tmp) / "doc.docx"
+                with zipfile.ZipFile(doc, "w") as zf:
+                    zf.writestr("startup.conf", "do atacante")
+                ws, victim = Path(tmp) / "ws", Path(tmp) / "victim"
+                ws.mkdir()
+                victim.mkdir()
+                (victim / "startup.conf").write_text("da vítima")
+                (ws / "unpacked").symlink_to(victim)
+                (ws / "sub").symlink_to(victim)
+                result = subprocess.run([sys.executable, "-c", textwrap.dedent(f"""
+                    import sys, zipfile
+                    sys.path.insert(0, {str(SKILLS / f"{skill}/scripts")!r})
+                    from pathlib import Path
+                    from office.helpers import safe_extract
+                    for dest in ("unpacked", "sub/novo", "real"):
+                        try:
+                            safe_extract(zipfile.ZipFile({str(doc)!r}), Path(dest))
+                            print(dest, "extraído")
+                        except ValueError:
+                            print(dest, "recusado")
+                """)], capture_output=True, text=True, timeout=60, cwd=ws)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.split("\n")[:3], ["unpacked recusado", "sub/novo recusado", "real extraído"])
+                self.assertEqual((victim / "startup.conf").read_text(), "da vítima")
+                self.assertFalse((victim / "novo").exists())
+
     def test_office_safe_extract_rejects_zip_bomb(self):
         for skill in ("docx", "pptx", "xlsx"):
             with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:

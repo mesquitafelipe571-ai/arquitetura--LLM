@@ -101,6 +101,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `office/helpers/pptx_chart.py` em docx/pptx/xlsx | Aprovava qualquer grupo de gráfico com 2 eixos válidos, embora `line3DChart` e `surface3DChart` exijam 3; um eixo de série inexistente passava | Compara com `AXID_MINIMUM` do tipo do gráfico |
 | `skill-creator/eval-viewer/generate_review.py` (segurança) | `--static` gravava com `write_text()`; um `review.html` que fosse link tinha o alvo sobrescrito pelo HTML | Grava em arquivo temporário e substitui com `os.replace()` |
 | `xlsx/scripts/recalc.py` (segurança) | Recalculava fórmulas `WEBSERVICE`/`DDE` de planilhas de terceiros; o LibreOffice buscava URLs locais/internas e gravava a resposta no arquivo | Recusa recalcular (também com `--force`) quando uma fórmula, nome definido ou formatação condicional chama essas funções; o XML é interpretado (`defusedxml`) antes da busca, então referências como `&#73;` não escondem a chamada, e uma parte que não pode ser lida com segurança também bloqueia |
+| `office/helpers` `safe_extract()` em docx/pptx/xlsx (segurança) | `dest.resolve()` seguia um destino que fosse link (`unpacked -> victim`), e a extração gravava ou sobrescrevia arquivos fora do workspace | Recusa o destino, e pastas acima dele dentro do diretório de trabalho, quando são links |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

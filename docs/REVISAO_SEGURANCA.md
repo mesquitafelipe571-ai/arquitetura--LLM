@@ -104,7 +104,9 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   Depois, os comandos de extração dos fluxos de edição (`pptx/SKILL.md` e
   `docx/SKILL.md`), que usavam `extractall()`/`unzip`, passaram a chamar `safe_extract()`.
   Os limites viraram `check_archive_limits()`, também chamado por `pptx/scripts/thumbnail.py`
-  antes de ler o deck. Na mesma rodada, o relatório temporário de `run_loop.py` passou
+  antes de ler o deck. Depois, `safe_extract()` passou a recusar um destino que seja link
+  (ou que passe por uma pasta-link dentro do diretório de trabalho), que levava a extração
+  para fora do workspace. Na mesma rodada, o relatório temporário de `run_loop.py` passou
   a ser criado com `mkstemp()`, sem seguir um link plantado no tmp compartilhado.
 - **Visualizador seguia links simbólicos** (`skill-creator/eval-viewer/generate_review.py`,
   apontado pela revisão de segurança do Codex): um run de terceiro podia criar em
