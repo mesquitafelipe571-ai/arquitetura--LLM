@@ -290,10 +290,11 @@ def _ensure_comment_content_types(unpacked_dir: Path) -> None:
 def _refuse_linked_writes(unpacked_dir: Path, *parts: Path) -> None:
     """Checked before the first write: a link at a part, or at a folder between it and the
     package root, would make the edit land outside the package."""
-    root = Path(os.path.abspath(unpacked_dir))
+    root = Path(os.getcwd(), unpacked_dir)  # lexical: a link before ".." stays on the path checked
     refuse_linked_path(root, "unpacked directory")  # a linked root puts every part outside
     for part in parts:
-        for p in (Path(os.path.abspath(part)), *Path(os.path.abspath(part)).parents):
+        part = Path(os.getcwd(), part)
+        for p in (part, *part.parents):
             if p == root:
                 break
             if p.is_symlink():

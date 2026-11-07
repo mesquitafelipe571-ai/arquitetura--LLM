@@ -183,7 +183,7 @@ def _prefixes(xml: str) -> tuple[str, str]:
 def _refuse_linked_writes(unpacked_dir: Path, dest: str) -> None:
     """Every part this script writes, checked before the first write: a link at the part or at a
     folder between it and the package root would make the write land outside the package."""
-    root = Path(os.path.abspath(unpacked_dir))
+    root = Path(os.getcwd(), unpacked_dir)  # lexical: a link before ".." stays on the path checked
     try:
         refuse_linked_path(root, "unpacked directory")  # a linked root puts every part outside
     except ValueError as e:

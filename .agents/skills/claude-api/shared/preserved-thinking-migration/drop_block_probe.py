@@ -152,11 +152,14 @@ def refuse_link(path, what="capture file"):
 
 def write_json_replace(path, obj):
     """Write beside path and replace it: a link at path is swapped out, never written through."""
-    path = os.path.abspath(path)
+    # Lexical, not abspath(): in "link/../x" the write still goes through "link".
+    cwd = os.getcwd()
+    stop = cwd if os.path.abspath(path).startswith(cwd + os.sep) else None
+    path = os.path.join(cwd, path)
     parent = os.path.dirname(path)
     # A linked folder above the output would still put the write outside the workspace.
     p = parent
-    while len(os.path.normpath(p).split(os.sep)) > 2 and p != os.getcwd():
+    while len(os.path.normpath(p).split(os.sep)) > 2 and p != stop:
         refuse_link(p, "--json output folder")
         p = os.path.dirname(p)
     fd, tmp = tempfile.mkstemp(prefix="." + os.path.basename(path) + ".", suffix=".tmp", dir=parent)

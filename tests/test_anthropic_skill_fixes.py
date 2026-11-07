@@ -3628,5 +3628,50 @@ class WithServerTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr[-500:])
 
 
+class DotDotLinkTests(unittest.TestCase):
+    STUBS = ('import sys, types\n'
+             'sys.modules["anthropic"] = types.SimpleNamespace(Anthropic=object)\n'
+             'sys.modules["connections"] = types.SimpleNamespace(create_connection=None)\n'
+             'sys.modules["imageio"] = types.ModuleType("imageio")\n'
+             'sys.modules["imageio.v3"] = types.SimpleNamespace(imwrite=lambda p, *a, **k: open(p, "wb").write(b"G"))\n')
+    CASES = {
+        "pdf/scripts": "from _replace_write import replacing\nwith replacing('exports/../r.pdf') as t:\n    open(t, 'w').write('x')",
+        "docx/scripts": "from office.helpers import refuse_linked_path\nrefuse_linked_path(Path('exports/../r'))",
+        "xlsx/scripts": "from office.helpers import refuse_linked_path\nrefuse_linked_path(Path('exports/../r'))",
+        "pptx/scripts": "from office.helpers import refuse_linked_path\nrefuse_linked_path(Path('exports/../r'))",
+        "skill-creator": "from scripts.utils import write_text_replace\nwrite_text_replace(Path('exports/../r.html'), 'x')",
+        "skill-creator/eval-viewer": "from generate_review import refuse_linked_folder\nrefuse_linked_folder('exports/..')",
+        "mcp-builder/scripts": "import evaluation\nevaluation.write_report(Path('exports/../r.md'), 'x')",
+        "claude-api/shared/preserved-thinking-migration":
+            "from drop_block_probe import write_json_replace\nwrite_json_replace('exports/../r.json', {})",
+        "slack-gif-creator": ("import numpy as np\nfrom core.gif_builder import GIFBuilder\nb = GIFBuilder(16, 16, fps=10)\n"
+                              "b.add_frame(np.zeros((16, 16, 3), dtype=np.uint8))\nb.save('exports/../r.gif')"),
+    }
+
+    def test_link_before_dotdot_is_refused(self):
+        # exports -> outside/sub: abspath() apagava "exports/.." antes da checagem, mas a escrita passa
+        # pelo link e cai em outside/. Cada cópia da proteção tem de ver o link no caminho como escrito.
+        for where, code in self.CASES.items():
+            if where == "slack-gif-creator" and not importlib.util.find_spec("numpy"):
+                continue
+            with self.subTest(where), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
+                (Path(outside) / "sub").mkdir()
+                (Path(tmp) / "exports").symlink_to(Path(outside) / "sub")
+                result = run_in(SKILLS / where, self.STUBS + f"""
+import os
+from pathlib import Path
+os.chdir({tmp!r})
+try:
+    exec({code!r})
+    print("gravou")
+except (ValueError, SystemExit) as e:
+    print("recusado:", e)
+""")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("recusado:", result.stdout)
+                self.assertIn("symlink", result.stdout)
+                self.assertEqual(os.listdir(outside), ["sub"])
+
+
 if __name__ == "__main__":
     unittest.main()

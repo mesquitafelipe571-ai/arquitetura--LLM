@@ -112,11 +112,12 @@ def check_archive_limits(zf: zipfile.ZipFile) -> None:
 def refuse_linked_path(target: Path, what: str = "extraction destination") -> None:
     """A linked path (or folder above it) points outside the workspace: as a destination it makes
     resolve() trust a directory there; as an input it copies a private file into the output."""
-    path = Path(os.path.abspath(target))
+    # Lexical, not abspath(): in "link/../x" the write still goes through "link".
+    path = Path(os.getcwd(), target)
     cwd = Path(os.getcwd())
     # Inside the working directory the user picked the root; elsewhere every folder counts except
     # top-level ones, which only an admin creates (macOS /tmp and /var are links).
-    stop = cwd if path.is_relative_to(cwd) else None
+    stop = cwd if Path(os.path.abspath(target)).is_relative_to(cwd) else None
     for p in (path, *path.parents):
         if p == stop or len(p.parts) <= 2:
             break
