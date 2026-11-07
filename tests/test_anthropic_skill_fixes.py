@@ -504,6 +504,32 @@ class OfficeSkillTests(unittest.TestCase):
                 self.assertEqual(result.stdout.strip().splitlines()[-1], "True", result.stdout)
 
     @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
+    def test_office_validator_decodes_uri_targets(self):
+        # Target="media/image%201.png" aponta para word/media/image 1.png: referência válida, sem órfão.
+        rel = "http://schemas.openxmlformats.org/package/2006/relationships"
+        ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:
+                pkg = Path(tmp)
+                (pkg / "_rels").mkdir()
+                (pkg / "word/_rels").mkdir(parents=True)
+                (pkg / "word/media").mkdir()
+                (pkg / "_rels/.rels").write_text(
+                    f'<Relationships xmlns="{rel}"><Relationship Id="rId1" Type="{ns}/officeDocument"'
+                    ' Target="word/document.xml"/></Relationships>')
+                (pkg / "word/document.xml").write_text("<doc/>")
+                (pkg / "word/media/image 1.png").write_bytes(b"png")
+                (pkg / "word/_rels/document.xml.rels").write_text(
+                    f'<Relationships xmlns="{rel}"><Relationship Id="rId1" Type="{ns}/image"'
+                    ' Target="media/image%201.png"/></Relationships>')
+                result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                    from validators.base import BaseSchemaValidator
+                    print(BaseSchemaValidator({tmp!r}).validate_file_references())
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip().splitlines()[-1], "True", result.stdout)
+
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
     def test_office_validator_rejects_reference_outside_package(self):
         # Target="../../outside.png" sai da extração; a imagem não vai no ZIP, então a referência está quebrada.
         rel = "http://schemas.openxmlformats.org/package/2006/relationships"

@@ -115,6 +115,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `skill-creator/scripts/aggregate_benchmark.py` + `agents/grader.md` | Sem `total_tokens`, usava `output_chars` como tokens; comparava caracteres de um lado com tokens do outro e mostrava um delta sem base | `output_chars` fica em campo próprio; o delta de tokens só é calculado quando todas as execuções dos dois lados têm a contagem real (senão "—") |
 | `skill-creator/scripts/utils.py` | Numa descrição YAML `|`/`>` com linha vazia entre parágrafos, a leitura parava na linha vazia e o resto da descrição se perdia em `run_eval`/`run_loop` | Linhas vazias dentro do bloco são mantidas até a próxima chave sem recuo |
 | `docx/scripts/accept_changes.py` (segurança) | `copy2()` gravava direto em `out.docx`; um link nesse nome tinha o alvo sobrescrito com os bytes do documento de entrada | Trabalha numa cópia temporária ao lado e só a move para o destino com `os.replace()` depois do LibreOffice; em falha, nada é escrito |
+| `office/validators/base.py` em docx/pptx/xlsx | Destinos codificados como URI (`media/image%201.png`) eram procurados literalmente; o validador acusava referência quebrada e arquivo órfão num documento válido | Resolve os destinos com `opc_target()`/`rels_source_part()`, que decodificam e recusam saída do pacote, e mantém a contenção depois do `resolve()` |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

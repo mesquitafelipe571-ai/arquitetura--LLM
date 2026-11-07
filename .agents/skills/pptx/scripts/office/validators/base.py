@@ -10,7 +10,7 @@ from functools import lru_cache
 
 import lxml.etree
 
-from helpers import safe_extract
+from helpers import opc_target, rels_source_part, safe_extract
 
 
 @lru_cache(maxsize=None)
@@ -336,8 +336,6 @@ class BaseSchemaValidator:
             try:
                 rels_root = lxml.etree.parse(str(rels_file)).getroot()
 
-                rels_dir = rels_file.parent
-
                 referenced_files = set()
                 broken_refs = []
 
@@ -346,30 +344,30 @@ class BaseSchemaValidator:
                     namespaces={"ns": self.PACKAGE_RELATIONSHIPS_NAMESPACE},
                 ):
                     target = rel.get("Target")
-                    if rel.get("TargetMode") == "External":
+                    # opc_target() decodes %20-style URIs, skips external/scheme targets and
+                    # refuses paths that escape the package (../../x.png).
+                    try:
+                        part = opc_target(
+                            target or "",
+                            rels_source_part(rels_file, self.unpacked_dir),
+                            rel.get("TargetMode") or "",
+                        )
+                    except ValueError:
+                        broken_refs.append((target, rel.sourceline))
                         continue
-                    if target and not target.startswith(
-                        ("http", "mailto:")
-                    ):  
-                        if target.startswith("/"):
-                            target_path = self.unpacked_dir / target.lstrip("/")
-                        elif rels_file.name == ".rels":
-                            target_path = self.unpacked_dir / target
+                    if part is None:
+                        continue
+                    try:
+                        target_path = (self.unpacked_dir / part).resolve()
+                        # resolve() follows links too: the file must really be inside the package.
+                        inside = target_path.is_relative_to(self.unpacked_dir.resolve())
+                        if inside and target_path.exists() and target_path.is_file():
+                            referenced_files.add(target_path)
+                            all_referenced_files.add(target_path)
                         else:
-                            base_dir = rels_dir.parent
-                            target_path = base_dir / target
-
-                        try:
-                            target_path = target_path.resolve()
-                            # A target outside the package (../../x.png) is not shipped in the ZIP.
-                            inside = target_path.is_relative_to(self.unpacked_dir.resolve())
-                            if inside and target_path.exists() and target_path.is_file():
-                                referenced_files.add(target_path)
-                                all_referenced_files.add(target_path)
-                            else:
-                                broken_refs.append((target, rel.sourceline))
-                        except (OSError, ValueError):
                             broken_refs.append((target, rel.sourceline))
+                    except (OSError, ValueError):
+                        broken_refs.append((target, rel.sourceline))
 
                 if broken_refs:
                     rel_path = rels_file.relative_to(self.unpacked_dir)
