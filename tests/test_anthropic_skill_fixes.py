@@ -391,7 +391,85 @@ class McpEvaluationTests(unittest.TestCase):
             self.assertIn("('args', ['my_server.py'])", result.stdout)
             self.assertIn("('env', {'A': '1', 'B': '2'})", result.stdout)
 
+    def test_list_tools_follows_every_page(self):
+        # Sessões nos dois formatos da API do mcp: params=PaginatedRequestParams (novo) e cursor= (antigo).
+        result = run_in(SKILLS / "mcp-builder/scripts", """
+            import asyncio, sys, types
+            mcp = types.ModuleType("mcp")
+            mcp.ClientSession = mcp.StdioServerParameters = object
+            mcp.types = types.SimpleNamespace(PaginatedRequestParams=lambda cursor: types.SimpleNamespace(cursor=cursor))
+            sys.modules["mcp"] = mcp
+            for name in ("mcp.client", "mcp.client.sse", "mcp.client.stdio", "mcp.client.streamable_http"):
+                sys.modules[name] = types.SimpleNamespace(sse_client=None, stdio_client=None, streamablehttp_client=None)
+            import connections
+            Tool = lambda n: types.SimpleNamespace(name=n, description="", inputSchema={})
+            PAGES = {None: ([Tool("a")], "p2"), "p2": ([Tool("b")], None)}
+            def page(cursor):
+                tools, nxt = PAGES[cursor]
+                return types.SimpleNamespace(tools=tools, nextCursor=nxt)
+            class New:
+                async def list_tools(self, *, params=None):
+                    return page(params.cursor if params else None)
+            class Old:
+                async def list_tools(self, cursor=None):
+                    return page(cursor)
+            for session in (New(), Old()):
+                conn = object.__new__(connections.MCPConnectionStdio)
+                conn.session = session
+                print([t["name"] for t in asyncio.run(conn.list_tools())])
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.split(), ["['a',", "'b']", "['a',", "'b']"])
+
 class SkillCreatorTests(unittest.TestCase):
+    def test_package_skill_does_not_follow_link_at_output_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            skill = Path(tmp) / "my-skill"
+            skill.mkdir()
+            (skill / "SKILL.md").write_text("---\nname: my-skill\ndescription: x\n---\n")
+            sentinel = Path(tmp) / "sentinel.txt"
+            sentinel.write_text("conteúdo do usuário")
+            (skill / "my-skill.skill").symlink_to(sentinel)  # saída na própria pasta da skill
+            result = run_in(SKILLS / "skill-creator", f"""
+                import os, sys, types, zipfile
+                sys.modules["scripts.quick_validate"] = types.SimpleNamespace(validate_skill=lambda p: (True, "ok"))
+                from scripts.package_skill import package_skill
+                os.chdir({str(skill)!r})
+                out = package_skill({str(skill)!r})
+                print(sorted(zipfile.ZipFile(out).namelist()))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+            self.assertEqual(sentinel.read_text(), "conteúdo do usuário")
+            self.assertFalse((skill / "my-skill.skill").is_symlink())
+            self.assertEqual(result.stdout.strip().splitlines()[-1], "['my-skill/SKILL.md']")
+
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_eval_runner_resume_recovers_artifacts_after_failed_write(self):
+        scaffold = (SKILLS / "claude-api/shared/evals/report/runner-scaffold.mjs").read_text()
+        filled = (scaffold
+                  .replace("throw new Error('TODO: loadCases');", "return [{ id: 'case-a', prompt: 'p' }];")
+                  .replace("throw new Error('TODO: runCase');",
+                           "return { output: 'saida', transcript: [{ role: 'user', content: 'p' }],"
+                           " model: 'm', usage: { input_tokens: 1, output_tokens: 1 }, stop_reason: 'end_turn' };")
+                  .replace("throw new Error('TODO: gradeCase');", "return { grade: { pass: 1 } };"))
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = Path(tmp) / "bin/run-eval.mjs"
+            runner.parent.mkdir()
+            runner.write_text(filled)
+            flow = Path(tmp) / "flow"
+            trace = flow / "baseline/traces/case-a_rep0.json"
+            trace.mkdir(parents=True)  # a gravação do transcript falha (EISDIR) na primeira execução
+            run = lambda: subprocess.run(["node", str(runner), "--flow", str(flow), "--variant", "baseline",
+                                          "--approve-harness"], capture_output=True, text=True, timeout=60, cwd=tmp)
+            first = run()
+            trace.rmdir()  # a causa foi removida; a retomada deve refazer o caso
+            second = run()
+            self.assertEqual(second.returncode, 0, first.stderr + second.stderr)
+            self.assertTrue(trace.is_file())
+            self.assertEqual((flow / "baseline/ref/case-a").read_text(), "saida")
+            rows = (flow / "baseline/results.jsonl").read_text().splitlines()
+            self.assertEqual(len(rows), 1)
+
     def test_viewer_data_cannot_close_script_element(self):
         result = run_in(SKILLS / "skill-creator/eval-viewer", """
             from generate_review import generate_html

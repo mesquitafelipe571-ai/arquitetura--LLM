@@ -92,6 +92,9 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   seguiam links, então uma skill recebida com um link para `credentials.env`
   levava o segredo para dentro do `.skill` entregue. Agora o empacotamento para
   em qualquer link ou caminho que saia da pasta da skill e apaga o arquivo parcial.
+  Depois, o próprio caminho de saída também deixou de ser seguido: um
+  `demo.skill` que fosse um link tinha o destino truncado; agora o pacote é gravado
+  em arquivo temporário e substitui o link, não o alvo.
 - Testes em `tests/test_anthropic_skill_fixes.py`, que falham com os arquivos
   originais. Pendente: reportar à origem.
 

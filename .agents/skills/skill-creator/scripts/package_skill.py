@@ -11,7 +11,9 @@ Example:
 """
 
 import fnmatch
+import os
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 from scripts.quick_validate import validate_skill
@@ -86,12 +88,15 @@ def package_skill(skill_path, output_dir=None):
 
     skill_filename = output_path / f"{skill_name}.skill"
 
-    # Create the .skill file (zip format)
+    # Create the .skill file (zip format) in a private temp file, then move it into place:
+    # opening the output path directly would follow a link planted there and truncate its target.
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{skill_name}.", suffix=".skill.tmp", dir=output_path)
+    tmp_path = Path(tmp_name)
     try:
-        with zipfile.ZipFile(skill_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        with os.fdopen(fd, "wb") as fh, zipfile.ZipFile(fh, 'w', zipfile.ZIP_DEFLATED) as zipf:
             # Walk through the skill directory, excluding build artifacts
             for file_path in skill_path.rglob('*'):
-                if file_path == skill_filename:
+                if file_path in (skill_filename, tmp_path):
                     continue  # the archive being written, when the output dir is inside the skill
                 arcname = file_path.relative_to(skill_path.parent)
                 # Excluded paths (node_modules often holds links) never reach the archive.
@@ -107,11 +112,15 @@ def package_skill(skill_path, output_dir=None):
                 zipf.write(file_path, arcname)
                 print(f"  Added: {arcname}")
 
+        umask = os.umask(0)
+        os.umask(umask)
+        os.chmod(tmp_path, 0o666 & ~umask)  # mkstemp creates 0600; give the usual file mode
+        os.replace(tmp_path, skill_filename)  # replaces a link at the output path, never its target
         print(f"\n✅ Successfully packaged skill to: {skill_filename}")
         return skill_filename
 
     except Exception as e:
-        skill_filename.unlink(missing_ok=True)
+        tmp_path.unlink(missing_ok=True)
         print(f"❌ Error creating .skill file: {e}")
         return None
 

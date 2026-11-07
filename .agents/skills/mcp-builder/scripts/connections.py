@@ -1,10 +1,11 @@
 """Lightweight connection handling for MCP servers."""
 
+import inspect
 from abc import ABC, abstractmethod
 from contextlib import AsyncExitStack
 from typing import Any
 
-from mcp import ClientSession, StdioServerParameters
+from mcp import ClientSession, StdioServerParameters, types
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamablehttp_client
@@ -53,15 +54,26 @@ class MCPConnection(ABC):
         self._stack = None
 
     async def list_tools(self) -> list[dict[str, Any]]:
-        """Retrieve available tools from the MCP server."""
-        response = await self.session.list_tools()
+        """Retrieve available tools from the MCP server, following every page of tools/list."""
+        tools, cursor = [], None
+        while True:
+            if not cursor:
+                response = await self.session.list_tools()
+            elif "params" in inspect.signature(self.session.list_tools).parameters:
+                response = await self.session.list_tools(params=types.PaginatedRequestParams(cursor=cursor))
+            else:  # older mcp releases take the cursor directly
+                response = await self.session.list_tools(cursor=cursor)
+            tools.extend(response.tools)
+            cursor = getattr(response, "nextCursor", None)
+            if not cursor:
+                break
         return [
             {
                 "name": tool.name,
                 "description": tool.description,
                 "input_schema": tool.inputSchema,
             }
-            for tool in response.tools
+            for tool in tools
         ]
 
     async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> Any:

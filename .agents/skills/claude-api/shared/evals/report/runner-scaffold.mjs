@@ -525,8 +525,8 @@ async function main() {
           latency_s, ...perfFrom(run),
           grade: g.grade, explanation: g.explanation,
         };
-        appendFileNoFollow(resultsPath, JSON.stringify(row) + '\n');
-        rowWritten = true; // past this point the attempt is scored - a later throw (trace write, ref freeze) must not also append an error row
+        // Artifacts first: the results row is what marks (case, rep) done for resume,
+        // so a trace or ref write that fails must leave the slot open to re-run.
         if (run.transcript)
           writeFileNoFollow(join(vdir, 'traces', `${safeId}_rep${rep}.json`),
             JSON.stringify(run.transcript, null, 2));
@@ -537,6 +537,8 @@ async function main() {
           writeFileNoFollow(join(refDir, safeId),
             typeof run.output === 'string' ? run.output : JSON.stringify(run.output));
         }
+        appendFileNoFollow(resultsPath, JSON.stringify(row) + '\n');
+        rowWritten = true; // past this point the attempt is scored - a later throw must not also append an error row
         ok++;
       } catch (e) {
         fail++;
