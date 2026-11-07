@@ -109,7 +109,9 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   Os limites viraram `check_archive_limits()`, também chamado por `pptx/scripts/thumbnail.py`
   antes de ler o deck. Depois, `safe_extract()` passou a recusar um destino que seja link
   (ou que passe por uma pasta-link dentro do diretório de trabalho), que levava a extração
-  para fora do workspace. Na mesma rodada, o relatório temporário de `run_loop.py` passou
+  para fora do workspace. Também passou a exigir um destino novo ou vazio: um link já
+  plantado dentro de `unpacked/` seria seguido pelo `zip -Xr` e levaria um arquivo local para o
+  documento. `rezip()` recusa links e o comando documentado virou `zip -Xry`. Na mesma rodada, o relatório temporário de `run_loop.py` passou
   a ser criado com `mkstemp()`, sem seguir um link plantado no tmp compartilhado.
 - **Visualizador seguia links simbólicos** (`skill-creator/eval-viewer/generate_review.py`,
   apontado pela revisão de segurança do Codex): um run de terceiro podia criar em

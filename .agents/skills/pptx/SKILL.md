@@ -59,7 +59,7 @@ python scripts/add_slide.py unpacked/ slide2.xml --after slide2.xml   # duplicat
 # reorder / delete slides = edit <p:sldIdLst> in ppt/presentation.xml
 python scripts/clean.py unpacked/                                     # after deletions: removes orphaned slides, media, rels
 # edit slide content in ppt/slides/slideN.xml
-(cd unpacked && rm -f ../out.pptx && zip -Xr ../out.pptx .)           # zip from INSIDE the dir; rm first or deleted parts survive
+(cd unpacked && rm -f ../out.pptx && zip -Xry ../out.pptx .)           # zip from INSIDE the dir; rm first or deleted parts survive
 python scripts/office/validate.py out.pptx --original deck.pptx
 ```
 

@@ -111,6 +111,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `office/helpers` `check_archive_limits()` em docx/pptx/xlsx (segurança) | A razão de compressão só valia para entradas acima de 1 MiB; uma bomba dividida em milhares de entradas de 1 MiB expandia ~2 GiB a partir de ~2 MiB | Também recusa quando a razão do arquivo inteiro passa de 200x |
 | `pptx/scripts/add_slide.py` | Atributos com espaços em volta do `=` (`id = "256"`, XML válido) eram ignorados; o slide duplicado repetia o id 256 | Todas as buscas de atributo aceitam espaços em volta do `=` |
 | `pdf/scripts/fill_fillable_fields.py` | Um campo com widgets em várias páginas só era preenchido na última; as outras ocorrências ficavam com a aparência antiga | Atualiza o campo em todas as páginas que têm widgets dele |
+| `office/helpers` `safe_extract()`/`rezip()` em docx/pptx/xlsx + `docx`/`pptx` `SKILL.md` (segurança) | Um `unpacked/leak.txt` já existente como link sobrevivia à extração e o `zip -Xr` documentado (ou `rezip()`) empacotava o arquivo local apontado | A extração exige diretório novo ou vazio, `rezip()` recusa links e o comando documentado usa `zip -Xry`, que não segue links |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

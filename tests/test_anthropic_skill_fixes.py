@@ -419,6 +419,36 @@ class OfficeSkillTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout.strip(), "recusado: suspicious compression ratio for the archive as a whole")
 
+    def test_office_extract_and_rezip_never_carry_planted_links(self):
+        # unpacked/leak.txt já existe como link para um arquivo local; não pode acabar dentro do documento.
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:
+                doc = Path(tmp) / "doc.docx"
+                with zipfile.ZipFile(doc, "w") as zf:
+                    zf.writestr("word/document.xml", "<w:document/>")
+                secret = Path(tmp) / "secret.txt"
+                secret.write_text("SENTINELA")
+                unpacked = Path(tmp) / "unpacked"
+                unpacked.mkdir()
+                (unpacked / "leak.txt").symlink_to(secret)
+                result = run_in(SKILLS / f"{skill}/scripts", f"""
+                    import zipfile
+                    from pathlib import Path
+                    from office.helpers import rezip, safe_extract
+                    for step in ("extract", "rezip"):
+                        try:
+                            if step == "extract":
+                                safe_extract(zipfile.ZipFile({str(doc)!r}), Path({str(unpacked)!r}))
+                            else:
+                                rezip(Path({str(unpacked)!r}), Path({str(Path(tmp) / "out.docx")!r}))
+                            print(step, "feito")
+                        except ValueError:
+                            print(step, "recusado")
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.split(), ["extract", "recusado", "rezip", "recusado"])
+                self.assertFalse((Path(tmp) / "out.docx").exists())
+
     def test_office_safe_extract_rejects_zip_bomb(self):
         for skill in ("docx", "pptx", "xlsx"):
             with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:

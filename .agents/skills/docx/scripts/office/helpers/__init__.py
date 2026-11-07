@@ -108,6 +108,10 @@ def _refuse_linked_destination(dest: Path) -> None:
 
 def safe_extract(zf: zipfile.ZipFile, dest: Path) -> None:
     _refuse_linked_destination(dest)
+    # Only what comes from the archive may end up in dest: a pre-existing unpacked/leak.txt
+    # link would be dereferenced by a later `zip -Xr` and ship a local file inside the document.
+    if dest.exists() and (not dest.is_dir() or any(dest.iterdir())):
+        raise ValueError(f"extraction destination must be a new or empty directory: {dest}")
     dest = dest.resolve()
     check_archive_limits(zf)
     members = zf.infolist()
@@ -121,6 +125,10 @@ def safe_extract(zf: zipfile.ZipFile, dest: Path) -> None:
 
 
 def rezip(src_dir: Path, out_path: Path) -> None:
+    links = sorted(p for p in src_dir.rglob("*") if p.is_symlink())
+    if links:
+        # A link would be read through and pack a file from outside the tree into the document.
+        raise ValueError(f"refusing to pack symlinks: {', '.join(str(p.relative_to(src_dir)) for p in links)}")
     files = sorted(p for p in src_dir.rglob("*") if p.is_file())
     ct = src_dir / "[Content_Types].xml"
     fd, tmp_name = tempfile.mkstemp(
