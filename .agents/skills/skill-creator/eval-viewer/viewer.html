@@ -1009,7 +1009,8 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reviews, status: "in_progress" }),
-      }).then(() => {
+      }).then((resp) => {
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         document.getElementById("feedback-status").textContent = "Saved";
       }).catch(() => {
         // Static mode or server unavailable — no-op on auto-save,
@@ -1043,7 +1044,9 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: payload,
-      })).then(() => {
+      })).then((resp) => {
+        // A server error (e.g. disk full) did not save anything: fall back to the download.
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         document.getElementById("done-overlay").classList.add("visible");
       }).catch(() => {
         // Server not available (static mode) — download as file

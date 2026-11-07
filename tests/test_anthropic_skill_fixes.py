@@ -578,7 +578,7 @@ class SkillCreatorTests(unittest.TestCase):
             async function fetch(url, opts) {
               if (opts && opts.method === "POST") posts.push(JSON.parse(opts.body).status);
               await new Promise(r => setTimeout(r, 50));  // uma requisição em andamento
-              return {json: async () => ({})};
+              return {ok: true, status: 200, json: async () => ({})};
             }
             const els = {};
             const document = {getElementById(id) {
@@ -599,6 +599,52 @@ class SkillCreatorTests(unittest.TestCase):
         result = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)[-1], "complete")
+
+    def test_run_single_query_failed_process_is_an_error_not_a_negative(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run_in(SKILLS / "skill-creator", f"""
+                import io
+                from unittest import mock
+                from scripts import run_eval
+                class Crashed:  # claude -p que terminou com erro, sem nenhum evento
+                    stdout = io.BytesIO(b"")
+                    def poll(self):
+                        return 1
+                    def wait(self, timeout=None):
+                        return 1
+                with mock.patch.object(run_eval.subprocess, "Popen", return_value=Crashed()):
+                    try:
+                        print(run_eval.run_single_query("q", "demo", "d", 5, {tmp!r}))
+                    except RuntimeError as e:
+                        print("erro:", e)
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "erro: claude -p exited with code 1")
+
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_viewer_final_submit_falls_back_to_download_on_http_error(self):
+        html = (SKILLS / "skill-creator/eval-viewer/viewer.html").read_text()
+        state = re.search(r"// ---- State ----\n(.*?)\n\n", html, re.S).group(1)
+        done = re.search(r"function showDoneDialog\(\) \{.*?\n    \}", html, re.S).group(0)
+        script = textwrap.dedent("""
+            const EMBEDDED_DATA = {skill_name: "s", runs: [{id: "r1"}]};
+            const location = {search: ""};
+            async function fetch() { return {ok: false, status: 500}; }
+            let downloaded = null;
+            class Blob { constructor(parts) { this.text = parts.join(""); } }
+            const URL = {createObjectURL(b) { downloaded = b.text; return "blob:x"; }, revokeObjectURL() {}};
+            const els = {feedback: {value: "nota"}};
+            const document = {
+              getElementById(id) { return els[id] || (els[id] = {value: "", classList: {add() {}}}); },
+              createElement() { return {click() {}}; },
+            };
+        """) + state + "\n" + done + textwrap.dedent("""
+            showDoneDialog();
+            setTimeout(() => process.stdout.write(String(downloaded)), 100);
+        """)
+        result = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["reviews"][0]["feedback"], "nota")
 
     def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -906,6 +952,21 @@ class WithServerTests(unittest.TestCase):
             else:
                 os.kill(pid, 9)
                 self.fail("o filho que ignora SIGTERM continuou vivo")
+
+    def test_occupied_port_is_rejected_before_running_the_command(self):
+        with socket.socket() as busy, tempfile.TemporaryDirectory() as tmp:
+            busy.bind(("127.0.0.1", 0))
+            busy.listen()
+            port = busy.getsockname()[1]
+            marker = Path(tmp) / "ran"
+            server = f"{sys.executable} -m http.server {port} --bind 127.0.0.1"
+            result = subprocess.run([sys.executable, str(SKILLS / "webapp-testing/scripts/with_server.py"),
+                                     "--server", server, "--port", str(port), "--timeout", "10", "--",
+                                     sys.executable, "-c", f"open({str(marker)!r}, 'w')"],
+                                    capture_output=True, text=True, timeout=60)
+            self.assertNotEqual(result.returncode, 0, result.stdout)
+            self.assertIn("already in use", result.stderr)
+            self.assertFalse(marker.exists())
 
     def test_chatty_server_does_not_block_on_full_pipe(self):
         with socket.socket() as probe:

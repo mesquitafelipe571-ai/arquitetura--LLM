@@ -22,10 +22,20 @@ import time
 import sys
 import argparse
 
-def is_server_ready(port, timeout=30):
-    """Wait for server to be ready by polling the port."""
+def port_in_use(port):
+    try:
+        with socket.create_connection(('localhost', port), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+def is_server_ready(port, timeout=30, process=None):
+    """Wait for server to be ready by polling the port; stop early if the server process failed."""
     start_time = time.time()
     while time.time() - start_time < timeout:
+        if process is not None and process.poll() not in (None, 0):
+            return False
         try:
             with socket.create_connection(('localhost', port), timeout=1):
                 return True
@@ -99,6 +109,9 @@ def main():
         # Start all servers
         for i, server in enumerate(servers):
             print(f"Starting server {i+1}/{len(servers)}: {server['cmd']}")
+            # Another service on the port would answer the readiness check instead of ours.
+            if port_in_use(server['port']):
+                raise RuntimeError(f"Port {server['port']} is already in use; stop that service first")
 
             # Use shell=True to support commands with cd and &&
             process = subprocess.Popen(
@@ -111,7 +124,7 @@ def main():
 
             # Wait for this server to be ready
             print(f"Waiting for server on port {server['port']}...")
-            if not is_server_ready(server['port'], timeout=args.timeout):
+            if not is_server_ready(server['port'], timeout=args.timeout, process=process):
                 raise RuntimeError(f"Server failed to start on port {server['port']} within {args.timeout}s")
 
             print(f"Server ready on port {server['port']}")

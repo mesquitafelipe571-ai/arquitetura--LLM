@@ -100,6 +100,7 @@ def run_single_query(
         # Track state for stream event detection
         pending_tool_name = None
         accumulated_json = ""
+        done = False
 
         try:
             while time.time() - start_time < timeout:
@@ -174,6 +175,14 @@ def run_single_query(
 
                 if done:
                     break
+
+            # No trigger and no `result`: a timeout or a crash is not an answer, so it must not
+            # count as "did not trigger" (run_eval() counts the exception as an error).
+            if not done:
+                raise TimeoutError(f"claude -p gave no answer within {timeout}s")
+            code = process.wait(timeout=5)
+            if code:
+                raise RuntimeError(f"claude -p exited with code {code}")
         finally:
             # Clean up process on any exit path (return, exception, timeout)
             if process.poll() is None:
