@@ -29,6 +29,7 @@ def run_in(scripts_dir, code):
 
 @unittest.skipUnless(HAS_DEFUSEDXML, "defusedxml não instalado")
 class OfficeSkillTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
     def test_redlining_counts_tabs_and_breaks(self):
         # Remover <w:tab/> sem rastrear muda o texto visível; com <w:del> a mudança está registrada.
         w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
