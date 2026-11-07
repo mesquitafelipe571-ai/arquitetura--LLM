@@ -37,8 +37,16 @@ class SetupTests(unittest.TestCase):
         front = text.split("---", 2)[1]
         line = next(l for l in front.splitlines() if l.startswith("tools:"))
         tools = {t.strip() for t in line.split(":", 1)[1].split(",")}
-        self.assertEqual(tools, {"Read", "Glob", "Grep", "mcp__ollaya__decide",
-                                 "mcp__ollaya__list_models", "mcp__ollaya__show_model"})
+        # Nem leitura: Read/Grep deixariam um item injetado trazer chaves de .runtime/ para a resposta.
+        self.assertEqual(tools, {"mcp__ollaya__decide", "mcp__ollaya__list_models", "mcp__ollaya__show_model"})
+
+    def test_decisao_agents_do_not_depend_on_reading_files(self):
+        # Sem Read (Claude) e sem shell (Codex), mandar ler a skill falharia: o guia vai no prompt.
+        for path in (".claude/agents/decisao.md", ".codex/agents/decisao.toml"):
+            text = (REPO / path).read_text(encoding="utf-8")
+            self.assertNotIn("leia\n`.agents/skills/ollaya-decisions/SKILL.md`", text)
+            self.assertIn("Você não lê arquivos", text)
+            self.assertIn("`triage` (`message`)", text)
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

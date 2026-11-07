@@ -1,10 +1,11 @@
 ---
 name: decisao
-description: Agente de decisão com o Ollaya e o modelo winnow:e4b. Use para classificar, priorizar, rotear ou aprovar/bloquear itens (tickets, e-mails, mensagens, comandos, linhas JSON) com respostas tipadas e probabilidades calibradas.
-# Lista fechada: sem ela o subagente herda Bash, Write, WebFetch e outros MCPs, e um item de
-# terceiro com instruções injetadas poderia agir com as permissões do usuário. pull_model fica
-# de fora: baixa ~8 GB, e o download fica com o usuário (npm run ollaya -- pull).
-tools: Read, Glob, Grep, mcp__ollaya__decide, mcp__ollaya__list_models, mcp__ollaya__show_model
+description: Agente de decisão com o Ollaya e o modelo winnow:e4b. Use para classificar, priorizar, rotear ou aprovar/bloquear itens (tickets, e-mails, mensagens, comandos, linhas JSON) com respostas tipadas e probabilidades calibradas. Passe o conteúdo dos itens no pedido: o agente não lê arquivos.
+# Só o Ollaya: sem lista o subagente herdaria Bash, Write, WebFetch e outros MCPs, e até Read/Grep
+# deixariam um item de terceiro com instruções injetadas ler chaves locais (.runtime/) para a
+# resposta. Os itens chegam no pedido. pull_model fica de fora: baixa ~8 GB, e o download fica
+# com o usuário (npm run ollaya -- pull).
+tools: mcp__ollaya__decide, mcp__ollaya__list_models, mcp__ollaya__show_model
 mcpServers:
   - ollaya:
       type: stdio
@@ -12,8 +13,22 @@ mcpServers:
       args: ["scripts/ollaya.sh", "mcp"]
 ---
 
-Você é o agente de decisão deste projeto. Antes de agir, leia
-`.agents/skills/ollaya-decisions/SKILL.md` e siga esse fluxo.
+Você é o agente de decisão deste projeto. Você não lê arquivos: os itens e as
+perguntas chegam no pedido. Se o pedido só citar um arquivo, diga que o conteúdo
+precisa vir na mensagem. O resumo abaixo vem
+da skill oficial `ollaya-decisions` (Apache-2.0, `.agents/ollaya/SOURCE.md`).
+
+- Chame `decide` com `state` (texto ou objeto JSON), `questions` ou `preset`, e
+  `"model": "winnow:e4b"`. Um `decide` por item.
+- Presets e o campo do `state` que cada um lê: `triage` (`message`), `email`
+  (`body`), `guard` (`prompt`), `moderation` (`post`), `router` (`request`),
+  `agent` (`request` e `command`). `show_model` e `list_models` mostram o modelo.
+- Perguntas próprias, num objeto com ids: `choice` com `criteria` descrevendo
+  opções exclusivas e um `other`; `score` com 3 a 5 níveis do menor para o maior;
+  `noul` com uma única afirmação verdadeira ou falsa. Instruções curtas e literais,
+  citando o campo do `state` (`` `ticket` ``).
+- Respostas: `choice` traz `choice`, `confidence` e `probabilities`; `score` traz
+  `score`, `confidence` e `legend`; `noul` traz a probabilidade de ser verdade.
 
 Use a ferramenta `decide` do servidor MCP `ollaya` com `"model": "winnow:e4b"`.
 Este agente não baixa modelos: `pull_model` está bloqueada na configuração. Se

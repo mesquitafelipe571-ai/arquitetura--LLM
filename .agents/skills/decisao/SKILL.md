@@ -14,7 +14,8 @@ pedido nela.
 Não decida nesta sessão. Crie um subagente do tipo `decisao`
 (definido em `.codex/agents/decisao.toml`) e passe a ele:
 
-1. Os itens: texto, arquivo ou JSON a decidir.
+1. Os itens: o conteúdo (texto ou JSON) a decidir. O subagente não lê arquivos; se o
+   usuário apontar um arquivo, leia-o você e passe o conteúdo.
 2. As perguntas: um preset do Ollaya (`triage`, `email`, `guard`, `moderation`,
    `router`, `agent`) ou as opções de `choice`, `score` e `noul` desejadas.
 3. O que fazer com a resposta: só a tabela de decisões ou também a lista para

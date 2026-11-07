@@ -278,8 +278,8 @@ flowchart TB
     CDS --> CDA --> CDF --> OMCP
     KDS --> KDA --> OMCP
     OMCP --> OD
-    CDA -.lê.-> OS
-    KDA -.lê.-> OS
+    OS -.resumida no prompt.-> CDA
+    OS -.resumida no prompt.-> KDA
 ```
 
 - No **Codex**, o servidor MCP fica no `.codex/config.toml` do projeto, porque
@@ -287,7 +287,9 @@ flowchart TB
   aparecem também na sessão principal.
 - No **Claude Code**, cada servidor existe só dentro do seu agente (`rea`, `decisao`).
 - O agente `decisao` só decide: devolve a resposta tipada e a probabilidade, e o
-  que fica abaixo dos limites da skill vai para revisão humana.
+  que fica abaixo dos limites da skill vai para revisão humana. Ele não lê
+  arquivos (no Claude Code só tem as ferramentas do Ollaya): os itens chegam no
+  pedido, e o prompt resume a skill `ollaya-decisions`.
 - Skills de terceiros com alterações locais (correções de segurança e de bugs)
   estão listadas nos `SOURCE.md` de `.agents/ui-ux-pro-max/` e
   `.agents/anthropic-skills/`.

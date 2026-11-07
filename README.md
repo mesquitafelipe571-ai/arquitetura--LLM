@@ -342,8 +342,8 @@ Exemplo: `/decisao classifique estes tickets por equipe e urgência` no Claude C
   cada chamada leva alguns segundos; o `laya` é a alternativa rápida.
 - O download usa `github.com`, `ollaya.dev` (registro) e `huggingface.co` (pesos).
 - O agente não baixa modelos nem age: no Claude Code, `tools` limita o agente a
-  leitura (`Read`, `Glob`, `Grep`) e a `decide`, `list_models` e `show_model`, sem
-  Bash, escrita, rede nem outros MCPs; no Codex, `enabled_tools` deixa `pull_model`
+  `decide`, `list_models` e `show_model`, sem leitura de arquivos, Bash, escrita,
+  rede nem outros MCPs (os itens chegam no pedido); no Codex, `enabled_tools` deixa `pull_model`
   de fora e o perfil do agente desliga shell, apps, plugins e pedidos de permissão
   (o Codex não deixa um agente restringir MCPs nem o sandbox, que vêm da sessão).
   Para decidir sobre itens de terceiros no Codex, abra a sessão com
@@ -351,7 +351,7 @@ Exemplo: `/decisao classifique estes tickets por equipe e urgência` no Claude C
   projeto, e o REA continua ativo nas outras sessões. A skill `$decisao` pede isso
   quando encontra o MCP `rea` disponível. Baixe antes com
   `npm run ollaya -- pull winnow:e4b`; `decide` nunca baixa nada sozinho.
-- O agente segue a skill oficial
+- O prompt do agente resume a skill oficial
   [`ollaya-decisions`](.agents/skills/ollaya-decisions/SKILL.md)
   ([origem e licença](.agents/ollaya/SOURCE.md)) e só decide: o que fica abaixo
   dos limites de confiança vai para revisão humana.
