@@ -178,7 +178,13 @@ _COMMENT_OVERRIDES = [
 def _ensure_comment_relationships(unpacked_dir: Path) -> None:
     rels_path = unpacked_dir / "word" / "_rels" / "document.xml.rels"
     if not rels_path.exists():
-        return
+        # A minimal document may have no relationships yet; the comment parts still need one.
+        rels_path.parent.mkdir(parents=True, exist_ok=True)
+        rels_path.write_text(
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>',
+            encoding="utf-8",
+        )
     dom = defusedxml.minidom.parseString(rels_path.read_text(encoding="utf-8"))
     root = dom.documentElement
     comment_types = {rel_type for rel_type, _ in _COMMENT_RELS}

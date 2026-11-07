@@ -76,7 +76,7 @@ def accept_changes(
     except subprocess.TimeoutExpired:
         return (
             None,
-            f"Successfully accepted all tracked changes: {input_file} -> {output_file}",
+            f"Error: LibreOffice did not finish within 30s; {output_file} may still contain tracked changes",
         )
 
     if result.returncode != 0:

@@ -16,7 +16,6 @@ This script removes:
 """
 
 import posixpath
-import re
 import sys
 from pathlib import Path
 
@@ -41,6 +40,26 @@ def _slide_rids(pres_rels_path: Path, unpacked_dir: Path) -> dict[str, str]:
     return rids
 
 
+_REL_NAMESPACES = {
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    "http://purl.oclc.org/ooxml/officeDocument/relationships",
+}
+
+
+def _listed_slide_rids(pres_path: Path) -> list[str]:
+    """r:id of every <sldId>, matched by namespace URI rather than by prefix."""
+    if not pres_path.exists():
+        return []
+    dom = defusedxml.minidom.parse(str(pres_path))
+    rids = []
+    for el in dom.getElementsByTagNameNS("*", "sldId"):
+        for i in range(el.attributes.length):
+            attr = el.attributes.item(i)
+            if attr.localName == "id" and attr.namespaceURI in _REL_NAMESPACES:
+                rids.append(attr.value)
+    return rids
+
+
 def get_slides_in_sldidlst(unpacked_dir: Path) -> set[str]:
     pres_path = unpacked_dir / "ppt" / "presentation.xml"
     pres_rels_path = unpacked_dir / "ppt" / "_rels" / "presentation.xml.rels"
@@ -50,8 +69,7 @@ def get_slides_in_sldidlst(unpacked_dir: Path) -> set[str]:
 
     rid_to_slide = _slide_rids(pres_rels_path, unpacked_dir)
 
-    pres_content = pres_path.read_text(encoding="utf-8")
-    referenced_rids = set(re.findall(r'<p:sldId[^>]*r:id="([^"]+)"', pres_content))
+    referenced_rids = set(_listed_slide_rids(pres_path))
 
     return {
         posixpath.basename(rid_to_slide[rid])
@@ -76,12 +94,7 @@ def remove_orphaned_slides(unpacked_dir: Path) -> list[str]:
     on_disk = sorted(slides_dir.glob("slide*.xml"))
 
     if on_disk and not any(s.name in referenced_slides for s in on_disk):
-        listed = re.findall(
-            r'<p:sldId[^>]*r:id="([^"]+)"',
-            (unpacked_dir / "ppt" / "presentation.xml").read_text(encoding="utf-8")
-            if (unpacked_dir / "ppt" / "presentation.xml").exists()
-            else "",
-        )
+        listed = _listed_slide_rids(unpacked_dir / "ppt" / "presentation.xml")
         if listed:
             raise RefusedToClean(
                 f"<p:sldIdLst> lists {len(listed)} slide(s) and none of the "

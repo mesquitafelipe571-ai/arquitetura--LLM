@@ -14,6 +14,8 @@ Usage:
       -- python test.py
 """
 
+import os
+import signal
 import subprocess
 import socket
 import time
@@ -30,6 +32,27 @@ def is_server_ready(port, timeout=30):
         except (socket.error, ConnectionRefusedError):
             time.sleep(0.5)
     return False
+
+
+def stop_server(process):
+    """Stop the shell and every process it started (its own process group on POSIX)."""
+    def signal_group(sig):
+        if hasattr(os, "killpg"):
+            try:
+                os.killpg(process.pid, sig)
+            except ProcessLookupError:
+                pass
+        elif sig == signal.SIGTERM:
+            process.terminate()
+        else:
+            process.kill()
+
+    signal_group(signal.SIGTERM)
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        signal_group(getattr(signal, "SIGKILL", signal.SIGTERM))
+        process.wait()
 
 
 def main():
@@ -70,7 +93,8 @@ def main():
                 server['cmd'],
                 shell=True,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
+                start_new_session=True,
             )
             server_processes.append(process)
 
@@ -92,12 +116,7 @@ def main():
         # Clean up all servers
         print(f"\nStopping {len(server_processes)} server(s)...")
         for i, process in enumerate(server_processes):
-            try:
-                process.terminate()
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
+            stop_server(process)
             print(f"Server {i+1} stopped")
         print("All servers stopped")
 
