@@ -3353,6 +3353,26 @@ class LinkedInputRootTests(unittest.TestCase):
             self.assertIn("workspace goes through a symlink", view.stderr)
             self.assertEqual(sorted(p.name for p in Path(tmp).iterdir()), ["submitted-skill", "ws"])
 
+    def test_skill_creator_parser_refuses_linked_skill(self):
+        # --skill-path -> skill privada, ou SKILL.md linkado: o conteúdo nunca chega ao claude -p.
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:
+            (Path(private) / "SKILL.md").write_text("---\nname: p\ndescription: SEGREDO\n---\n")
+            (Path(tmp) / "linked").symlink_to(private)
+            (Path(tmp) / "skill").mkdir()
+            (Path(tmp) / "skill/SKILL.md").symlink_to(Path(private) / "SKILL.md")
+            result = run_in(SKILLS / "skill-creator", f"""
+                from pathlib import Path
+                from scripts.utils import parse_skill_md
+                for p in ({str(Path(tmp) / "linked")!r}, {str(Path(tmp) / "skill")!r}):
+                    try:
+                        print(parse_skill_md(Path(p)))
+                    except ValueError as e:
+                        print("recusado:", e)
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.count("recusado: SKILL.md goes through a symlink"), 2, result.stdout)
+            self.assertNotIn("SEGREDO", result.stdout)
+
     def test_mcp_evaluation_refuses_linked_eval_file(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:
             (Path(private) / "eval.xml").write_text("<evaluation><qa_pair><question>PRIVATE</question>"

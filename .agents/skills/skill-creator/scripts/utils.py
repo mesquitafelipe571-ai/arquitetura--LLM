@@ -38,7 +38,9 @@ def write_text_replace(path: Path, text: str) -> None:
 
 def parse_skill_md(skill_path: Path) -> tuple[str, str, str]:
     """Parse a SKILL.md file, returning (name, description, full_content)."""
-    content = (skill_path / "SKILL.md").read_text()
+    # The content goes to `claude -p`: a linked SKILL.md, skill folder or parent would send a private one.
+    refuse_linked_folder(Path(skill_path) / "SKILL.md", "SKILL.md")
+    content = (Path(skill_path) / "SKILL.md").read_text()
     lines = content.split("\n")
 
     if lines[0].strip() != "---":
