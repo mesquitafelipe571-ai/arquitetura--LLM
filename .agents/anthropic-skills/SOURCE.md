@@ -136,6 +136,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `skill-creator/eval-viewer/viewer.html` | `lastSave` guardava só a última gravação automática; uma anterior mais lenta podia sobrescrever o `feedback.json` depois da submissão final | As gravações são encadeadas em `lastSave`, em ordem, e a submissão final espera todas |
 | `skill-creator/scripts/improve_description.py` + `run_eval.py` (segurança) | `claude -p` rodava com todas as ferramentas, MCPs e permissões do usuário; um `SKILL.md`/consulta de terceiro podia pedir Bash, Write ou WebFetch | `improve_description` usa `--tools "" --strict-mcp-config`; `run_eval` usa só `--tools Skill,Read` (o que a detecção precisa) e `--strict-mcp-config` |
 | `mcp-builder/scripts/evaluation.py` (segurança) | `-o` gravava o relatório com `write_text()`, seguindo um link plantado no caminho | `write_report()` grava num temporário ao lado e substitui com `os.replace()` |
+| `xlsx/scripts/recalc.py` (segurança) | `_looks_like_xml()` só reconhecia `<` e BOMs; XML UTF-16BE sem BOM (`00 3c`) passava como binário e um `WEBSERVICE` chegava ao LibreOffice | Detecta XML em UTF-8/16/32 com ou sem BOM (apêndice F do XML), decodificando o início do conteúdo |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

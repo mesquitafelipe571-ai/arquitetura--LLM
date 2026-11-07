@@ -3,6 +3,7 @@ Excel Formula Recalculation Script
 Recalculates all formulas in an Excel file using LibreOffice
 """
 
+import codecs
 import contextlib
 import json
 import os
@@ -147,8 +148,22 @@ def network_formula_parts(filename):
         return names
 
 
+_XML_ENCODINGS = ("utf-8-sig", "utf-16", "utf-16-be", "utf-16-le", "utf-32", "utf-32-be", "utf-32-le")
+
+
 def _looks_like_xml(data: bytes) -> bool:
-    return data.lstrip(b" \t\r\n").startswith((b"<", b"\xef\xbb\xbf", b"\xff\xfe", b"\xfe\xff"))
+    """XML in any encoding a parser autodetects (XML 1.0, appendix F), with or without a BOM:
+    UTF-16BE without BOM starts with 00 3c, so a byte-prefix check would let it through."""
+    head = data[:256]
+    for encoding in _XML_ENCODINGS:
+        try:
+            # Incremental and not final: a multi-byte character cut at the end of head is fine.
+            text = codecs.getincrementaldecoder(encoding)().decode(head)
+        except UnicodeDecodeError:
+            continue
+        if text.lstrip(" \t\r\n\ufeff").startswith("<"):
+            return True
+    return False
 
 
 def _calls_network(xml: bytes) -> bool:

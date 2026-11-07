@@ -2240,6 +2240,25 @@ class XlsxPdfTests(unittest.TestCase):
             self.assertEqual(lines[0], "['xl/worksheets/sheet1.XML'] ['xl/worksheets/old.bin', 'content.xml']")
             self.assertEqual(lines[1], "True")
 
+    def test_xlsx_network_scan_detects_xml_in_any_encoding(self):
+        # UTF-16BE sem BOM começa com 00 3c; o parser aceita, então o scanner tem de inspecionar.
+        result = run_in(SKILLS / "xlsx/scripts", """
+            import recalc
+            xml = ('<?xml version="1.0" encoding="{}"?><worksheet><c><f>WEBSERVICE("http://127.0.0.1/")</f></c>'
+                   '</worksheet>')
+            for enc in ("utf-8", "utf-16-be", "utf-16-le", "utf-32-be", "utf-32-le"):
+                data = xml.format(enc.upper()).encode(enc)
+                print(enc, recalc._looks_like_xml(data), recalc._calls_network(data))
+            png = bytes.fromhex("89504e470d0a1a0a0000000d49484452")
+            jpeg = bytes.fromhex("ffd8ffe000104a464946000101")
+            print(recalc._looks_like_xml(png), recalc._looks_like_xml(jpeg))
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        lines = result.stdout.strip().splitlines()
+        for line in lines[:-1]:
+            self.assertTrue(line.endswith("True True"), line)
+        self.assertEqual(lines[-1], "False False")
+
     def test_xlsx_recalc_counts_only_real_error_cells(self):
         with tempfile.TemporaryDirectory() as tmp:
             book = Path(tmp) / "book.xlsx"
