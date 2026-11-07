@@ -159,7 +159,7 @@ def _looks_like_xml(data: bytes) -> bool:
         try:
             # Incremental and not final: a multi-byte character cut at the end of head is fine.
             text = codecs.getincrementaldecoder(encoding)().decode(head)
-        except UnicodeDecodeError:
+        except UnicodeError:  # 3.12's utf-16/32 decoders raise the base class when the BOM is missing
             continue
         if text.lstrip(" \t\r\n\ufeff").startswith("<"):
             return True
