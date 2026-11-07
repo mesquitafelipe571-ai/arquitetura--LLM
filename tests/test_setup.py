@@ -14,6 +14,15 @@ setup = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(setup)
 
 class SetupTests(unittest.TestCase):
+    def test_decisao_agent_has_closed_tool_list(self):
+        # Sem `tools` o subagente herda Bash/Write/WebFetch/MCPs; um item injetado agiria com eles.
+        text = (REPO / ".claude/agents/decisao.md").read_text(encoding="utf-8")
+        front = text.split("---", 2)[1]
+        line = next(l for l in front.splitlines() if l.startswith("tools:"))
+        tools = {t.strip() for t in line.split(":", 1)[1].split(",")}
+        self.assertEqual(tools, {"Read", "Glob", "Grep", "mcp__ollaya__decide",
+                                 "mcp__ollaya__list_models", "mcp__ollaya__show_model"})
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

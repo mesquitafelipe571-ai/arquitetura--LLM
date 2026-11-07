@@ -1,8 +1,10 @@
 ---
 name: decisao
 description: Agente de decisão com o Ollaya e o modelo winnow:e4b. Use para classificar, priorizar, rotear ou aprovar/bloquear itens (tickets, e-mails, mensagens, comandos, linhas JSON) com respostas tipadas e probabilidades calibradas.
-# pull_model baixa ~8 GB; o download fica com o usuário (npm run ollaya -- pull).
-disallowedTools: mcp__ollaya__pull_model
+# Lista fechada: sem ela o subagente herda Bash, Write, WebFetch e outros MCPs, e um item de
+# terceiro com instruções injetadas poderia agir com as permissões do usuário. pull_model fica
+# de fora: baixa ~8 GB, e o download fica com o usuário (npm run ollaya -- pull).
+tools: Read, Glob, Grep, mcp__ollaya__decide, mcp__ollaya__list_models, mcp__ollaya__show_model
 mcpServers:
   - ollaya:
       type: stdio

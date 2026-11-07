@@ -171,6 +171,7 @@ do projeto. Pontos verificados:
 | Dependências | Sem Dependabot | Dependabot para npm, pip, Actions, Docker, dev container e submódulos |
 | Instalação do Ollaya (`scripts/ollaya.sh`) | `OLLAYA_APPROVE_INSTALL=1` pulava a confirmação, então um agente sem TTY podia liberar sozinho o download e a execução do instalador | Só roda com "s" digitado num terminal; a variável não tem mais efeito (coberto por `tests/test_ollaya_wrapper.py`) |
 | Skills `decisao` e `rea` do Claude Code | `$ARGUMENTS` entrava solto no prompt do agente | O pedido vai no fim do prompt, depois de "Pedido do usuário:", sem marcador de fechamento que ele possa forjar; tudo até o fim é dado que não muda regras, ferramentas nem formato |
+| Agente `decisao` do Claude Code (`.claude/agents/decisao.md`) | Só `pull_model` era negada; sem `tools`, o subagente herdava Bash, Write, WebFetch e outros MCPs, e um item de terceiro com instruções injetadas podia agir com as permissões do usuário | `tools` fecha a lista em `Read`, `Glob`, `Grep` e `decide`/`list_models`/`show_model` do Ollaya (coberto por `tests/test_setup.py`) |
 
 Já estavam corretos: `permissions: contents: read` nos dois workflows existentes.
 
