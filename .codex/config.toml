@@ -5,3 +5,11 @@ command = "npx"
 args = ["-y", "rea-agents@6.8.0", "mcp"]
 startup_timeout_sec = 30
 tool_timeout_sec = 450
+
+# Servidor MCP do Ollaya (agente `decisao`). Caminho relativo à raiz do projeto;
+# instale antes com `npm run ollaya:install`. O primeiro uso de um modelo pode demorar.
+[mcp_servers.ollaya]
+command = "sh"
+args = ["scripts/ollaya.sh", "mcp"]
+startup_timeout_sec = 30
+tool_timeout_sec = 300

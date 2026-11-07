@@ -20,6 +20,8 @@
     "ecc": "npm exec --yes --package=ecc-universal@2.2.3 -- ecc",
     "ecc:canvas": "npm exec --yes --package=ecc-universal@2.2.3 -- ecc-plan-canvas",
     "rea": "npm exec --yes --package=rea-agents@6.8.0 -- rea",
-    "rea:setup": "npm exec --yes --package=rea-agents@6.8.0 -- rea setup --client codex"
+    "rea:setup": "npm exec --yes --package=rea-agents@6.8.0 -- rea setup --client codex",
+    "ollaya": "sh scripts/ollaya.sh",
+    "ollaya:install": "sh scripts/ollaya.sh install"
   }
 }

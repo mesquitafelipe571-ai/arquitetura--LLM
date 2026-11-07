@@ -13,7 +13,7 @@ flowchart TB
     subgraph REPO["Repositório arquitetura--LLM"]
         direction TB
         AG["AGENTS.md<br/>regras dos agentes"]
-        SK[".agents/skills<br/>123 skills"]
+        SK[".agents/skills<br/>125 skills"]
         CX[".codex/<br/>agente rea + MCP"]
         CL[".claude/<br/>agente rea + skill"]
         SC["scripts/<br/>instaladores e utilitários"]
@@ -70,8 +70,8 @@ flowchart TB
 | Camada | Onde fica | Função |
 | --- | --- | --- |
 | Instruções | `AGENTS.md` | Regras para qualquer agente: mudança mínima completa, português, segurança, nada de segredos no Git |
-| Skills | `.agents/skills/` | 123 skills de 8 origens, lidas pelo Codex ao abrir o projeto |
-| Agentes | `.codex/`, `.claude/` | Agente `rea` de engenharia reversa, com servidor MCP |
+| Skills | `.agents/skills/` | 125 skills de 9 origens, lidas pelo Codex ao abrir o projeto |
+| Agentes | `.codex/`, `.claude/` | Agente `rea` de engenharia reversa e agente `decisao` (Ollaya, winnow:e4b), cada um com servidor MCP |
 | Aplicativos | `paperclip/`, `orca/` (submódulos) | Orquestração de agentes |
 | Instalação | `scripts/`, `config/`, `compose.paperclip.json`, `.devcontainer/` | Três perfis de execução |
 | Verificação | `.github/`, `tests/`, `SECURITY.md` | CI, análise estática, dependências e política de segurança |
@@ -128,7 +128,8 @@ flowchart LR
   (padrão `.runtime/paperclip`). `start-paperclip.sh` sobe a aplicação em
   `http://localhost:3100`.
 - **Utilitários npm**: `npm run ecc` e `ecc:canvas` (ECC 2.2.3), `npm run rea` e
-  `rea:setup` (REA 6.8.0), `npm run check`.
+  `rea:setup` (REA 6.8.0), `npm run ollaya:install` e `ollaya` (Ollaya 0.18.0
+  em `.runtime/ollaya`), `npm run check`.
 
 ## 3. Perfil da VM Google Cloud
 
@@ -237,9 +238,10 @@ flowchart TB
         O6["Ponytail 5.3.3: 6"]
         O7["REA 6.8.0: 2"]
         O8["i-have-adhd 0.4.1: 1"]
+        O9["Ollaya 0.18.0: 2"]
     end
 
-    SKD[".agents/skills/<br/>123 skills"]
+    SKD[".agents/skills/<br/>125 skills"]
     ORIG --> SKD
 
     subgraph CODEXS["Codex"]
@@ -247,16 +249,24 @@ flowchart TB
         CRS["$rea<br/>.agents/skills/rea"]
         CAG[".codex/agents/rea.toml<br/>subagente rea"]
         CCF[".codex/config.toml<br/>mcp_servers.rea<br/>só em projeto confiável"]
+        CDS["$decisao<br/>.agents/skills/decisao"]
+        CDA[".codex/agents/decisao.toml<br/>subagente decisao"]
+        CDF[".codex/config.toml<br/>mcp_servers.ollaya"]
     end
 
     subgraph CLAUDES["Claude Code"]
         KRS["/rea<br/>.claude/skills/rea<br/>context: fork"]
         KAG[".claude/agents/rea.md<br/>MCP rea embutido no agente"]
+        KDS["/decisao<br/>.claude/skills/decisao<br/>context: fork"]
+        KDA[".claude/agents/decisao.md<br/>MCP ollaya embutido no agente"]
     end
 
     MCP["Servidor MCP REA<br/>npx -y rea-agents@6.8.0 mcp"]
     RE["Skill reverse-engineer-anything<br/>roteiro oficial do REA"]
     ENG["Ghidra / Hopper / IDA / Kuna<br/>instalados no computador"]
+    OMCP["Servidor MCP Ollaya<br/>sh scripts/ollaya.sh mcp"]
+    OD["Daemon Ollaya 127.0.0.1:11435<br/>modelos em .runtime/ollaya/models<br/>winnow:e4b"]
+    OS["Skill ollaya-decisions<br/>roteiro oficial do Ollaya"]
 
     SKD --> CSK
     CRS --> CAG
@@ -265,12 +275,19 @@ flowchart TB
     CAG -.lê.-> RE
     KAG -.lê.-> RE
     MCP -.binários nativos.-> ENG
+    CDS --> CDA --> CDF --> OMCP
+    KDS --> KDA --> OMCP
+    OMCP --> OD
+    CDA -.lê.-> OS
+    KDA -.lê.-> OS
 ```
 
 - No **Codex**, o servidor MCP fica no `.codex/config.toml` do projeto, porque
   agentes do Codex não podem ter servidores próprios; as ferramentas do REA
   aparecem também na sessão principal.
-- No **Claude Code**, o servidor existe só dentro do agente `rea`.
+- No **Claude Code**, cada servidor existe só dentro do seu agente (`rea`, `decisao`).
+- O agente `decisao` só decide: devolve a resposta tipada e a probabilidade, e o
+  que fica abaixo dos limites da skill vai para revisão humana.
 - Skills de terceiros com alterações locais (correções de segurança e de bugs)
   estão listadas nos `SOURCE.md` de `.agents/ui-ux-pro-max/` e
   `.agents/anthropic-skills/`.
@@ -366,7 +383,7 @@ Regras que valem em todos os perfis, do `AGENTS.md`:
 | `AGENTS.md` | Instruções para agentes |
 | `SECURITY.md` | Política de segurança e reporte privado |
 | `README.md` | Uso de cada integração |
-| `package.json` | Comandos `npm run` (setup, orca, paperclip, ecc, rea, check) |
+| `package.json` | Comandos `npm run` (setup, orca, paperclip, ecc, rea, ollaya, check) |
 | `compose.paperclip.json` | Serviço Paperclip do perfil de VM |
 | `config/components.lock.json` | Componentes do perfil de VM, fixados por SHA |
 | `config/task-handoff.example.json` | Contrato de passagem de tarefas |
@@ -379,7 +396,8 @@ Regras que valem em todos os perfis, do `AGENTS.md`:
 | `scripts/check-repo.py` | Verificação estrutural usada pela CI |
 | `tests/` | Testes do instalador, do leitor de históricos, da verificação e das correções em skills |
 | `.agents/skills/` | Skills; `.agents/<origem>/` guarda SOURCE.md e licenças |
-| `.codex/`, `.claude/` | Agente e skill `rea` |
+| `.codex/`, `.claude/` | Agentes e skills `rea` e `decisao` |
+| `scripts/ollaya.sh` | Instala e roda o Ollaya fixado, só em loopback e em `.runtime/ollaya` |
 | `.devcontainer/` | Ambiente de Codespaces |
 | `.github/workflows/` | `check`, `validate`, `codeql` |
 | `.github/dependabot.yml` | Atualizações de dependências |

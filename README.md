@@ -16,7 +16,7 @@ npm run setup
 ```
 
 Esse comando baixa o catálogo, instala o Orca (incluindo a verificação obrigatória
-do Electron) e prepara o Paperclip. As 123 skills já são arquivos do projeto.
+do Electron) e prepara o Paperclip. As 125 skills já são arquivos do projeto.
 No GitHub Codespaces, o ambiente inclui Node.js 24, Rust 1.97.1 e desktop virtual,
 e executa esse mesmo comando ao ser criado.
 
@@ -308,6 +308,40 @@ Para usar o REA em outros projetos, registre-o globalmente com
 `npm run rea:setup`. Não é preciso fazer isso para usar neste projeto. Para
 diagnóstico, use `npm run rea -- doctor`. A análise de binários nativos usa
 Ghidra, Hopper, IDA ou Kuna já instalados; JavaScript e Electron não precisam deles.
+
+## Agente de decisão (Ollaya)
+
+O [Ollaya](https://github.com/ollaya-dev/ollaya) roda modelos de decisão no próprio
+computador: recebe um estado (texto ou JSON) e perguntas tipadas (`choice`,
+`score`, `noul`) e devolve respostas com probabilidades calibradas, sem gerar texto.
+O agente `decisao` usa o modelo `winnow:e4b` pelo servidor MCP do Ollaya.
+
+| Cliente | Agente | Como chamar | Servidor MCP |
+| --- | --- | --- | --- |
+| Codex | [.codex/agents/decisao.toml](.codex/agents/decisao.toml) | `$decisao` ([SKILL.md](.agents/skills/decisao/SKILL.md)) | [.codex/config.toml](.codex/config.toml) |
+| Claude Code | [.claude/agents/decisao.md](.claude/agents/decisao.md) | `/decisao` ([SKILL.md](.claude/skills/decisao/SKILL.md)) | no próprio agente |
+
+Instale uma vez, só neste projeto:
+
+```bash
+npm run ollaya:install
+npm run ollaya -- run winnow:e4b --preset triage "Fui cobrado duas vezes e quero o reembolso hoje."
+```
+
+Exemplo: `/decisao classifique estes tickets por equipe e urgência` no Claude Code.
+
+- O `scripts/ollaya.sh` instala o Ollaya 0.18.0 em `.runtime/ollaya` (ignorada
+  pelo Git), sem sudo e sem serviço systemd. O instalador é baixado pelo SHA da tag
+  `v0.18.0` e confere os binários pelo `sha256sum.txt` da release.
+- O servidor escuta só em `127.0.0.1:11435`, e os modelos ficam em
+  `.runtime/ollaya/models`.
+- O `winnow:e4b` tem cerca de 8 GB e pede GPU NVIDIA com 10 GB ou mais. Na CPU,
+  cada chamada leva alguns segundos; o `laya` é a alternativa rápida.
+- O download usa `github.com`, `ollaya.dev` (registro) e `huggingface.co` (pesos).
+- O agente segue a skill oficial
+  [`ollaya-decisions`](.agents/skills/ollaya-decisions/SKILL.md)
+  ([origem e licença](.agents/ollaya/SOURCE.md)) e só decide: o que fica abaixo
+  dos limites de confiança vai para revisão humana.
 
 ## Catálogos de skills e mods
 

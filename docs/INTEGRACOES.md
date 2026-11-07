@@ -23,11 +23,12 @@ pela conexão GitHub nesta revisão.
 | Skills de Matt Pocock 1.3.2 | CONFIRMADO: skills locais | As 27 skills listadas no `plugin.json` foram copiadas sem alterações do commit `4ae2317`. |
 | UI/UX Pro Max 2.15.0 | CONFIRMADO: skills locais e busca executada | 7 skills do commit `b7d5353`; caminho do script ajustado para relativo; `scripts/search.py` retornou resultados com Python 3 a partir de `.agents/skills`. |
 | REA 6.8.0 | PARCIAL: configurado, servidor não iniciado | Agente e skill `rea` para Codex (`.codex/`, `.agents/skills/rea`) e Claude Code (`.claude/`); skill oficial `reverse-engineer-anything` copiada sem alterações do commit `de8b2f3`; arquivos TOML e frontmatter validados. `rea-agents@6.8.0` existe no npm, mas o servidor `npx -y rea-agents@6.8.0 mcp` não foi iniciado nesta revisão. |
+| Ollaya 0.18.0 | PARCIAL: configurado, não instalado | Agente e skill `decisao` para Codex e Claude Code, servidor MCP `ollaya` e skill oficial `ollaya-decisions` copiada sem alterações da tag `v0.18.0` (`a8bce96`). O instalador não foi executado nesta revisão; `winnow:e4b` não foi baixado nem testado. |
 | claude-melhores-skills | CONFIRMADO: catálogo disponível | Submódulo no commit `2c52b2a`; o repositório não declara licença. |
 | Awesome Claude Code Mods | CONFIRMADO: catálogo disponível | Submódulo no commit `febe9d6`; licença CC0. |
 
-As 123 skills estão disponíveis como arquivos de projeto para uma nova sessão do
-Codex. As 123 possuem frontmatter válido, descrição e nomes únicos. A verificação
+As 125 skills estão disponíveis como arquivos de projeto para uma nova sessão do
+Codex. As 125 possuem frontmatter válido, descrição e nomes únicos. A verificação
 de integridade não representa um teste de cada serviço externo citado pelas skills. A distribuição Codex do ECC possui 47 skills; ela
 tem escopo próprio, documentado em `.agents/ecc/SOURCE.md`.
 
