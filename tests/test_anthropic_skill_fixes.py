@@ -1,5 +1,6 @@
 """Regressões das correções locais nas skills de anthropics/skills (ver .agents/anthropic-skills/SOURCE.md)."""
 import importlib.util
+import json
 from pathlib import Path
 import socket
 import subprocess
@@ -208,6 +209,24 @@ class SkillCreatorTests(unittest.TestCase):
         """)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.split(), ["False", "3", "0", "0"])
+
+    def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp) / "eval-1/with_skill/run-1"
+            run.mkdir(parents=True)
+            (run / "grading.json").write_text(json.dumps({
+                "summary": {"pass_rate": 1.0, "passed": 1, "failed": 0, "total": 1},
+                "timing": {"total_duration_seconds": 10},
+                "execution_metrics": {"output_chars": 1200}}))
+            (run / "timing.json").write_text(json.dumps({"total_duration_seconds": 99, "total_tokens": 84852}))
+            result = run_in(SKILLS / "skill-creator", f"""
+                from pathlib import Path
+                from scripts.aggregate_benchmark import load_run_results
+                r = load_run_results(Path({tmp!r}))["with_skill"][0]
+                print(r["tokens"], r["time_seconds"])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.split(), ["84852", "10"])
 
 
 @unittest.skipIf(sys.platform == "win32", "grupo de processos POSIX")

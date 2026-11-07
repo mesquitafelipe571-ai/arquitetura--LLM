@@ -31,6 +31,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `skill-creator/scripts/run_eval.py` | Execução que falhava contava como "não acionou" e podia virar aprovação | Falhas contadas em `errors`; consulta com falha nunca passa |
 | `webapp-testing/scripts/with_server.py` | Saída do servidor em `PIPE` nunca lido travava servidores com muito log | O servidor herda stdout/stderr |
 | `mcp-builder/scripts/evaluation.py` | Resultados do SDK MCP (modelos pydantic) quebravam o `json.dumps` | Serializa com `model_dump(mode="json")` |
+| `skill-creator/scripts/aggregate_benchmark.py` | Com a duração já no `grading.json`, ignorava `total_tokens` do `timing.json` e usava `output_chars` | Lê a contagem real de tokens independentemente da duração |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.
