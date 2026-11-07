@@ -62,6 +62,23 @@ de origem.
   módulo válido. Teste em `tests/test_generate_tokens.py`, que falha sem a correção.
 - **Pendente:** reportar ao projeto de origem.
 
+## Execução de código local pelas skills de Office (skills de terceiros)
+
+Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
+
+- **Perfil LibreOffice previsível** (`docx/scripts/accept_changes.py`, apontado pela
+  revisão de segurança do Codex): a macro era lida de
+  `/tmp/libreoffice_docx_profile`, aceita se contivesse `AcceptAllTrackedChanges`.
+  Em máquina compartilhada, outro usuário podia criar esse perfil antes e ter
+  Basic executado com os privilégios de quem usa `$docx`. Agora cada execução cria
+  um perfil privado.
+- **Biblioteca `LD_PRELOAD` previsível** (`office/soffice.py` em docx, pptx e xlsx,
+  encontrado durante a correção acima): se `/tmp/lo_socket_shim.so` existisse, era
+  carregado no LibreOffice sem verificação. Só ocorre onde o shim é necessário
+  (ambientes sem sockets Unix). Agora o shim é compilado em diretório privado.
+- Testes em `tests/test_anthropic_skill_fixes.py`, que falham com os arquivos
+  originais. Pendente: reportar à origem.
+
 ## Resultado da revisão manual
 
 Fora o item acima, nenhuma vulnerabilidade explorável foi encontrada no código

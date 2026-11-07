@@ -14,7 +14,7 @@
 
 ## Alterações locais
 
-A revisão do Codex no PR #15 apontou 5 defeitos que também existem na origem.
+A revisão do Codex no PR #15 apontou defeitos que também existem na origem; o último item da tabela foi encontrado ao corrigir o penúltimo.
 Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 (todos os testes falham com os arquivos originais):
 
@@ -25,6 +25,8 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `docx/scripts/comment.py` | Sem `word/_rels/document.xml.rels`, os comentários ficavam desconectados | Cria o arquivo de relacionamentos vazio antes de registrar os comentários |
 | `webapp-testing/scripts/with_server.py` | `terminate()` encerrava só o shell; o servidor filho continuava rodando | Cada servidor roda em um grupo de processos próprio, encerrado inteiro |
 | `mcp-builder/scripts/evaluation.py` | Respondia só a primeira chamada de ferramenta de cada turno | Executa todas e envia todos os `tool_result` juntos |
+| `docx/scripts/accept_changes.py` (segurança) | Perfil LibreOffice fixo em `/tmp/libreoffice_docx_profile`; outro usuário local podia plantar a macro executada | Perfil privado (`TemporaryDirectory`, modo 700) criado a cada execução |
+| `{docx,pptx,xlsx}/scripts/office/soffice.py` (segurança) | Reutilizava `/tmp/lo_socket_shim.so` se já existisse e o carregava via `LD_PRELOAD` | Compila o shim em diretório privado (`mkdtemp`) e nunca carrega um arquivo preexistente |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

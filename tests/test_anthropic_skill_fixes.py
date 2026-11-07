@@ -74,6 +74,55 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertIn('Id="rId1"', rels)
 
 
+    def test_docx_accept_changes_uses_private_profile(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "in.docx"
+            src.write_bytes(b"x")
+            result = run_in(SKILLS / "docx/scripts", f"""
+                import os, stat, subprocess
+                from pathlib import Path
+                from unittest import mock
+                import accept_changes
+                seen = {{}}
+                def fake_run(cmd, **kw):
+                    profile = next(a for a in cmd if a.startswith("-env:UserInstallation=")).split("=", 1)[1]
+                    path = Path(profile.removeprefix("file://"))
+                    path.joinpath("user/basic/Standard").mkdir(parents=True, exist_ok=True)
+                    macro = path / "user/basic/Standard/Module1.xba"
+                    seen.update(path=str(path), mode=stat.S_IMODE(os.stat(path).st_mode),
+                                macro=macro.read_text() if macro.exists() else "")
+                    return subprocess.CompletedProcess(cmd, 0, "", "")
+                with mock.patch.object(accept_changes.subprocess, "run", side_effect=fake_run):
+                    msg = accept_changes.accept_changes({str(src)!r}, {str(Path(tmp) / "out.docx")!r})[1]
+                print(msg.startswith("Successfully"), seen["path"] != "/tmp/libreoffice_docx_profile",
+                      oct(seen["mode"]), "AcceptAllTrackedChanges" in seen["macro"], Path(seen["path"]).exists())
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.split(), ["True", "True", "0o700", "True", "False"])
+
+    def test_soffice_shim_never_loads_planted_tmp_library(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            planted = Path(tmp) / "lo_socket_shim.so"
+            planted.write_bytes(b"attacker")
+            result = run_in(SKILLS / "docx/scripts", f"""
+                import os, stat, subprocess, tempfile
+                from pathlib import Path
+                from unittest import mock
+                tempfile.tempdir = {tmp!r}
+                from office import soffice
+                def fake_gcc(cmd, **kw):
+                    Path(cmd[cmd.index("-o") + 1]).write_bytes(b"built")
+                    return subprocess.CompletedProcess(cmd, 0)
+                with mock.patch.object(soffice, "_needs_shim", return_value=True), \\
+                     mock.patch.object(soffice.subprocess, "run", side_effect=fake_gcc):
+                    shim = Path(soffice.get_soffice_env()["LD_PRELOAD"])
+                print(shim != Path({str(planted)!r}), shim.read_bytes() == b"built",
+                      oct(stat.S_IMODE(os.stat(shim.parent).st_mode)))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.split(), ["True", "True", "0o700"])
+
+
 class McpEvaluationTests(unittest.TestCase):
     def test_agent_loop_answers_every_tool_use(self):
         result = run_in(SKILLS / "mcp-builder/scripts", """

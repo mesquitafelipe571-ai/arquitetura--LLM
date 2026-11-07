@@ -47,7 +47,7 @@ def run_soffice(args: Iterable[str], **kwargs) -> subprocess.CompletedProcess:
 
 
 
-_SHIM_SO = Path(tempfile.gettempdir()) / "lo_socket_shim.so"
+_shim_so: Path | None = None
 
 
 def _needs_shim() -> bool:
@@ -60,18 +60,24 @@ def _needs_shim() -> bool:
 
 
 def _ensure_shim() -> Path:
-    if _SHIM_SO.exists():
-        return _SHIM_SO
+    # Never LD_PRELOAD a library from a shared, predictable /tmp path: build it in a private dir.
+    # shortcut: one build per process and the dir is left behind, add cleanup if builds pile up.
+    global _shim_so
+    if _shim_so is not None:
+        return _shim_so
 
-    src = Path(tempfile.gettempdir()) / "lo_socket_shim.c"
+    build_dir = Path(tempfile.mkdtemp(prefix="lo_socket_shim_"))
+    src = build_dir / "lo_socket_shim.c"
     src.write_text(_SHIM_SOURCE)
+    so = build_dir / "lo_socket_shim.so"
     subprocess.run(
-        ["gcc", "-shared", "-fPIC", "-o", str(_SHIM_SO), str(src), "-ldl"],
+        ["gcc", "-shared", "-fPIC", "-o", str(so), str(src), "-ldl"],
         check=True,
         capture_output=True,
     )
     src.unlink()
-    return _SHIM_SO
+    _shim_so = so
+    return so
 
 
 
