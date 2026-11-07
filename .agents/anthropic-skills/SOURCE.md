@@ -37,6 +37,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `skill-creator/eval-viewer/generate_review.py` | Execução sem `eval_id` (`None`) quebrava a ordenação com `TypeError` | `None` vai para o fim da ordenação |
 | `pdf/scripts/extract_form_field_info.py` | Opções simples (`"Red"`) viravam `R`/`e`; opções de 1 caractere davam `IndexError` | String vale como valor e texto; pares continuam indexados |
 | `skill-creator/eval-viewer/viewer.html` (segurança) | `escapeHtml()` não escapava aspas; uma evidência com `"` saía do atributo `title` e injetava JavaScript no visualizador | `escapeHtml()` escapa `"` e `'`; `run_number` também passa por ela |
+| `skill-creator/eval-viewer/generate_review.py` + `viewer.html` (segurança) | O servidor local (porta 3117) entregava saídas e aceitava feedback sem autenticação; outro usuário da máquina podia ler e adulterar | Token aleatório por execução exigido em todas as rotas; a URL aberta no navegador já o contém |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

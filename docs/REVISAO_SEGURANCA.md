@@ -82,6 +82,11 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   handler como `onmouseover` que podia ler os dados embutidos. Agora a função
   escapa aspas, protegendo todos os usos em atributos. Junto, o JSON embutido
   passou a escapar `<` (saídas com `</script>`).
+- **Visualizador sem autenticação** (`skill-creator/eval-viewer/generate_review.py`,
+  apontado pela revisão de segurança do Codex): o servidor em `127.0.0.1:3117`
+  servia prompts e saídas e aceitava gravação de `feedback.json` para qualquer
+  usuário local, contornando as permissões dos arquivos. Agora cada execução gera
+  um token aleatório exigido em todas as rotas.
 - Testes em `tests/test_anthropic_skill_fixes.py`, que falham com os arquivos
   originais. Pendente: reportar à origem.
 

@@ -663,7 +663,7 @@
         || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
       if (!hasPrevious) {
         try {
-          const resp = await fetch("/api/feedback");
+          const resp = await fetch("/api/feedback" + location.search);
           const data = await resp.json();
           if (data.reviews) {
             for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
@@ -1009,7 +1009,7 @@
         }
       }
 
-      fetch("/api/feedback", {
+      fetch("/api/feedback" + location.search, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reviews, status: "in_progress" }),
@@ -1041,7 +1041,7 @@
         reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
       }
       const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
-      fetch("/api/feedback", {
+      fetch("/api/feedback" + location.search, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: payload,

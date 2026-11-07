@@ -266,6 +266,34 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(result.stdout.strip(), "[1, None]")
 
 
+    def test_viewer_server_requires_per_run_token(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run_in(SKILLS / "skill-creator/eval-viewer", f"""
+                import json, threading, urllib.error, urllib.request
+                from functools import partial
+                from http.server import HTTPServer
+                from pathlib import Path
+                from generate_review import ReviewHandler
+                fb = Path({tmp!r}) / "feedback.json"
+                handler = partial(ReviewHandler, Path({tmp!r}), "s", fb, {{}}, None, "segredo")
+                server = HTTPServer(("127.0.0.1", 0), handler)
+                threading.Thread(target=server.serve_forever, daemon=True).start()
+                base = "http://127.0.0.1:%d" % server.server_address[1]
+                def status(url, body=None):
+                    try:
+                        return urllib.request.urlopen(urllib.request.Request(url, data=body)).status
+                    except urllib.error.HTTPError as e:
+                        return e.code
+                body = json.dumps({{"reviews": []}}).encode()
+                print(status(base + "/"), status(base + "/api/feedback"),
+                      status(base + "/api/feedback", body), fb.exists(),
+                      status(base + "/api/feedback?token=errado"),
+                      status(base + "/api/feedback?token=segredo", body), fb.exists())
+                server.shutdown()
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.split(), ["403", "403", "403", "False", "403", "200", "True"])
+
     @unittest.skipUnless(shutil.which("node"), "node não disponível")
     def test_viewer_escape_html_is_safe_in_attributes(self):
         html = (SKILLS / "skill-creator/eval-viewer/viewer.html").read_text()

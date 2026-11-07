@@ -14,10 +14,12 @@ No dependencies beyond the Python stdlib are required.
 
 import argparse
 import base64
+import hmac
 import json
 import mimetypes
 import os
 import re
+import secrets
 import signal
 import subprocess
 import sys
@@ -26,6 +28,7 @@ import webbrowser
 from functools import partial
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 # Files to exclude from output listings
 METADATA_FILES = {"transcript.md", "user_notes.md", "metrics.json"}
@@ -321,9 +324,11 @@ class ReviewHandler(BaseHTTPRequestHandler):
         feedback_path: Path,
         previous: dict[str, dict],
         benchmark_path: Path | None,
+        token: str,
         *args,
         **kwargs,
     ):
+        self.token = token
         self.workspace = workspace
         self.skill_name = skill_name
         self.feedback_path = feedback_path
@@ -331,8 +336,23 @@ class ReviewHandler(BaseHTTPRequestHandler):
         self.benchmark_path = benchmark_path
         super().__init__(*args, **kwargs)
 
+    def _route(self) -> str | None:
+        """Path of an authorized request, or None after sending 403.
+
+        Other local users can reach 127.0.0.1 too; every route needs the per-run token.
+        """
+        parts = urlsplit(self.path)
+        given = parse_qs(parts.query).get("token", [""])[0]
+        if not hmac.compare_digest(given.encode(), self.token.encode()):
+            self.send_error(403)
+            return None
+        return parts.path
+
     def do_GET(self) -> None:
-        if self.path == "/" or self.path == "/index.html":
+        path = self._route()
+        if path is None:
+            return
+        if path == "/" or path == "/index.html":
             # Regenerate HTML on each request (re-scans workspace for new outputs)
             runs = find_runs(self.workspace)
             benchmark = None
@@ -348,7 +368,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(content)))
             self.end_headers()
             self.wfile.write(content)
-        elif self.path == "/api/feedback":
+        elif path == "/api/feedback":
             data = b"{}"
             if self.feedback_path.exists():
                 data = self.feedback_path.read_bytes()
@@ -361,7 +381,10 @@ class ReviewHandler(BaseHTTPRequestHandler):
             self.send_error(404)
 
     def do_POST(self) -> None:
-        if self.path == "/api/feedback":
+        path = self._route()
+        if path is None:
+            return
+        if path == "/api/feedback":
             length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(length)
             try:
@@ -440,7 +463,8 @@ def main() -> None:
     # Kill any existing process on the target port
     port = args.port
     _kill_port(port)
-    handler = partial(ReviewHandler, workspace, skill_name, feedback_path, previous, benchmark_path)
+    token = secrets.token_urlsafe(32)
+    handler = partial(ReviewHandler, workspace, skill_name, feedback_path, previous, benchmark_path, token)
     try:
         server = HTTPServer(("127.0.0.1", port), handler)
     except OSError:
@@ -448,7 +472,7 @@ def main() -> None:
         server = HTTPServer(("127.0.0.1", 0), handler)
         port = server.server_address[1]
 
-    url = f"http://localhost:{port}"
+    url = f"http://localhost:{port}/?token={token}"
     print(f"\n  Eval Viewer")
     print(f"  ─────────────────────────────────")
     print(f"  URL:       {url}")
