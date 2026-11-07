@@ -16,6 +16,7 @@ Examples:
 """
 
 import argparse
+import os
 import posixpath
 import subprocess
 import sys
@@ -239,7 +240,16 @@ def create_grids(
             grid_filename = output_path.parent / f"{stem}-{chunk_idx + 1}{suffix}"
 
         grid_filename.parent.mkdir(parents=True, exist_ok=True)
-        grid.save(str(grid_filename), quality=JPEG_QUALITY)
+        # Save beside the target and replace it: a link planted at the output path is never followed.
+        fd, tmp = tempfile.mkstemp(prefix=f".{grid_filename.name}.", suffix=grid_filename.suffix,
+                                   dir=grid_filename.parent)
+        os.close(fd)
+        try:
+            grid.save(tmp, quality=JPEG_QUALITY)
+            os.replace(tmp, grid_filename)
+        except BaseException:
+            Path(tmp).unlink(missing_ok=True)
+            raise
         grid_files.append(str(grid_filename))
 
     return grid_files

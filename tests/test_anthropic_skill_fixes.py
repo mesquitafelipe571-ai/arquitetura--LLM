@@ -151,6 +151,28 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertIn("rId2", result.stdout)
             self.assertTrue((root / "ppt/slides/slide2.xml").exists())
 
+    @unittest.skipUnless(importlib.util.find_spec("PIL"), "Pillow não instalado")
+    def test_pptx_thumbnail_grid_never_follows_links(self):
+        # thumbnails.jpg -> victim: a grade substitui o link, o alvo fica intacto.
+        with tempfile.TemporaryDirectory() as tmp:
+            victim = Path(tmp) / "victim.txt"
+            victim.write_text("da vítima")
+            out = Path(tmp) / "thumbnails.jpg"
+            out.symlink_to(victim)
+            result = run_in(SKILLS / "pptx/scripts", f"""
+                from pathlib import Path
+                from PIL import Image
+                from thumbnail import create_grids
+                slide = Path({tmp!r}) / "s1.jpg"
+                Image.new("RGB", (40, 30), "white").save(slide)
+                print(create_grids([(slide, "1")], 2, 80, Path({str(out)!r})))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(victim.read_text(), "da vítima")
+            self.assertFalse(out.is_symlink())
+            self.assertEqual(out.read_bytes()[:2], b"\xff\xd8")
+            self.assertEqual([p.name for p in Path(tmp).iterdir() if p.name.startswith(".")], [])
+
     def test_pptx_thumbnail_refuses_zip_bomb_before_reading(self):
         with tempfile.TemporaryDirectory() as tmp:
             pptx = Path(tmp) / "bomb.pptx"
