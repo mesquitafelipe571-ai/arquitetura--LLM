@@ -22,7 +22,7 @@ from pathlib import Path
 import defusedxml.ElementTree as ET
 from defusedxml.common import DefusedXmlException
 
-from helpers import OOXML_FAMILY, refuse_links, rezip, safe_extract
+from helpers import OOXML_FAMILY, refuse_linked_path, refuse_links, rezip, safe_extract
 from validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator
 
 WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -87,6 +87,13 @@ def main():
     path = Path(args.path)
     if not path.exists():
         _fail(f"{path} does not exist")
+    # A linked document (here or as --original) would print a private local file's text in the report.
+    try:
+        refuse_linked_path(path, "input file")
+        if args.original:
+            refuse_linked_path(Path(args.original), "original file")
+    except ValueError as e:
+        _fail(str(e))
 
     original_file = None
     if args.original:

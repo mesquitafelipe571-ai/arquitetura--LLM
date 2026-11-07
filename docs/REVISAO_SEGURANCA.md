@@ -132,6 +132,7 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   O `pptx/scripts/clean.py` recusa limpar, sem apagar nada, um pacote que contenha qualquer link.
   O `docx/scripts/comment.py` faz a mesma conferência nas partes de comentários antes de alterá-las.
   Os modos `.docx` de `accept_changes.py`, `comment.py` e `merge_runs.py` recusam um arquivo de entrada que seja link (ou esteja sob uma pasta que seja), para não copiar um documento privado para a saída.
+  O `office/validate.py` faz o mesmo com o documento validado e com o `--original`, cujo texto o diff do redlining imprimiria.
   O modo `.pptx` de `pptx/scripts/add_slide.py`, o `pptx/scripts/thumbnail.py` e o `xlsx/scripts/recalc.py` (que reescreve a planilha no lugar) seguem a mesma regra.
   Na saída, `rezip()` recusa uma pasta-link acima do arquivo gerado (`exports -> fora`), que faria o `os.replace()` substituir um arquivo fora do workspace.
   A mesma recusa vale para todos os gravadores com arquivo temporário e `os.replace()`: `replacing()` da skill `pdf`, `accept_changes.py`, `thumbnail.py`, `write_text_replace()`, `package_skill.py` e `generate_review.py` do skill-creator, e `write_report()` do mcp-builder.

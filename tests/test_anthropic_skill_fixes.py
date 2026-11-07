@@ -186,6 +186,24 @@ class OfficeSkillTests(unittest.TestCase):
                     self.assertNotEqual(result.returncode, 2, result.stdout + result.stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
+    def test_validate_refuses_linked_input_and_original(self):
+        # doc.docx -> DOCX privado: o diff do redlining imprimiria o texto dele no relatório.
+        w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:
+                for name, text in ((Path(private) / "secret.docx", "PRIVATE_CONTRACT_RATE_9472"), (Path(tmp) / "out.docx", "ok")):
+                    with zipfile.ZipFile(name, "w") as z:
+                        z.writestr("word/document.xml", f'<w:document xmlns:w="{w}"><w:body><w:p><w:r><w:t>{text}'
+                                   '</w:t></w:r></w:p></w:body></w:document>')
+                (Path(tmp) / "doc.docx").symlink_to(Path(private) / "secret.docx")
+                for argv in (["out.docx", "--original", "doc.docx", "--author", "X"], ["doc.docx"]):
+                    result = subprocess.run([sys.executable, str(SKILLS / f"{skill}/scripts/office/validate.py"), *argv],
+                                            cwd=tmp, capture_output=True, text=True, timeout=60)
+                    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                    self.assertIn("goes through a symlink", result.stderr)
+                    self.assertNotIn("PRIVATE_CONTRACT_RATE_9472", result.stdout + result.stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
     def test_content_types_accepts_media_override(self):
         # Uma <Override> para a imagem declara o tipo tanto quanto uma <Default> para png.
         ct = "http://schemas.openxmlformats.org/package/2006/content-types"
