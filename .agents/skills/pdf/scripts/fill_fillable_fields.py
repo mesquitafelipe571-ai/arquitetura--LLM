@@ -70,7 +70,9 @@ def validation_error_for_field_value(field_info, field_value):
             return f'ERROR: Invalid value "{field_value}" for radio group field "{field_id}". Valid values are: {option_values}' 
     elif field_type == "choice":
         choice_values = [opt["value"] for opt in field_info["choice_options"]]
-        if field_value not in choice_values:
+        # A multi-select list takes a list of options; pypdf writes it as an array in /V.
+        values = field_value if field_info.get("multi_select") and isinstance(field_value, list) else [field_value]
+        if any(value not in choice_values for value in values):
             return f'ERROR: Invalid value "{field_value}" for choice field "{field_id}". Valid values are: {choice_values}'
     return None
 

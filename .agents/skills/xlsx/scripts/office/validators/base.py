@@ -43,6 +43,12 @@ class BaseSchemaValidator:
         "sp": ("id", "file"),  
         "pic": ("id", "file"),  
         "grpsp": ("id", "file"),  
+        "cnvpr": ("id", "file"),  # shape ids live on <p:cNvPr>, unique within the slide part
+    }
+
+    # Elements counted only in this namespace: Word repeats <pic:cNvPr id="0"> for every image.
+    UNIQUE_ID_NAMESPACES = {
+        "cnvpr": "http://schemas.openxmlformats.org/presentationml/2006/main",
     }
 
     EXCLUDED_ID_CONTAINERS = {
@@ -251,6 +257,8 @@ class BaseSchemaValidator:
                         # Unqualified or in the element's own namespace (w:id on w:comment): r:id on
                         # p:sldMasterId names a relationship, and rId1 repeats across parts.
                         elem_ns = elem.tag[1:].split("}")[0] if elem.tag.startswith("{") else None
+                        if self.UNIQUE_ID_NAMESPACES.get(tag, elem_ns) != elem_ns:
+                            continue
                         id_value = None
                         for attr, value in elem.attrib.items():
                             attr_ns, attr_local = (

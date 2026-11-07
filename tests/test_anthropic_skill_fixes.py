@@ -125,6 +125,43 @@ class OfficeSkillTests(unittest.TestCase):
                 self.assertEqual(os.listdir(outside), ["result.docx"])
 
     @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
+    def test_unique_ids_checks_presentation_cnvpr_only(self):
+        # Dois <p:cNvPr id="5"> no mesmo slide colidem; <pic:cNvPr id="0"> repetido no Word é normal.
+        pml = "http://schemas.openxmlformats.org/presentationml/2006/main"
+        pic = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+        slide = (f'<p:sld xmlns:p="{pml}"><p:cSld><p:spTree>'
+                 + '<p:sp><p:nvSpPr><p:cNvPr id="5" name="A"/></p:nvSpPr></p:sp>' * 2
+                 + '</p:spTree></p:cSld></p:sld>')
+        doc = f'<w:document xmlns:w="x" xmlns:pic="{pic}">' + '<pic:cNvPr id="0" name="P"/>' * 2 + '</w:document>'
+        for skill in ("docx", "pptx", "xlsx"):
+            for part, xml, expected in (("ppt/slides/slide1.xml", slide, "False"), ("word/document.xml", doc, "True")):
+                with self.subTest(skill=skill, part=part), tempfile.TemporaryDirectory() as tmp:
+                    (Path(tmp) / part).parent.mkdir(parents=True)
+                    (Path(tmp) / part).write_text(xml)
+                    result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                        from validators.base import BaseSchemaValidator
+                        class V(BaseSchemaValidator):
+                            def validate(self):
+                                return True
+                        print(V({tmp!r}).validate_unique_ids())
+                    """)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout.strip().splitlines()[-1], expected, result.stdout)
+
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
+    def test_validate_detects_family_of_unpacked_directory(self):
+        # Sem --original, a estrutura do diretório diz o tipo: o validador roda em vez de sair com código 2.
+        for skill in ("docx", "pptx", "xlsx"):
+            for part in ("word/document.xml", "ppt/presentation.xml", "xl/workbook.xml"):
+                with self.subTest(skill=skill, part=part), tempfile.TemporaryDirectory() as tmp:
+                    (Path(tmp) / part).parent.mkdir(parents=True)
+                    (Path(tmp) / part).write_text("<x/>")
+                    result = subprocess.run([sys.executable, "office/validate.py", tmp],
+                                            cwd=SKILLS / f"{skill}/scripts", capture_output=True, text=True, timeout=60)
+                    self.assertNotIn("Cannot determine file type", result.stdout + result.stderr)
+                    self.assertNotEqual(result.returncode, 2, result.stdout + result.stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
     def test_content_types_accepts_media_override(self):
         # Uma <Override> para a imagem declara o tipo tanto quanto uma <Default> para png.
         ct = "http://schemas.openxmlformats.org/package/2006/content-types"
@@ -2852,6 +2889,21 @@ class XlsxPdfTests(unittest.TestCase):
             self.assertEqual(out.read_bytes()[:5], b"%PDF-")
             self.assertEqual(json.loads(info.read_text()), [])
             self.assertEqual([p.name for p in Path(tmp).iterdir() if p.name.startswith(".")], [])
+
+    def test_pdf_multi_select_choice_accepts_list(self):
+        # Seleção múltipla (/Ff bit 22): ["Red", "Blue"] vale opção por opção; sem o flag, a lista é recusada.
+        result = run_in(SKILLS / "pdf/scripts", """
+            from extract_form_field_info import make_field_dict
+            from fill_fillable_fields import validation_error_for_field_value
+            info = make_field_dict({"/FT": "/Ch", "/Ff": 1 << 21, "/_States_": ["Red", "Blue"]}, "c")
+            print(info.get("multi_select"))
+            print(validation_error_for_field_value(info, ["Red", "Blue"]))
+            print(validation_error_for_field_value(info, ["Red", "Green"]) is not None)
+            single = make_field_dict({"/FT": "/Ch", "/_States_": ["Red", "Blue"]}, "c")
+            print("multi_select" in single, validation_error_for_field_value(single, ["Red"]) is not None)
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip().splitlines(), ["True", "None", "True", "False True"])
 
     def test_pdf_inputs_refuse_links(self):
         # in.pdf como link para um PDF local: o PDF copiado iria para a saída devolvida ao terceiro.

@@ -97,6 +97,9 @@ def main():
             _fail(f"{original_file} must be one of: {', '.join(sorted(OOXML_FAMILY))}")
 
     family = OOXML_FAMILY.get((original_file or path).suffix.lower())
+    if family is None and path.is_dir():  # a document built from scratch has no file to name its type
+        family = next((f for part, f in (("word/document.xml", "docx"), ("ppt/presentation.xml", "pptx"),
+                                         ("xl/workbook.xml", "xlsx")) if (path / part).is_file()), None)
     if family is None:
         _fail(
             f"Cannot determine file type from {path}. Use --original or provide one of: {', '.join(sorted(OOXML_FAMILY))}."

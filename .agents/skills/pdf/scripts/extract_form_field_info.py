@@ -47,6 +47,8 @@ def make_field_dict(field, field_id):
             else {"value": state[0], "text": state[1]}
             for state in states
         ]
+        if int(field.get("/Ff", 0)) & (1 << 21):  # MultiSelect: the value may be a list of options
+            field_dict["multi_select"] = True
     else:
         field_dict["type"] = f"unknown ({ft})"
     return field_dict
