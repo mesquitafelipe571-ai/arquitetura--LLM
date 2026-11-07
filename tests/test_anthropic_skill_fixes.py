@@ -30,6 +30,34 @@ def run_in(scripts_dir, code):
 @unittest.skipUnless(HAS_DEFUSEDXML, "defusedxml não instalado")
 class OfficeSkillTests(unittest.TestCase):
     @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
+    def test_redlining_counts_empty_paragraphs(self):
+        # Original: A, vazio, B. Remover o vazio sem rastrear falha; com a marca rastreada, passa.
+        w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        doc = f'<w:document xmlns:w="{w}"><w:body>{{}}</w:body></w:document>'
+        a, b = '<w:p><w:r><w:t>A</w:t></w:r></w:p>', '<w:p><w:r><w:t>B</w:t></w:r></w:p>'
+        mark = '<w:p><w:pPr><w:rPr><w:{} w:id="9" w:author="X"/></w:rPr></w:pPr></w:p>'
+        cases = {
+            "removed untracked": (a + '<w:p/>' + b, a + b, False),
+            "removal tracked": (a + '<w:p/>' + b, a + mark.format("del") + b, True),
+            "added untracked": (a + b, a + '<w:p/>' + b, False),
+            "addition tracked": (a + b, a + mark.format("ins") + b, True),
+        }
+        for skill in ("docx", "pptx", "xlsx"):
+            for name, (original, modified, expected) in cases.items():
+                with self.subTest(skill=skill, case=name), tempfile.TemporaryDirectory() as tmp:
+                    src = Path(tmp) / "original.docx"
+                    with zipfile.ZipFile(src, "w") as z:
+                        z.writestr("word/document.xml", doc.format(original))
+                    (Path(tmp) / "out/word").mkdir(parents=True)
+                    (Path(tmp) / "out/word/document.xml").write_text(doc.format(modified))
+                    result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                        from validators.redlining import RedliningValidator
+                        print(RedliningValidator({str(Path(tmp) / "out")!r}, {str(src)!r}).validate())
+                    """)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout.strip().splitlines()[-1], str(expected))
+
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
     def test_redlining_counts_tabs_and_breaks(self):
         # Remover <w:tab/> sem rastrear muda o texto visível; com <w:del> a mudança está registrada.
         w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -1190,6 +1218,20 @@ class SkillCreatorTests(unittest.TestCase):
             """)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "['eval-0-with_skill', 'eval-a-b/c', 'eval-a/b-c'] True")
+
+    def test_viewer_skips_linked_directories(self):
+        # loop -> o próprio workspace multiplicava uma execução em dezenas de falsas.
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "eval-0/with_skill/outputs").mkdir(parents=True)
+            (Path(tmp) / "eval-0/with_skill/outputs/answer.txt").write_text("x")
+            (Path(tmp) / "loop").symlink_to(tmp, target_is_directory=True)
+            result = run_in(SKILLS / "skill-creator/eval-viewer", f"""
+                from pathlib import Path
+                from generate_review import find_runs
+                print([r["id"] for r in find_runs(Path({tmp!r}))])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "['eval-0-with_skill']")
 
     def test_package_skill_skips_its_own_output_inside_the_skill(self):
         with tempfile.TemporaryDirectory() as tmp:

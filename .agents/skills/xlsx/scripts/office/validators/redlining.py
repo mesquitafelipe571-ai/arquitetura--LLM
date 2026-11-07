@@ -68,6 +68,7 @@ class RedliningValidator:
                 return False
 
             new_changes = self._new_tracked_changes(original_root, modified_root)
+            self._mark_inserted_paragraph_marks(modified_root, new_changes)
             self._remove_tracked_changes(modified_root, new_changes)
 
             modified_text = self._extract_text_content(modified_root)
@@ -279,6 +280,17 @@ class RedliningValidator:
                     parent.insert(del_index, child)
                 parent.remove(del_elem)
 
+    _MERGED = "{urn:redlining-validator}merged"
+
+    def _mark_inserted_paragraph_marks(self, root, targets):
+        """A new tracked insertion of a paragraph mark (w:pPr/w:rPr/w:ins) is undone by joining
+        the paragraph with the next one; flag those before the w:ins markers are removed."""
+        w = self.namespaces["w"]
+        for p_elem in root.iter(f"{{{w}}}p"):
+            mark = p_elem.find(f"{{{w}}}pPr/{{{w}}}rPr/{{{w}}}ins")
+            if mark is not None and mark in targets:
+                p_elem.set(self._MERGED, "1")
+
     def _extract_text_content(self, root):
         w = self.namespaces['w']
         p_tag = f"{{{w}}}p"
@@ -294,11 +306,12 @@ class RedliningValidator:
                     text_parts.append(self._rendered_text(elem))
                 elif elem.tag in separators:
                     text_parts.append(separators[elem.tag])
-            paragraph_text = "".join(text_parts)
-            if paragraph_text:
-                paragraphs.append(paragraph_text)
+            # Empty paragraphs count: removing one untracked changes the layout. A paragraph whose
+            # mark is a new tracked insertion runs on into the next, as rejecting it would do.
+            paragraphs.append("".join(text_parts))
+            paragraphs.append("" if p_elem.get(self._MERGED) else "\n")
 
-        return "\n".join(paragraphs)
+        return "".join(paragraphs)
 
 
 if __name__ == "__main__":

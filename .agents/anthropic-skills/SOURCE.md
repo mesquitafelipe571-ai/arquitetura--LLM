@@ -129,6 +129,8 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `mcp-builder/scripts/evaluation.py` | Só o primeiro bloco de texto da resposta final era lido; a `<response>` num bloco seguinte virava `None` e nota 0 | `agent_loop()` junta todos os blocos `text` antes de extrair as tags |
 | `skill-creator/scripts/aggregate_benchmark.py` | `runs_per_configuration` era fixo em 3, mesmo com uma execução só | Contado a partir dos resultados carregados; vira faixa (ex.: `"1-3"`) quando as contagens diferem |
 | `office/helpers/pptx_chart.py` (3 cópias) | As expressões de agrupamento, `dLblPos` e eixos exigiam `val=` colado; `val = "…"` (XML válido) sumia com eixos e escondia `outEnd` empilhado | Todas aceitam `\s*=\s*` |
+| `office/validators/redlining.py` (3 cópias) | Parágrafos vazios eram descartados da comparação; incluir ou remover um sem rastrear passava | Cada parágrafo conta com sua marca; uma marca inserida por revisão nova une o parágrafo ao seguinte, como ao rejeitá-la |
+| `skill-creator/eval-viewer/generate_review.py` | `find_runs()` descia em links de diretório; um link para o próprio workspace gerava dezenas de execuções falsas | Diretórios que são links não são percorridos |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

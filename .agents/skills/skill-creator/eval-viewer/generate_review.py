@@ -89,7 +89,8 @@ def _find_runs_recursive(root: Path, current: Path, runs: list[dict]) -> None:
 
     skip = {"node_modules", ".git", "__pycache__", "skill", "inputs"}
     for child in sorted(current.iterdir()):
-        if child.is_dir() and child.name not in skip:
+        # A linked folder could loop back into the workspace (or leave it) and invent runs.
+        if child.is_dir() and not child.is_symlink() and child.name not in skip:
             _find_runs_recursive(root, child, runs)
 
 
