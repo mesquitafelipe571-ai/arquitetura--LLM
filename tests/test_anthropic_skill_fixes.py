@@ -152,6 +152,63 @@ class McpEvaluationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), "['one', 'two']")
 
+    def test_agent_loop_serializes_mcp_content_models(self):
+        result = run_in(SKILLS / "mcp-builder/scripts", """
+            import asyncio, json, sys, types
+            sys.modules["anthropic"] = types.SimpleNamespace(Anthropic=object)
+            sys.modules["connections"] = types.SimpleNamespace(create_connection=None)
+            import evaluation
+
+            class TextContent:  # imita o modelo pydantic do SDK MCP
+                def model_dump(self, mode="python"):
+                    return {"type": "text", "text": "ok"}
+            Block = lambda **kw: types.SimpleNamespace(**kw)
+            replies = [Block(stop_reason="tool_use", content=[Block(type="tool_use", id="one", name="a", input={})]),
+                       Block(stop_reason="end_turn", content=[Block(type="text", text="done")])]
+            sent = []
+            def create(**kw):
+                sent.append([dict(m) for m in kw["messages"]])
+                return replies[len(sent) - 1]
+            class Conn:
+                async def call_tool(self, name, args):
+                    return [TextContent()]
+            client = types.SimpleNamespace(messages=types.SimpleNamespace(create=create))
+            asyncio.run(evaluation.agent_loop(client, "m", "q", [], Conn()))
+            print(json.loads(sent[1][-1]["content"][0]["content"])[0]["text"])
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "ok")
+
+
+class SkillCreatorTests(unittest.TestCase):
+    def test_viewer_data_cannot_close_script_element(self):
+        result = run_in(SKILLS / "skill-creator/eval-viewer", """
+            from generate_review import generate_html
+            html = generate_html([{"id": "r", "outputs": "<p>x</p></script><script>alert(1)</script>"}], "s")
+            start = html.index("const EMBEDDED_DATA = ")
+            line = html[start:html.index("\\n", start)]
+            print("</script>" in line.lower(), "\\\\u003c/script" in line)
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.split(), ["False", "True"])
+
+    def test_run_eval_failed_runs_never_pass(self):
+        result = run_in(SKILLS / "skill-creator", """
+            import concurrent.futures
+            from pathlib import Path
+            from unittest import mock
+            from scripts import run_eval
+            def boom(*a, **k):
+                raise FileNotFoundError("claude")
+            with mock.patch.object(run_eval, "ProcessPoolExecutor", concurrent.futures.ThreadPoolExecutor), \\
+                 mock.patch.object(run_eval, "run_single_query", boom):
+                out = run_eval.run_eval([{"query": "q", "should_trigger": False}], "s", "d", 1, 1, Path("."), runs_per_query=3)
+            r = out["results"][0]
+            print(r["pass"], r["errors"], r["runs"], out["summary"]["passed"])
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.split(), ["False", "3", "0", "0"])
+
 
 @unittest.skipIf(sys.platform == "win32", "grupo de processos POSIX")
 class WithServerTests(unittest.TestCase):
@@ -167,6 +224,19 @@ class WithServerTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         with self.assertRaises(OSError):
             socket.create_connection(("127.0.0.1", port), timeout=1).close()
+
+    def test_chatty_server_does_not_block_on_full_pipe(self):
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        # Escreve 1 MB antes de abrir a porta: com PIPE não lido, o servidor travava.
+        server = (f"{sys.executable} -c \"import sys; sys.stdout.write('x' * 1048576); sys.stdout.flush()\"; "
+                  f"{sys.executable} -m http.server {port} --bind 127.0.0.1")
+        result = subprocess.run([sys.executable, str(SKILLS / "webapp-testing/scripts/with_server.py"),
+                                 "--server", server, "--port", str(port), "--timeout", "15",
+                                 "--", sys.executable, "-c", "pass"],
+                                capture_output=True, text=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stderr[-500:])
 
 
 if __name__ == "__main__":

@@ -92,8 +92,7 @@ def main():
             process = subprocess.Popen(
                 server['cmd'],
                 shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                # Inherit the output: unread pipes fill up and block a chatty server.
                 start_new_session=True,
             )
             server_processes.append(process)

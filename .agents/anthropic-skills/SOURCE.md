@@ -14,7 +14,7 @@
 
 ## Alterações locais
 
-A revisão do Codex no PR #15 apontou defeitos que também existem na origem; o último item da tabela foi encontrado ao corrigir o penúltimo.
+A revisão do Codex no PR #15 apontou defeitos que também existem na origem; o item do `office/soffice.py` foi encontrado ao corrigir o do perfil LibreOffice. As 4 últimas linhas vieram da revisão dos commits de correção.
 Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 (todos os testes falham com os arquivos originais):
 
@@ -27,6 +27,10 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `mcp-builder/scripts/evaluation.py` | Respondia só a primeira chamada de ferramenta de cada turno | Executa todas e envia todos os `tool_result` juntos |
 | `docx/scripts/accept_changes.py` (segurança) | Perfil LibreOffice fixo em `/tmp/libreoffice_docx_profile`; outro usuário local podia plantar a macro executada | Perfil privado (`TemporaryDirectory`, modo 700) criado a cada execução |
 | `{docx,pptx,xlsx}/scripts/office/soffice.py` (segurança) | Reutilizava `/tmp/lo_socket_shim.so` se já existisse e o carregava via `LD_PRELOAD` | Compila o shim em diretório privado (`mkdtemp`) e nunca carrega um arquivo preexistente |
+| `skill-creator/eval-viewer/generate_review.py` | Saídas com `</script>` fechavam o script do visualizador e podiam injetar HTML | `<` escapado como `\u003c` no JSON embutido |
+| `skill-creator/scripts/run_eval.py` | Execução que falhava contava como "não acionou" e podia virar aprovação | Falhas contadas em `errors`; consulta com falha nunca passa |
+| `webapp-testing/scripts/with_server.py` | Saída do servidor em `PIPE` nunca lido travava servidores com muito log | O servidor herda stdout/stderr |
+| `mcp-builder/scripts/evaluation.py` | Resultados do SDK MCP (modelos pydantic) quebravam o `json.dumps` | Serializa com `model_dump(mode="json")` |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

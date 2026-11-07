@@ -116,7 +116,12 @@ async def agent_loop(
             tool_start_ts = time.time()
             try:
                 tool_result = await connection.call_tool(tool_name, tool_input)
-                tool_response = json.dumps(tool_result) if isinstance(tool_result, (dict, list)) else str(tool_result)
+                # MCP SDK content blocks are pydantic models, not plain JSON.
+                tool_response = (
+                    json.dumps(tool_result, default=lambda o: o.model_dump(mode="json") if hasattr(o, "model_dump") else str(o))
+                    if isinstance(tool_result, (dict, list))
+                    else str(tool_result)
+                )
             except Exception as e:
                 tool_response = f"Error executing tool {tool_name}: {str(e)}\n"
                 tool_response += traceback.format_exc()

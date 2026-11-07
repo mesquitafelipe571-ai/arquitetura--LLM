@@ -211,6 +211,7 @@ def run_eval(
                 future_to_info[future] = (item, run_idx)
 
         query_triggers: dict[str, list[bool]] = {}
+        query_errors: dict[str, int] = {}
         query_items: dict[str, dict] = {}
         for future in as_completed(future_to_info):
             item, _ = future_to_info[future]
@@ -221,14 +222,18 @@ def run_eval(
             try:
                 query_triggers[query].append(future.result())
             except Exception as e:
+                # A run that failed was not evaluated; it must never count as "did not trigger".
                 print(f"Warning: query failed: {e}", file=sys.stderr)
-                query_triggers[query].append(False)
+                query_errors[query] = query_errors.get(query, 0) + 1
 
     for query, triggers in query_triggers.items():
         item = query_items[query]
-        trigger_rate = sum(triggers) / len(triggers)
+        errors = query_errors.get(query, 0)
+        trigger_rate = sum(triggers) / len(triggers) if triggers else 0.0
         should_trigger = item["should_trigger"]
-        if should_trigger:
+        if errors:
+            did_pass = False
+        elif should_trigger:
             did_pass = trigger_rate >= trigger_threshold
         else:
             did_pass = trigger_rate < trigger_threshold
@@ -238,6 +243,7 @@ def run_eval(
             "trigger_rate": trigger_rate,
             "triggers": sum(triggers),
             "runs": len(triggers),
+            "errors": errors,
             "pass": did_pass,
         })
 
