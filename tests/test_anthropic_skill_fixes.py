@@ -1395,7 +1395,7 @@ class McpEvaluationTests(unittest.TestCase):
                 async def call_tool(self, name, args):
                     return name
             client = types.SimpleNamespace(messages=types.SimpleNamespace(create=create))
-            asyncio.run(evaluation.agent_loop(client, "m", "q", [], Conn()))
+            asyncio.run(evaluation.agent_loop(client, "m", "q", [{"name": "a"}, {"name": "b"}], Conn()))
             print(sorted(r["tool_use_id"] for r in sent[1][-1]["content"]))
         """)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -1474,7 +1474,7 @@ class McpEvaluationTests(unittest.TestCase):
                 async def call_tool(self, name, args):
                     return [TextContent()]
             client = types.SimpleNamespace(messages=types.SimpleNamespace(create=create))
-            asyncio.run(evaluation.agent_loop(client, "m", "q", [], Conn()))
+            asyncio.run(evaluation.agent_loop(client, "m", "q", [{"name": "a"}], Conn()))
             print(json.loads(sent[1][-1]["content"][0]["content"])[0]["text"])
         """)
         self.assertEqual(result.returncode, 0, result.stderr)
