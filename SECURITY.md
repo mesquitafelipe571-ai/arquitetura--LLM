@@ -50,8 +50,8 @@ date with the reporter before any public disclosure.
 - `scripts/check-repo.py` and the test suite run on every pull request
   (`.github/workflows/`). The check also fails if a workflow uses a GitHub
   Action that is not pinned to a full commit SHA.
-- CodeQL (`.github/workflows/codeql.yml`) analyzes Python, JavaScript and the
-  GitHub Actions workflows on every pull request, on `main` and weekly.
+- CodeQL (`.github/workflows/codeql.yml`) analyzes the Python code and the GitHub
+  Actions workflows on every pull request, on `main` and weekly.
 - Workflows run with `contents: read` and do not persist the checkout token.
 - Dependabot watches npm, pip, GitHub Actions, the dev container image and
   features, and the pinned Git submodules (`.github/dependabot.yml`).
