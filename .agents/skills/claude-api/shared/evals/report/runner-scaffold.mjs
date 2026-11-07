@@ -421,6 +421,14 @@ async function main() {
     }
     seen.set(k, c.id);
   }
+  // Refs are probed as <id> + REF_EXTS, so 'invoice' and 'invoice.txt' would share
+  // baseline/ref/invoice.txt and one case would be judged against the other's output.
+  for (const [k, id] of seen)
+    for (const ext of REF_EXTS)
+      if (ext && seen.has(k + ext)) {
+        eprint(`case id '${seen.get(k + ext)}' collides with '${id}' + '${ext}' in baseline/ref/ - rename one`);
+        process.exit(2);
+      }
   const safeIds = new Set(cases.map(c => pathSafeId(c.id)));
   for (const k of ['train_ids', 'val_ids', 'test_ids'])
     if (st[k] != null && !Array.isArray(st[k])) { eprint(`_state.json ${k} must be a list of ids`); process.exit(2); }

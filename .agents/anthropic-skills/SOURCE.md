@@ -94,6 +94,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `docx/scripts/comment.py` | Usava sempre `word/comments.xml`; num documento cuja relação aponta para outra parte (ex.: `comments1.xml`), repetia o ID 0, criava uma segunda relação de comentários e não achava o comentário-pai | Resolve as quatro partes de comentários pela relação existente antes de calcular IDs, achar o pai e registrar tipos de conteúdo |
 | `claude-api/shared/evals/report/build-report-lite.mjs` | Uma variante em que todas as tentativas falharam (só `errors.jsonl`) era descartada; o relatório e o `scores.tsv` omitiam a rodada e as falhas | Só descarta a variante sem resultados e sem erros; a pontuação fica em branco e as falhas aparecem |
 | `skill-creator/eval-viewer/generate_review.py` (segurança) | `--benchmark` passava por `resolve()` e seguia um `benchmark.json` que fosse link, embutindo qualquer JSON legível no HTML | O benchmark só é lido como arquivo regular dentro do workspace (`_workspace_file`); um link é recusado com erro |
+| `claude-api/shared/evals/report/runner-scaffold.mjs` | IDs como `invoice` e `invoice.txt` passavam na checagem de unicidade, mas dividiam `baseline/ref/invoice.txt`; um caso era avaliado contra a saída do outro | O runner recusa, antes de rodar, um ID igual a outro mais uma extensão de `REF_EXTS` |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

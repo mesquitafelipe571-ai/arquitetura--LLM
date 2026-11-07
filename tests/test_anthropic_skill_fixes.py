@@ -675,6 +675,25 @@ class SkillCreatorTests(unittest.TestCase):
                              ["id\tsplit\tbaseline\tv1", "c1\tall\t1.000\t"])
             self.assertIn("timeout 1", (flow / "report.html").read_text())
 
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_eval_runner_rejects_ids_that_share_a_ref_path(self):
+        # 'invoice' e 'invoice.txt' cairiam no mesmo baseline/ref/invoice.txt.
+        scaffold = (SKILLS / "claude-api/shared/evals/report/runner-scaffold.mjs").read_text()
+        filled = (scaffold
+                  .replace("throw new Error('TODO: loadCases');",
+                           "return [{ id: 'invoice.txt', prompt: 'a' }, { id: 'invoice', prompt: 'b' }];")
+                  .replace("throw new Error('TODO: runCase');", "throw new Error('não deveria rodar');")
+                  .replace("throw new Error('TODO: gradeCase');", "return { grade: { pass: 1 } };"))
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = Path(tmp) / "bin/run-eval.mjs"
+            runner.parent.mkdir()
+            runner.write_text(filled)
+            result = subprocess.run(["node", str(runner), "--flow", str(Path(tmp) / "flow"), "--variant", "baseline",
+                                     "--approve-harness"], capture_output=True, text=True, timeout=60, cwd=tmp)
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertIn("collides", result.stderr)
+            self.assertFalse((Path(tmp) / "flow/baseline/results.jsonl").exists())
+
     def test_viewer_data_cannot_close_script_element(self):
         result = run_in(SKILLS / "skill-creator/eval-viewer", """
             from generate_review import generate_html
