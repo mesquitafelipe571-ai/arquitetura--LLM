@@ -2,12 +2,13 @@ import os
 import sys
 
 from pdf2image import convert_from_path
-from _replace_write import replacing
+from _replace_write import refuse_linked_input, replacing
 
 
 
 
 def convert(pdf_path, output_dir, max_dim=1000):
+    refuse_linked_input(pdf_path)
     images = convert_from_path(pdf_path, dpi=200)
     os.makedirs(output_dir, exist_ok=True)
 

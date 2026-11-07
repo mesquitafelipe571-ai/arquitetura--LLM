@@ -4,12 +4,14 @@ import sys
 from pypdf import PdfReader, PdfWriter
 
 from extract_form_field_info import get_field_info, get_full_annotation_field_id
-from _replace_write import replacing
+from _replace_write import refuse_linked_input, replacing
 
 
 
 
 def fill_pdf_fields(input_pdf_path: str, fields_json_path: str, output_pdf_path: str):
+    refuse_linked_input(input_pdf_path)
+    refuse_linked_input(fields_json_path)
     with open(fields_json_path) as f:
         fields = json.load(f)
     reader = PdfReader(input_pdf_path)

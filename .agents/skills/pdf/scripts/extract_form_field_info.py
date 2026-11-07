@@ -2,7 +2,7 @@ import json
 import sys
 
 from pypdf import PdfReader
-from _replace_write import replacing
+from _replace_write import refuse_linked_input, replacing
 
 
 
@@ -122,6 +122,7 @@ def get_field_info(reader: PdfReader):
 
 
 def write_field_info(pdf_path: str, json_output_path: str):
+    refuse_linked_input(pdf_path)
     reader = PdfReader(pdf_path)
     field_info = get_field_info(reader)
     with replacing(json_output_path) as tmp, open(tmp, "w") as f:

@@ -2676,6 +2676,36 @@ class XlsxPdfTests(unittest.TestCase):
             self.assertEqual(json.loads(info.read_text()), [])
             self.assertEqual([p.name for p in Path(tmp).iterdir() if p.name.startswith(".")], [])
 
+    def test_pdf_inputs_refuse_links(self):
+        # in.pdf como link para um PDF local: o PDF copiado iria para a saída devolvida ao terceiro.
+        from pypdf import PdfWriter
+        with tempfile.TemporaryDirectory() as tmp:
+            victim, src, out, fields, info = (Path(tmp) / n for n in
+                                              ("victim.pdf", "in.pdf", "out.pdf", "fields.json", "info.json"))
+            w = PdfWriter()
+            w.add_blank_page(600, 800)
+            with open(victim, "wb") as f:
+                w.write(f)
+            src.symlink_to(victim)
+            fields.write_text(json.dumps({"pages": [], "form_fields": []}))
+            result = run_in(SKILLS / "pdf/scripts", f"""
+                import sys, types
+                sys.modules["pdf2image"] = types.SimpleNamespace(convert_from_path=lambda *a, **k: [])
+                from fill_pdf_form_with_annotations import fill_pdf_form
+                from extract_form_field_info import write_field_info
+                from convert_pdf_to_images import convert
+                for call in (lambda: fill_pdf_form({str(src)!r}, {str(fields)!r}, {str(out)!r}),
+                             lambda: write_field_info({str(src)!r}, {str(info)!r}),
+                             lambda: convert({str(src)!r}, {str(Path(tmp) / "imgs")!r})):
+                    try:
+                        call()
+                    except ValueError as e:
+                        print("recusado:", e)
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.count("recusado: input goes through a symlink"), 3, result.stdout)
+            self.assertFalse(out.exists() or info.exists())
+
     def test_pdf_annotations_follow_mediabox_origin(self):
         # MediaBox [100 200 700 1000]: a caixa [10 10 110 30] da imagem 600x800 vai para (110, 970, 210, 990).
         from pypdf import PdfReader, PdfWriter

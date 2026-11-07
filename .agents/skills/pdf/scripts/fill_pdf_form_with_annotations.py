@@ -2,7 +2,7 @@ import json
 import sys
 
 from pypdf import PdfReader, PdfWriter
-from _replace_write import replacing
+from _replace_write import refuse_linked_input, replacing
 from pypdf.annotations import FreeText
 
 
@@ -32,7 +32,8 @@ def transform_from_pdf_coords(bbox, pdf_height):
 
 
 def fill_pdf_form(input_pdf_path, fields_json_path, output_pdf_path):
-    
+    refuse_linked_input(input_pdf_path)
+    refuse_linked_input(fields_json_path)
     with open(fields_json_path, "r") as f:
         fields_data = json.load(f)
     

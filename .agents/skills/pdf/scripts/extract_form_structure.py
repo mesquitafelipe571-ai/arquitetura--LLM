@@ -15,7 +15,7 @@ Usage: python extract_form_structure.py <input.pdf> <output.json>
 import json
 import sys
 import pdfplumber
-from _replace_write import replacing
+from _replace_write import refuse_linked_input, replacing
 
 
 def extract_form_structure(pdf_path):
@@ -27,6 +27,7 @@ def extract_form_structure(pdf_path):
         "row_boundaries": []
     }
 
+    refuse_linked_input(pdf_path)
     with pdfplumber.open(pdf_path) as pdf:
         for page_num, page in enumerate(pdf.pages, 1):
             structure["pages"].append({

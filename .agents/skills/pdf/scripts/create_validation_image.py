@@ -2,12 +2,14 @@ import json
 import sys
 
 from PIL import Image, ImageDraw
-from _replace_write import replacing
+from _replace_write import refuse_linked_input, replacing
 
 
 
 
 def create_validation_image(page_number, fields_json_path, input_path, output_path):
+    refuse_linked_input(fields_json_path)
+    refuse_linked_input(input_path)
     with open(fields_json_path, 'r') as f:
         data = json.load(f)
 
