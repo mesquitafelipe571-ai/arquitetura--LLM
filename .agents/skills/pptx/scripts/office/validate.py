@@ -22,7 +22,7 @@ from pathlib import Path
 import defusedxml.ElementTree as ET
 from defusedxml.common import DefusedXmlException
 
-from helpers import OOXML_FAMILY, rezip, safe_extract
+from helpers import OOXML_FAMILY, refuse_links, rezip, safe_extract
 from validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator
 
 WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -151,6 +151,11 @@ def main():
             sys.exit(1)
 
     if args.auto_repair:
+        try:
+            refuse_links(unpacked_dir)  # repair() rewrites parts in place
+        except ValueError as e:
+            print(f"Error: {e}")
+            sys.exit(1)
         total_repairs = sum(v.repair() for v in validators)
         if total_repairs:
             print(f"Auto-repaired {total_repairs} issue(s)")

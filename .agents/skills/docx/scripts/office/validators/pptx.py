@@ -120,7 +120,7 @@ class PPTXSchemaValidator(BaseSchemaValidator):
             print("PASSED - Charts satisfy the constraints PowerPoint enforces")
         return True
 
-    def _original_slide_defects(self, schema) -> set[str]:
+    def _original_slide_defects(self, schema) -> set[tuple[str, str]]:
         import tempfile
         import zipfile
 
@@ -129,7 +129,8 @@ class PPTXSchemaValidator(BaseSchemaValidator):
         if self.original_file is None:
             return set()
 
-        found: set[str] = set()
+        # (part, message): a defect the original had in slide1 must not excuse the same one in slide2.
+        found: set[tuple[str, str]] = set()
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             try:
@@ -147,7 +148,7 @@ class PPTXSchemaValidator(BaseSchemaValidator):
                 )
                 if ok is None or ok or not errors:
                     continue
-                found |= set(fatal_slide_errors(set(errors)))
+                found |= {(relative, m) for m in fatal_slide_errors(set(errors))}
         return found
 
     def validate_slides(self):
@@ -180,7 +181,7 @@ class PPTXSchemaValidator(BaseSchemaValidator):
                 continue
 
             for message in fatal_slide_errors(set(errors)):
-                if message in inherited:
+                if (relative, message) in inherited:
                     continue  
                 problems.append(f"{relative}: {message}")
 

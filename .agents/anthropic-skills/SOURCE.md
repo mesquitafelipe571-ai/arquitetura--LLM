@@ -145,6 +145,8 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `slack-gif-creator/core/validators.py` | A duração era o atraso do último quadro vezes o número de quadros; com atrasos diferentes, duração e FPS saíam errados | Soma o atraso de cada quadro durante a iteração |
 | `docx/scripts/comment.py` (segurança) | Um `word/comments.xml` (ou outra parte, ou pasta) que fosse link era lido e sobrescrito fora do pacote | `_refuse_linked_writes()` confere as partes de comentários, `document.xml.rels` e `[Content_Types].xml`, e as pastas até a raiz, antes da primeira gravação |
 | `mcp-builder/scripts/evaluation.py` | Resposta final sem bloco `text` virava `None` e `extract_xml_content()` lançava `TypeError`, abortando o lote e o relatório | `extract_xml_content()` devolve `None` para texto ausente; a tarefa vale 0 e o lote segue |
+| `office/validators/pptx.py` (3 cópias) | As exceções do `--original` eram só mensagens; um defeito antigo em `slide1.xml` dispensava o mesmo defeito novo em `slide2.xml` | `_original_slide_defects()` guarda pares `(parte, mensagem)` e só dispensa o defeito na mesma parte |
+| `docx/scripts/merge_runs.py` + `office/validate.py` e `office/helpers` (3 cópias) (segurança) | `merge_runs` e o `--auto-repair` regravavam partes do diretório descompactado seguindo links (ex.: `word/document.xml` → fora do pacote) | Novo `refuse_links()` nos helpers recusa qualquer link no pacote antes da primeira gravação |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

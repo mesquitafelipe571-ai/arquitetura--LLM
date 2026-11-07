@@ -32,7 +32,7 @@ from pathlib import Path
 
 import defusedxml.minidom
 
-from office.helpers import XML_SPACE, rendered_text, rezip, safe_extract
+from office.helpers import XML_SPACE, refuse_links, rendered_text, rezip, safe_extract
 
 WORDML_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
@@ -44,6 +44,7 @@ def merge_runs(input_dir: str) -> tuple[int, str]:
         return 0, f"Error: {doc_xml} not found"
 
     try:
+        refuse_links(Path(input_dir))  # document.xml is rewritten in place
         dom = defusedxml.minidom.parseString(doc_xml.read_text(encoding="utf-8"))
         root = dom.documentElement
         run_names = _run_tag_names(root)

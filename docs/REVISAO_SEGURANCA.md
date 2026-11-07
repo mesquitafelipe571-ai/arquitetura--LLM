@@ -131,6 +131,7 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   Os relatórios do skill-creator (`benchmark.json`/`.md`, `results.json`, `report.html`, o `--report` do `run_loop.py`, logs) a grade de miniaturas do `pptx/scripts/thumbnail.py` as saídas de `pdf/scripts` (PDFs, JSON e imagens) e o relatório `-o` do `mcp-builder/scripts/evaluation.py` seguem a mesma regra.
   O `pptx/scripts/clean.py` recusa limpar, sem apagar nada, um pacote que contenha qualquer link.
   O `docx/scripts/comment.py` faz a mesma conferência nas partes de comentários antes de alterá-las.
+  O `docx/scripts/merge_runs.py` e o `--auto-repair` do `office/validate.py` recusam, com `refuse_links()`, qualquer link no diretório descompactado antes de regravar partes.
   O `pptx/scripts/add_slide.py` grava no diretório descompactado: antes da primeira gravação, recusa qualquer parte de destino (ou pasta até a raiz do pacote) que seja link.
 - **Fórmulas de rede no recálculo** (`xlsx/scripts/recalc.py`, apontado pela revisão de
   segurança do Codex): `=WEBSERVICE("http://127.0.0.1:...")` numa planilha de terceiro

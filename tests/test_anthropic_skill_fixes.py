@@ -497,6 +497,71 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual(len(types), 4)
             self.assertEqual(parts.count("/word/comments.xml"), 1)
 
+    def test_docx_merge_runs_refuses_linked_document(self):
+        # word/document.xml como link para fora: nada é regravado.
+        w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        original = f'<w:document xmlns:w="{w}"><w:body><w:p><w:r><w:t>a</w:t></w:r><w:r><w:t>b</w:t></w:r></w:p></w:body></w:document>'
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
+            (Path(tmp) / "word").mkdir()
+            victim = Path(outside) / "document.xml"
+            victim.write_text(original)
+            (Path(tmp) / "word/document.xml").symlink_to(victim)
+            result = run_in(SKILLS / "docx/scripts", f"""
+                from merge_runs import merge_runs
+                print(merge_runs({tmp!r}))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("is a symlink", result.stdout)
+            self.assertEqual(victim.read_text(), original)
+
+    def test_office_refuse_links_finds_any_link_in_the_package(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
+            (Path(tmp) / "ppt/slides").mkdir(parents=True)
+            (Path(tmp) / "ppt/media").symlink_to(outside, target_is_directory=True)
+            for skill in ("docx", "pptx", "xlsx"):
+                with self.subTest(skill):
+                    result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                        from pathlib import Path
+                        from helpers import refuse_links
+                        refuse_links(Path({str(Path(tmp) / "ppt/slides")!r}))  # sem links: passa
+                        try:
+                            refuse_links(Path({tmp!r}))
+                        except ValueError as e:
+                            print("recusado:", e)
+                    """)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn("recusado:", result.stdout)
+                    self.assertIn("media is a symlink", result.stdout)
+
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
+    def test_pptx_slide_baseline_excuses_only_the_same_part(self):
+        # O original já tinha <p:txBody> vazio em slide1; o mesmo defeito novo em slide2 tem de aparecer.
+        err = "Element '{http://schemas.openxmlformats.org/presentationml/2006/main}txBody': Missing child element(s)."
+        with tempfile.TemporaryDirectory() as tmp:
+            out, orig = Path(tmp) / "out", Path(tmp) / "orig.pptx"
+            (out / "ppt/slides").mkdir(parents=True)
+            for n in (1, 2):
+                (out / f"ppt/slides/slide{n}.xml").write_text("<x/>")
+            with zipfile.ZipFile(orig, "w") as z:
+                z.writestr("ppt/slides/slide1.xml", "<x/>")
+                z.writestr("ppt/slides/slide2.xml", "<x/>")
+            for skill in ("docx", "pptx", "xlsx"):
+                with self.subTest(skill):
+                    result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                        from pathlib import Path
+                        from validators.pptx import PPTXSchemaValidator
+                        v = PPTXSchemaValidator({str(out)!r}, {str(orig)!r})
+                        def fake(path, root, schema_path=None):
+                            bad = path.name == "slide1.xml" or (path.name == "slide2.xml" and str(root) == str(Path({str(out)!r}).resolve()))
+                            return (False, [{err!r}]) if bad else (True, [])
+                        v._validate_single_file_xsd = fake
+                        print(v.validate_slides())
+                    """)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn("ppt/slides/slide2.xml: a <p:txBody> with no children", result.stdout)
+                    self.assertNotIn("ppt/slides/slide1.xml:", result.stdout)
+                    self.assertEqual(result.stdout.strip().splitlines()[-1], "False")
+
     def test_docx_merge_runs_keeps_namespaces_declared_on_merged_run(self):
         w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
         a = "http://schemas.openxmlformats.org/drawingml/2006/main"

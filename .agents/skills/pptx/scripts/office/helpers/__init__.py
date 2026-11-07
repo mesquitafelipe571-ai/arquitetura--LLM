@@ -122,6 +122,15 @@ def _refuse_linked_destination(dest: Path) -> None:
             raise ValueError(f"extraction destination goes through a symlink: {p}")
 
 
+def refuse_links(root: Path) -> None:
+    """An extracted package has no links (safe_extract refuses them); one inside an unpacked
+    directory would make an in-place edit read and rewrite a file outside the package."""
+    for dirpath, dirnames, filenames in os.walk(root):  # followlinks=False: never descends into one
+        for name in dirnames + filenames:
+            if os.path.islink(os.path.join(dirpath, name)):
+                raise ValueError(f"{os.path.join(dirpath, name)} is a symlink; re-extract the package")
+
+
 def safe_extract(zf: zipfile.ZipFile, dest: Path) -> None:
     _refuse_linked_destination(dest)
     # Only what comes from the archive may end up in dest: a pre-existing unpacked/leak.txt
