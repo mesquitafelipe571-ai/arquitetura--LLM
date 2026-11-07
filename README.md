@@ -333,7 +333,7 @@ Exemplo: `/decisao classifique estes tickets por equipe e urgência` no Claude C
 - O `scripts/ollaya.sh` instala o Ollaya 0.18.0 em `.runtime/ollaya` (ignorada
   pelo Git), sem sudo e sem serviço systemd. O instalador é baixado pelo SHA da tag
   `v0.18.0`, conferido por SHA-256 antes de rodar, e confere os binários pelo
-  `sha256sum.txt` da release.
+  `sha256sum.txt` da release, cujo SHA-256 também fica fixado no script.
 - A instalação pede confirmação no terminal e não roda sem ela, nem por variável
   de ambiente; assim um agente não instala por conta própria.
 - O servidor escuta só em `127.0.0.1:11435`, e os modelos ficam em

@@ -15,6 +15,8 @@ fixado. Ao trocar a versão do Ollaya, atualize a skill (refazendo essa troca),
 O instalador (`scripts/install.sh` do mesmo commit) é baixado por SHA completo,
 conferido pelo SHA-256 fixado em `scripts/ollaya.sh` (`INSTALLER_SHA256`) e só
 roda com confirmação humana; ele confere os binários da release pelo
-`sha256sum.txt` dela. Ao trocar a versão, atualize também `INSTALLER_SHA256`. Os pesos dos modelos vêm
+`sha256sum.txt` dela, que também é fixado (`SUMS_SHA256`): o `scripts/ollaya.sh` baixa e confere
+essa lista antes e a entrega ao instalador, porque assets de release podem ser reenviados.
+Ao trocar a versão, atualize também `INSTALLER_SHA256` e `SUMS_SHA256`. Os pesos dos modelos vêm
 dos repositórios dos autores no Hugging Face, fixados por commit e conferidos por
 sha256 pelo próprio Ollaya.
