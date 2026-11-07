@@ -1,4 +1,5 @@
 """Regressões das correções locais nas skills de anthropics/skills (ver .agents/anthropic-skills/SOURCE.md)."""
+from html.parser import HTMLParser
 import importlib.util
 import shutil
 import re
@@ -532,7 +533,16 @@ class SkillCreatorTests(unittest.TestCase):
         page = scope["page"]
         self.assertNotIn("<img", page)
         self.assertNotIn("</title><b>", page)
-        script = re.search(r"<script>(.*?)</script>", page, re.S).group(1)  # o primeiro </script> encerra o elemento
+        class FirstScript(HTMLParser):  # como o navegador: o primeiro </script>, em qualquer caixa, encerra o elemento
+            text = None
+            def handle_starttag(self, tag, attrs):
+                self.inside = tag == "script" and self.text is None
+            def handle_data(self, data):
+                if getattr(self, "inside", False):
+                    self.text, self.inside = data, False
+        parser = FirstScript()
+        parser.feed(page)
+        script = parser.text
         data = re.search(r"const EVAL_DATA = (.*?);\n", script).group(1)
         result = subprocess.run(["node", "-e", f"process.stdout.write(JSON.stringify({data}))"],
                                 capture_output=True, text=True, timeout=30)
