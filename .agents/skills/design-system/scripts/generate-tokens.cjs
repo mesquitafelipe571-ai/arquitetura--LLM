@@ -79,6 +79,10 @@ function toCssVarName(path) {
  */
 function flattenTokens(obj, tokens, prefix = [], result = {}) {
   for (const [key, value] of Object.entries(obj)) {
+    if (!key.startsWith('$') && !/^[A-Za-z0-9_-]+$/.test(key)) {
+      throw new Error(`Invalid token name: ${[...prefix, key].join('.')}`);
+    }
+
     const currentPath = [...prefix, key];
 
     if (value && typeof value === 'object') {
@@ -156,7 +160,7 @@ function generateTailwind(tokens) {
 // Add to tailwind.config.ts theme.extend.colors
 
 module.exports = {
-  colors: ${JSON.stringify(colors, null, 2).replace(/"/g, "'")}
+  colors: ${JSON.stringify(colors, null, 2)}
 };
 `;
 }
