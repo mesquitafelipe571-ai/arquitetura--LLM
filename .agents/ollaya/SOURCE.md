@@ -9,7 +9,9 @@
 A skill foi copiada sem alterações. Ao trocar a versão do Ollaya, atualize a skill,
 `VERSION` e `SOURCE_SHA` em `scripts/ollaya.sh`.
 
-O instalador (`scripts/install.sh` do mesmo commit) é baixado por SHA completo e
-confere os binários da release pelo `sha256sum.txt` dela. Os pesos dos modelos vêm
+O instalador (`scripts/install.sh` do mesmo commit) é baixado por SHA completo,
+conferido pelo SHA-256 fixado em `scripts/ollaya.sh` (`INSTALLER_SHA256`) e só
+roda com confirmação humana; ele confere os binários da release pelo
+`sha256sum.txt` dela. Ao trocar a versão, atualize também `INSTALLER_SHA256`. Os pesos dos modelos vêm
 dos repositórios dos autores no Hugging Face, fixados por commit e conferidos por
 sha256 pelo próprio Ollaya.
