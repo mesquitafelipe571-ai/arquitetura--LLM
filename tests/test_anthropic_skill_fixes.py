@@ -1099,6 +1099,20 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual(result.stdout.split(), ["True", "True", "0o700"])
 
 
+class SkillDocsTests(unittest.TestCase):
+    def test_skill_md_references_match_file_case(self):
+        # FORMS.md em vez de forms.md: em Linux (sensível a maiúsculas) o guia citado não abre.
+        wrong = []
+        for skill in sorted(SKILLS.glob("*/SKILL.md")):
+            names = {p.relative_to(skill.parent).as_posix() for p in skill.parent.rglob("*.md")}
+            lower = {n.lower(): n for n in names}
+            for ref in set(re.findall(r"[\w./-]+\.md\b", skill.read_text(encoding="utf-8"))):
+                r = ref.lstrip("./")
+                if r not in names and r.lower() in lower:
+                    wrong.append(f"{skill.parent.name}: {ref} -> {lower[r.lower()]}")
+        self.assertEqual(wrong, [])
+
+
 class McpEvaluationTests(unittest.TestCase):
     def test_agent_loop_answers_every_tool_use(self):
         result = run_in(SKILLS / "mcp-builder/scripts", """
