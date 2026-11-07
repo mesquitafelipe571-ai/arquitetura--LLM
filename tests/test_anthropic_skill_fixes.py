@@ -125,6 +125,30 @@ class OfficeSkillTests(unittest.TestCase):
                 self.assertEqual(os.listdir(outside), ["result.docx"])
 
     @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
+    def test_docx_comment_markers_follow_comments_relationship(self):
+        # O relacionamento aponta para comments1.xml: o comentário 0 existe e os marcadores são válidos.
+        w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        pkg = "http://schemas.openxmlformats.org/package/2006/relationships"
+        rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments"
+        doc = (f'<w:document xmlns:w="{w}"><w:body><w:p><w:commentRangeStart w:id="0"/><w:r><w:t>A</w:t></w:r>'
+               '<w:commentRangeEnd w:id="0"/><w:r><w:commentReference w:id="0"/></w:r></w:p></w:body></w:document>')
+        for skill in ("docx", "pptx", "xlsx"):
+            for with_rel, expected in ((True, "True"), (False, "False")):
+                with self.subTest(skill=skill, with_rel=with_rel), tempfile.TemporaryDirectory() as tmp:
+                    (Path(tmp) / "word/_rels").mkdir(parents=True)
+                    (Path(tmp) / "word/document.xml").write_text(doc)
+                    (Path(tmp) / "word/comments1.xml").write_text(
+                        f'<w:comments xmlns:w="{w}"><w:comment w:id="0" w:author="X"/></w:comments>')
+                    rels = f'<Relationship Id="rId9" Type="{rel}" Target="comments1.xml"/>' if with_rel else ""
+                    (Path(tmp) / "word/_rels/document.xml.rels").write_text(f'<Relationships xmlns="{pkg}">{rels}</Relationships>')
+                    result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                        from validators.docx import DOCXSchemaValidator
+                        print(DOCXSchemaValidator({tmp!r}).validate_comment_markers())
+                    """)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout.strip().splitlines()[-1], expected, result.stdout)
+
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
     def test_unique_ids_checks_presentation_cnvpr_only(self):
         # Dois <p:cNvPr id="5"> no mesmo slide colidem; <pic:cNvPr id="0"> repetido no Word é normal.
         pml = "http://schemas.openxmlformats.org/presentationml/2006/main"
@@ -1470,6 +1494,30 @@ class McpEvaluationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.split(), ["['a',", "'b']", "['a',", "'b']"])
 
+    def test_mcp_call_tool_keeps_structured_content(self):
+        # Ferramenta que responde só em structuredContent (content: []): os dados precisam chegar ao modelo.
+        result = run_in(SKILLS / "mcp-builder/scripts", """
+            import asyncio, sys, types
+            mcp = types.ModuleType("mcp")
+            mcp.ClientSession = mcp.StdioServerParameters = object
+            mcp.types = types.SimpleNamespace()
+            sys.modules["mcp"] = mcp
+            for name in ("mcp.client", "mcp.client.sse", "mcp.client.stdio", "mcp.client.streamable_http"):
+                sys.modules[name] = types.SimpleNamespace(sse_client=None, stdio_client=None, streamablehttp_client=None)
+            import connections
+            class Session:
+                def __init__(self, content, structured):
+                    self.r = types.SimpleNamespace(content=content, structuredContent=structured)
+                async def call_tool(self, name, arguments):
+                    return self.r
+            for content, structured in (([], {"answer": 42}), (["texto"], {"answer": 42}), (["texto"], None)):
+                conn = object.__new__(connections.MCPConnectionStdio)
+                conn.session = Session(content, structured)
+                print(asyncio.run(conn.call_tool("t", {})))
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip().splitlines(), ["{'answer': 42}", "['texto']", "['texto']"])
+
 class SkillCreatorTests(unittest.TestCase):
     def test_package_skill_does_not_follow_link_at_output_path(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1518,6 +1566,29 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual((flow / "baseline/ref/case-a").read_text(), "saida")
             rows = (flow / "baseline/results.jsonl").read_text().splitlines()
             self.assertEqual(len(rows), 1)
+
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_eval_runner_freezes_reference_only_from_ok_run(self):
+        # rep0 truncada (fora das médias) não pode virar a referência; a rep1 válida, sim.
+        scaffold = (SKILLS / "claude-api/shared/evals/report/runner-scaffold.mjs").read_text()
+        filled = (scaffold
+                  .replace("throw new Error('TODO: loadCases');", "return [{ id: 'case-a', prompt: 'p' }];")
+                  .replace("throw new Error('TODO: runCase');",
+                           "globalThis.n = (globalThis.n || 0) + 1;"
+                           " return globalThis.n === 1"
+                           " ? { output: 'PARTIAL', model: 'm', usage: {}, stop_reason: 'max_tokens' }"
+                           " : { output: 'COMPLETE', model: 'm', usage: {}, stop_reason: 'end_turn' };")
+                  .replace("throw new Error('TODO: gradeCase');", "return { grade: { pass: 1 } };"))
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = Path(tmp) / "bin/run-eval.mjs"
+            runner.parent.mkdir()
+            runner.write_text(filled)
+            flow = Path(tmp) / "flow"
+            result = subprocess.run(["node", str(runner), "--flow", str(flow), "--variant", "baseline", "--reps", "2",
+                                     "--concurrency", "1", "--approve-harness"],
+                                    capture_output=True, text=True, timeout=60, cwd=tmp)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual((flow / "baseline/ref/case-a").read_text(), "COMPLETE")
 
     @unittest.skipUnless(shutil.which("node"), "node não disponível")
     def test_eval_report_lite_keeps_variant_with_only_errors(self):

@@ -11,7 +11,7 @@ from pathlib import Path
 import defusedxml.minidom
 import lxml.etree
 
-from helpers import safe_extract
+from helpers import opc_target, safe_extract
 
 from .base import BaseSchemaValidator
 
@@ -313,6 +313,24 @@ class DOCXSchemaValidator(BaseSchemaValidator):
             print("PASSED - All paraId/durableId values within constraints")
         return not errors
 
+    COMMENTS_REL_TYPES = {
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments",
+        "http://purl.oclc.org/ooxml/officeDocument/relationships/comments",
+    }
+
+    def _related_comments_part(self, document_xml):
+        """The comments part document.xml's relationship names (it may be comments1.xml)."""
+        rels = document_xml.parent / "_rels" / f"{document_xml.name}.rels"
+        if not rels.is_file():
+            return None
+        source = document_xml.relative_to(self.unpacked_dir).as_posix()
+        for rel in lxml.etree.parse(str(rels)).getroot():
+            if isinstance(rel.tag, str) and rel.get("Type") in self.COMMENTS_REL_TYPES:
+                part = opc_target(rel.get("Target", ""), source, rel.get("TargetMode", ""))
+                if part:
+                    return self.unpacked_dir / part
+        return None
+
     def validate_comment_markers(self):
         errors = []
 
@@ -330,6 +348,8 @@ class DOCXSchemaValidator(BaseSchemaValidator):
             return True
 
         try:
+            # The relationship decides which part holds the comments; the fixed name is the fallback.
+            comments_xml = self._related_comments_part(document_xml) or comments_xml
             doc_root = lxml.etree.parse(str(document_xml)).getroot()
             namespaces = {"w": self.WORD_2006_NAMESPACE}
 

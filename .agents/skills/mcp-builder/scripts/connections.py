@@ -79,6 +79,10 @@ class MCPConnection(ABC):
     async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> Any:
         """Call a tool on the MCP server with provided arguments."""
         result = await self.session.call_tool(tool_name, arguments=arguments)
+        structured = getattr(result, "structuredContent", None)
+        # Data sent only as structuredContent (content: []) would otherwise never reach the model.
+        if structured is not None and not result.content:
+            return structured
         return result.content
 
 

@@ -540,8 +540,9 @@ async function main() {
         if (run.transcript)
           writeFileNoFollow(join(vdir, 'traces', `${safeId}_rep${rep}.json`),
             JSON.stringify(run.transcript, null, 2));
-        // For pairwise: on the baseline run, freeze the reference output once.
-        if (args.variant === 'baseline' && run.output != null
+        // For pairwise: on the baseline run, freeze the reference output once - only from
+        // an 'ok' run, so a truncated rep (kept out of the means) never becomes the reference.
+        if (args.variant === 'baseline' && run.output != null && row.status === 'ok'
             && !REF_EXTS.some(ext => lexists(join(refDir, safeId) + ext))) {
           mkdirNoFollow(refDir);
           writeFileNoFollow(join(refDir, safeId),
