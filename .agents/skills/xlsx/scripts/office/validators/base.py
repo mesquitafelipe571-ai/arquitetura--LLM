@@ -10,6 +10,10 @@ from functools import lru_cache
 
 import lxml.etree
 
+# Every lxml parse in the validators reads third-party XML: no DTD, no entities, no network
+# (lxml < 5 resolves file:// entities by default). The bundled XSDs keep their own parser.
+lxml.etree.set_default_parser(lxml.etree.XMLParser(resolve_entities=False, load_dtd=False, no_network=True))
+
 from helpers import opc_target, rels_source_part, safe_extract
 
 

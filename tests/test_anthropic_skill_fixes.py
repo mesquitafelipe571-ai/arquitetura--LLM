@@ -204,6 +204,23 @@ class OfficeSkillTests(unittest.TestCase):
                     self.assertNotIn("PRIVATE_CONTRACT_RATE_9472", result.stdout + result.stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
+    def test_validators_parse_without_entities(self):
+        # Entidade interna e externa (file://) num XML de terceiro: nenhuma vira texto no parse dos validadores.
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:
+                secret = Path(tmp) / "secret.txt"
+                secret.write_text("SEGREDO_LOCAL")
+                xml = Path(tmp) / "doc.xml"
+                xml.write_text(f'<!DOCTYPE x [<!ENTITY i "SEGREDO_INTERNO"><!ENTITY e SYSTEM "{secret.as_uri()}">]>'
+                               "<x>&i;&e;</x>")
+                result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                    import validators, lxml.etree
+                    print(repr("".join(lxml.etree.parse({str(xml)!r}).getroot().itertext())))
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn("SEGREDO", result.stdout)
+
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
     def test_content_types_accepts_media_override(self):
         # Uma <Override> para a imagem declara o tipo tanto quanto uma <Default> para png.
         ct = "http://schemas.openxmlformats.org/package/2006/content-types"
