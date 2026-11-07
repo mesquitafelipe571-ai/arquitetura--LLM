@@ -467,6 +467,7 @@ async function main() {
       const safeId = pathSafeId(c.id);
       const t0 = Date.now();
       let lastRun = null;    // survives into the catch - billed spend on a failed attempt
+      let lastGrade = null;  // same for the judge: a write failing after grading must keep its spend
       let rowWritten = false; // set once the results row lands - the attempt is scored
       const deadline = args.timeoutS > 0 ? t0 + args.timeoutS * 1000 : Infinity;
       const appRetry = { count: 0 }, judgeRetry = { count: 0 };
@@ -512,6 +513,7 @@ async function main() {
             }
           }
           const g = await withBackoff(() => gradeCase(c, run, ref, ctx), judgeRetry, deadline);
+          lastGrade = g;
           return { run, g, latency_s };
         })(), args.timeoutS, `${c.id} rep${rep}`);
         const row = {
@@ -568,8 +570,8 @@ async function main() {
           // before the failure (e.g. a served-model mismatch, a judge-stage
           // ceiling), carry its identity and usage on the error row.
           model: lastRun?.model, usage: lastRun?.usage,
-          judge_model: e?.judge_model ?? lastRun?.judge_model,
-          judge_usage: e?.judge_usage ?? lastRun?.judge_usage,
+          judge_model: e?.judge_model ?? lastGrade?.judge_model ?? lastRun?.judge_model,
+          judge_usage: e?.judge_usage ?? lastGrade?.judge_usage ?? lastRun?.judge_usage,
           latency_s: (Date.now() - t0) / 1000,
         }) + '\n');
         eprint(`  [${args.variant}] ${c.id} rep${rep} FAILED: ${e?.message || e}`);

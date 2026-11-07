@@ -61,7 +61,7 @@ MINIMAL_SLIDE_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 SHARED_PART_TYPES = ("chart", "diagramData", "oleObject", "package")
 
-NOTES_SLIDE_TYPE_RE = re.compile(r"""Type=["'][^"']*/relationships/notesSlide["']""")
+NOTES_SLIDE_TYPE_RE = re.compile(r"""\bType\s*=\s*["'][^"']*/relationships/notesSlide["']""")
 # Any namespace prefix (`<pkg:Relationship>` is as valid as `<Relationship>`).
 RELATIONSHIP_RE = re.compile(
     r"<(?:[\w.-]+:)?Relationship\b[^>]*?(?:/>|>.*?</(?:[\w.-]+:)?Relationship\s*>)", re.DOTALL

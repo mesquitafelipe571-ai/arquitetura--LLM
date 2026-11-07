@@ -792,6 +792,39 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertIn("collides", result.stderr)
             self.assertFalse((Path(tmp) / "flow/baseline/results.jsonl").exists())
 
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_eval_runner_error_row_keeps_judge_usage(self):
+        # O juiz concluiu, mas a gravação do transcript falhou: o gasto do juiz deve ficar no errors.jsonl.
+        scaffold = (SKILLS / "claude-api/shared/evals/report/runner-scaffold.mjs").read_text()
+        filled = (scaffold
+                  .replace("throw new Error('TODO: loadCases');", "return [{ id: 'case-a', prompt: 'p' }];")
+                  .replace("throw new Error('TODO: runCase');",
+                           "return { output: 'saida', transcript: [{ role: 'user', content: 'p' }],"
+                           " model: 'm', usage: { input_tokens: 1, output_tokens: 1 }, stop_reason: 'end_turn' };")
+                  .replace("throw new Error('TODO: gradeCase');",
+                           "return { grade: { pass: 1 }, judge_model: 'juiz', judge_usage: { input_tokens: 7 } };"))
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = Path(tmp) / "bin/run-eval.mjs"
+            runner.parent.mkdir()
+            runner.write_text(filled)
+            flow = Path(tmp) / "flow"
+            (flow / "baseline/traces/case-a_rep0.json").mkdir(parents=True)  # EISDIR ao gravar o transcript
+            subprocess.run(["node", str(runner), "--flow", str(flow), "--variant", "baseline", "--approve-harness"],
+                           capture_output=True, text=True, timeout=60, cwd=tmp)
+            row = json.loads((flow / "baseline/errors.jsonl").read_text().splitlines()[0])
+            self.assertEqual((row.get("judge_model"), row.get("judge_usage")), ("juiz", {"input_tokens": 7}))
+
+    def test_pptx_duplicate_slide_drops_notes_with_spaced_type(self):
+        # Type = "…/notesSlide" (espaços em volta do =) é XML válido; a nota não pode ser compartilhada.
+        result = run_in(SKILLS / "pptx/scripts", """
+            from add_slide import NOTES_SLIDE_TYPE_RE
+            ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+            print(bool(NOTES_SLIDE_TYPE_RE.search(f'<Relationship Id="rId2" Type = "{ns}/notesSlide" Target="x"/>')),
+                  bool(NOTES_SLIDE_TYPE_RE.search(f'<Relationship Id="rId1" Type="{ns}/slideLayout" Target="y"/>')))
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "True False")
+
     def test_viewer_data_cannot_close_script_element(self):
         result = run_in(SKILLS / "skill-creator/eval-viewer", """
             from generate_review import generate_html

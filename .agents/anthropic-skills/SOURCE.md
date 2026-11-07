@@ -106,6 +106,8 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `skill-creator/scripts/run_eval.py` | Um evento `result` com erro (`is_error`, `error_during_execution`) virava "não acionou"; consultas com `should_trigger: false` passavam numa execução que falhou | O erro levanta exceção e entra na contagem de erros |
 | `pdf/scripts/fill_pdf_form_with_annotations.py` | Ignorava a origem do MediaBox; com `[100 200 700 1000]`, as anotações caíam fora do campo (ou da página) | Soma a origem (`left`, `bottom`) ao retângulo convertido |
 | `pptx/scripts/add_slide.py` | Procurava `<p:sldIdLst>`, `<p:sldId>` e `r:id` com prefixos fixos; um `presentation.xml` com outros prefixos para os mesmos namespaces era recusado | Usa os prefixos que o `presentation.xml` declara para PresentationML e relacionamentos |
+| `pptx/scripts/add_slide.py` | `Type = "…/notesSlide"` (espaços em volta do `=`, XML válido) não era reconhecido; o slide duplicado continuava compartilhando as notas do original | A expressão aceita espaços em volta do `=` |
+| `claude-api/shared/evals/report/runner-scaffold.mjs` | Se uma gravação falhava depois do juiz, a linha de `errors.jsonl` perdia `judge_model`/`judge_usage` e o gasto do juiz sumia da contabilidade | Guarda o retorno do juiz e o usa na linha de erro |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.
