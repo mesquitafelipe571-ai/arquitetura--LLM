@@ -91,6 +91,8 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `skill-creator/eval-viewer/viewer.html` (segurança) | `escapeHtml()` não escapava aspas; uma evidência com `"` saía do atributo `title` e injetava JavaScript no visualizador | `escapeHtml()` escapa `"` e `'`; `run_number` também passa por ela |
 | `skill-creator/eval-viewer/generate_review.py` + `viewer.html` (segurança) | O servidor local (porta 3117) entregava saídas e aceitava feedback sem autenticação; outro usuário da máquina podia ler e adulterar | Token aleatório por execução exigido em todas as rotas; a URL aberta no navegador já o contém |
 | `skill-creator/eval-viewer/viewer.html` (segurança) | Planilhas eram mostradas com `sheet_to_html()` via `innerHTML`; um hyperlink `javascript:` numa célula virava `<a href>` e executava no visualizador | A tabela é montada pelo DOM com `textContent` (`sheet_to_json`), sem links |
+| `docx/scripts/comment.py` | Usava sempre `word/comments.xml`; num documento cuja relação aponta para outra parte (ex.: `comments1.xml`), repetia o ID 0, criava uma segunda relação de comentários e não achava o comentário-pai | Resolve as quatro partes de comentários pela relação existente antes de calcular IDs, achar o pai e registrar tipos de conteúdo |
+| `claude-api/shared/evals/report/build-report-lite.mjs` | Uma variante em que todas as tentativas falharam (só `errors.jsonl`) era descartada; o relatório e o `scores.tsv` omitiam a rodada e as falhas | Só descarta a variante sem resultados e sem erros; a pontuação fica em branco e as falhas aparecem |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

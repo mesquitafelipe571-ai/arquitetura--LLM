@@ -412,6 +412,31 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue(result.stdout.startswith("Error:"), result.stdout)
 
+    def test_docx_comment_uses_linked_comments_part(self):
+        # O documento aponta os comentários para word/comments1.xml; IDs e respostas devem usar essa parte.
+        pkg = "http://schemas.openxmlformats.org/package/2006/relationships"
+        rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "word/_rels").mkdir(parents=True)
+            (root / "word/_rels/document.xml.rels").write_text(
+                f'<Relationships xmlns="{pkg}"><Relationship Id="rId1" Type="{rel}" Target="comments1.xml"/></Relationships>')
+            (root / "word/comments1.xml").write_text(
+                '<w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+                ' xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">'
+                '<w:comment w:id="0"><w:p w14:paraId="0000AAAA"/></w:comment></w:comments>')
+            result = run_in(SKILLS / "docx/scripts", f"""
+                from comment import add_comment
+                print(add_comment({tmp!r}, "nova", parent_id=0)[0])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "1")
+            self.assertFalse((root / "word/comments.xml").exists())
+            rels = ET.parse(root / "word/_rels/document.xml.rels").getroot()
+            self.assertEqual([r.get("Target") for r in rels if r.get("Type") == rel], ["comments1.xml"])
+            w = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}id"
+            self.assertEqual([c.get(w) for c in ET.parse(root / "word/comments1.xml").getroot()], ["0", "1"])
+
     def test_docx_comment_creates_missing_document_rels(self):
         with tempfile.TemporaryDirectory() as tmp:
             (Path(tmp) / "word").mkdir()
@@ -630,6 +655,25 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual((flow / "baseline/ref/case-a").read_text(), "saida")
             rows = (flow / "baseline/results.jsonl").read_text().splitlines()
             self.assertEqual(len(rows), 1)
+
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_eval_report_lite_keeps_variant_with_only_errors(self):
+        # Uma variante em que todas as tentativas falharam só tem errors.jsonl; o relatório deve mostrá-la.
+        builder = SKILLS / "claude-api/shared/evals/report/build-report-lite.mjs"
+        with tempfile.TemporaryDirectory() as tmp:
+            flow = Path(tmp) / "flow"
+            (flow / "baseline").mkdir(parents=True)
+            (flow / "v1").mkdir()
+            (flow / "baseline/results.jsonl").write_text(json.dumps(
+                {"prompt_id": "c1", "status": "ok", "grade": {"pass": 1}}) + "\n")
+            (flow / "v1/errors.jsonl").write_text(json.dumps(
+                {"prompt_id": "c1", "failure_class": "timeout"}) + "\n")
+            result = subprocess.run(["node", str(builder), "flow"], capture_output=True, text=True,
+                                    timeout=60, cwd=tmp)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual((flow / "trajectory/scores.tsv").read_text().splitlines(),
+                             ["id\tsplit\tbaseline\tv1", "c1\tall\t1.000\t"])
+            self.assertIn("timeout 1", (flow / "report.html").read_text())
 
     def test_viewer_data_cannot_close_script_element(self):
         result = run_in(SKILLS / "skill-creator/eval-viewer", """

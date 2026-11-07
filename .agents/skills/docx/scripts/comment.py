@@ -174,21 +174,47 @@ def _has_content_type(ct_path: Path, part_name: str) -> bool:
 
 
 _COMMENT_RELS = [
-    ("http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments", "comments.xml"),
-    ("http://schemas.microsoft.com/office/2011/relationships/commentsExtended", "commentsExtended.xml"),
-    ("http://schemas.microsoft.com/office/2016/09/relationships/commentsIds", "commentsIds.xml"),
-    ("http://schemas.microsoft.com/office/2018/08/relationships/commentsExtensible", "commentsExtensible.xml"),
+    ("http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments", "comments.xml",
+     "application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml"),
+    ("http://schemas.microsoft.com/office/2011/relationships/commentsExtended", "commentsExtended.xml",
+     "application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml"),
+    ("http://schemas.microsoft.com/office/2016/09/relationships/commentsIds", "commentsIds.xml",
+     "application/vnd.openxmlformats-officedocument.wordprocessingml.commentsIds+xml"),
+    ("http://schemas.microsoft.com/office/2018/08/relationships/commentsExtensible", "commentsExtensible.xml",
+     "application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtensible+xml"),
 ]
-_COMMENT_OVERRIDES = [
-    ("/word/comments.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml"),
-    ("/word/commentsExtended.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml"),
-    ("/word/commentsIds.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.commentsIds+xml"),
-    ("/word/commentsExtensible.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtensible+xml"),
-]
+
+
+def _rels_path(unpacked_dir: Path) -> Path:
+    return unpacked_dir / "word" / "_rels" / "document.xml.rels"
+
+
+def _linked_comment_parts(unpacked_dir: Path) -> dict[str, str]:
+    """Parts already linked from document.xml per comment relationship type (e.g. word/comments1.xml)."""
+    rels_path = _rels_path(unpacked_dir)
+    if not rels_path.exists():
+        return {}
+    comment_types = {rel_type for rel_type, _, _ in _COMMENT_RELS}
+    linked: dict[str, str] = {}
+    dom = defusedxml.minidom.parseString(rels_path.read_text(encoding="utf-8"))
+    for rel in dom.getElementsByTagNameNS("*", "Relationship"):
+        rel_type = rel.getAttribute("Type")
+        if rel_type not in comment_types or rel_type in linked:
+            continue
+        part = opc_target(rel.getAttribute("Target"), "word/document.xml", rel.getAttribute("TargetMode"))
+        if part is not None:
+            linked[rel_type] = part
+    return linked
+
+
+def _comment_parts(unpacked_dir: Path) -> dict[str, str]:
+    """Part each comment relationship uses: the linked one, else word/<default name>."""
+    linked = _linked_comment_parts(unpacked_dir)
+    return {rel_type: linked.get(rel_type, f"word/{name}") for rel_type, name, _ in _COMMENT_RELS}
 
 
 def _ensure_comment_relationships(unpacked_dir: Path) -> None:
-    rels_path = unpacked_dir / "word" / "_rels" / "document.xml.rels"
+    rels_path = _rels_path(unpacked_dir)
     if not rels_path.exists():
         # A minimal document may have no relationships yet; the comment parts still need one.
         rels_path.parent.mkdir(parents=True, exist_ok=True)
@@ -197,30 +223,19 @@ def _ensure_comment_relationships(unpacked_dir: Path) -> None:
             '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>',
             encoding="utf-8",
         )
+    linked = _linked_comment_parts(unpacked_dir)
     dom = defusedxml.minidom.parseString(rels_path.read_text(encoding="utf-8"))
     root = dom.documentElement
-    comment_types = {rel_type for rel_type, _ in _COMMENT_RELS}
-    existing = set()
-    for rel in dom.getElementsByTagNameNS("*", "Relationship"):
-        if rel.getAttribute("Type") not in comment_types:
-            continue
-        part = opc_target(
-            rel.getAttribute("Target"),
-            "word/document.xml",
-            rel.getAttribute("TargetMode"),
-        )
-        if part is not None:
-            existing.add(part)
     next_rid = _get_next_rid(rels_path)
     changed = False
-    for rel_type, target in _COMMENT_RELS:
-        if opc_target(target, "word/document.xml") in existing:
+    for rel_type, target, _ in _COMMENT_RELS:
+        if rel_type in linked:
             continue
         rel = _child_like_root(dom, "Relationship")
         rel.setAttribute("Id", f"rId{next_rid}")
         rel.setAttribute("Type", rel_type)
         rel.setAttribute("Target", target)
-        root.appendChild(rel)  
+        root.appendChild(rel)
         next_rid += 1
         changed = True
     if changed:
@@ -231,6 +246,7 @@ def _ensure_comment_content_types(unpacked_dir: Path) -> None:
     ct_path = unpacked_dir / "[Content_Types].xml"
     if not ct_path.exists():
         return
+    parts = _comment_parts(unpacked_dir)
     dom = defusedxml.minidom.parseString(ct_path.read_text(encoding="utf-8"))
     root = dom.documentElement
     existing = {
@@ -238,13 +254,14 @@ def _ensure_comment_content_types(unpacked_dir: Path) -> None:
         for o in dom.getElementsByTagNameNS("*", "Override")
     }
     changed = False
-    for part_name, content_type in _COMMENT_OVERRIDES:
+    for rel_type, _, content_type in _COMMENT_RELS:
+        part_name = "/" + parts[rel_type]
         if part_name in existing:
             continue
         override = _child_like_root(dom, "Override")
         override.setAttribute("PartName", part_name)
         override.setAttribute("ContentType", content_type)
-        root.appendChild(override)  
+        root.appendChild(override)
         changed = True
     if changed:
         ct_path.write_bytes(dom.toxml(encoding="UTF-8"))
@@ -268,7 +285,10 @@ def add_comment(
     if not word.exists():
         raise FileNotFoundError(f"{word} not found (not an unpacked .docx?)")
 
-    comments = word / "comments.xml"
+    # Reuse the parts the document already links (e.g. word/comments1.xml), so IDs and parents match.
+    comments, ext, ids, extensible = (
+        unpacked_dir / part for part in _comment_parts(unpacked_dir).values()
+    )
     if comment_id is None:
         comment_id = _next_comment_id(comments)
 
@@ -294,7 +314,6 @@ def add_comment(
         ),
     )
 
-    ext = word / "commentsExtended.xml"
     if not ext.exists():
         shutil.copy(TEMPLATE_DIR / "commentsExtended.xml", ext)
     if parent_para is not None:
@@ -308,7 +327,6 @@ def add_comment(
             f'<w15:commentEx w15:paraId="{para_id}" w15:done="0"/>',
         )
 
-    ids = word / "commentsIds.xml"
     if not ids.exists():
         shutil.copy(TEMPLATE_DIR / "commentsIds.xml", ids)
     _append_xml(
@@ -316,7 +334,6 @@ def add_comment(
         f'<w16cid:commentId w16cid:paraId="{para_id}" w16cid:durableId="{durable_id}"/>',
     )
 
-    extensible = word / "commentsExtensible.xml"
     if not extensible.exists():
         shutil.copy(TEMPLATE_DIR / "commentsExtensible.xml", extensible)
     _append_xml(

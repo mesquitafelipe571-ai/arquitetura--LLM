@@ -268,9 +268,11 @@ function build(flowArg) {
   // rows (a vN/ holding only change.md while the run warms up would render a
   // blank column), and refuse to build when the first variant itself has none
   // rather than overwrite a good trajectory/scores.tsv with a header-only file.
+  // A variant whose attempts all failed has only errors.jsonl: keep it so the
+  // report shows an unmeasured score and its failure counts.
   for (let i = variants.length - 1; i > 0; i--) {
     const v = variants[i];
-    if (Object.keys(rows[v]).length) continue;
+    if (Object.keys(rows[v]).length || countErrors(join(flow, v)).total) continue;
     warnings.push(v + ': zero result rows - dropping (run not started or results.jsonl missing/empty)');
     variants.splice(i, 1);
   }
