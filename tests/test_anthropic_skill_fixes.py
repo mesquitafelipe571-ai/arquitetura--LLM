@@ -1569,6 +1569,18 @@ class GifBuilderTests(unittest.TestCase):
             self.assertEqual(result.stdout.splitlines()[-1], "[1000.0, 1000.0] 2.0")
 
 
+def _running(pid):
+    """Vivo e não zumbi: num contêiner cujo PID 1 não recolhe órfãos, o filho morto fica em estado Z."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    try:
+        return Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0] != "Z"
+    except (OSError, IndexError):
+        return True  # sem /proc (macOS): o launchd recolhe o processo
+
+
 @unittest.skipIf(sys.platform == "win32", "grupo de processos POSIX")
 class WithServerTests(unittest.TestCase):
     def test_server_child_is_stopped(self):
@@ -1604,9 +1616,7 @@ class WithServerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             pid = int(result.stdout.strip())
             for _ in range(50):  # o init pode levar um instante para recolher o processo
-                try:
-                    os.kill(pid, 0)
-                except ProcessLookupError:
+                if not _running(pid):
                     break
                 time.sleep(0.1)
             else:
