@@ -47,12 +47,24 @@ def stop_server(process):
         else:
             process.kill()
 
+    def group_alive():
+        process.poll()  # reap the shell so its zombie does not keep the group alive
+        if not hasattr(os, "killpg"):
+            return process.poll() is None
+        try:
+            os.killpg(process.pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+
     signal_group(signal.SIGTERM)
-    try:
-        process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
+    # The shell can exit at once while a child ignores SIGTERM: wait on the whole group.
+    deadline = time.monotonic() + 5
+    while group_alive() and time.monotonic() < deadline:
+        time.sleep(0.1)
+    if group_alive():
         signal_group(getattr(signal, "SIGKILL", signal.SIGTERM))
-        process.wait()
+    process.wait()
 
 
 def main():

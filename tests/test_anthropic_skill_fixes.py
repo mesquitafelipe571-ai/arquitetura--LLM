@@ -3,12 +3,14 @@ import importlib.util
 import shutil
 import re
 import json
+import os
 from pathlib import Path
 import socket
 import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 import unittest
 import xml.etree.ElementTree as ET
 import zipfile
@@ -150,6 +152,37 @@ class OfficeSkillTests(unittest.TestCase):
             """)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.split(), ["rId1", "rId2", "301"])
+
+    def test_pptx_duplicate_slide_drops_prefixed_notes_relationship(self):
+        rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        pkg = "http://schemas.openxmlformats.org/package/2006/relationships"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "ppt/_rels").mkdir(parents=True)
+            (root / "ppt/slides/_rels").mkdir(parents=True)
+            (root / "ppt/presentation.xml").write_text(
+                '<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"'
+                f' xmlns:r="{rel_ns}"><p:sldIdLst><p:sldId id="256" r:id="rId1"/></p:sldIdLst></p:presentation>')
+            (root / "ppt/_rels/presentation.xml.rels").write_text(
+                f'<Relationships xmlns="{pkg}"><Relationship Id="rId1" Type="{rel_ns}/slide"'
+                ' Target="slides/slide1.xml"/></Relationships>')
+            (root / "[Content_Types].xml").write_text(
+                '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>')
+            (root / "ppt/slides/slide1.xml").write_text("<p:sld/>")
+            (root / "ppt/slides/_rels/slide1.xml.rels").write_text(
+                f'<pkg:Relationships xmlns:pkg="{pkg}">'
+                f'<pkg:Relationship Id="rId1" Type="{rel_ns}/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>'
+                f'<pkg:Relationship Id="rId2" Type="{rel_ns}/notesSlide" Target="../notesSlides/notesSlide1.xml"/>'
+                '</pkg:Relationships>')
+            result = run_in(SKILLS / "pptx/scripts", f"""
+                from pathlib import Path
+                from add_slide import duplicate_slide
+                print(duplicate_slide(Path({tmp!r}), "slide1.xml"))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+            self.assertEqual(result.stdout.splitlines()[-1], "slide2.xml")
+            rels = ET.parse(root / "ppt/slides/_rels/slide2.xml.rels").getroot()
+            self.assertEqual([r.get("Type").rsplit("/", 1)[1] for r in rels], ["slideLayout"])
 
     def test_docx_comment_declares_namespaces_used_by_new_comment(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -745,6 +778,35 @@ class WithServerTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         with self.assertRaises(OSError):
             socket.create_connection(("127.0.0.1", port), timeout=1).close()
+
+    def test_child_ignoring_sigterm_is_killed(self):
+        # O shell sai com o SIGTERM, mas o filho o ignora: antes, o SIGKILL nunca chegava ao grupo.
+        with tempfile.TemporaryDirectory() as tmp:
+            pidfile = Path(tmp) / "child.pid"
+            child = (f"{sys.executable} -c \"import os, signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+                     f"open({str(pidfile)!r}, 'w').write(str(os.getpid())); time.sleep(60)\"")
+            result = run_in(SKILLS / "webapp-testing/scripts", f"""
+                import subprocess, time
+                from pathlib import Path
+                from with_server import stop_server
+                proc = subprocess.Popen({(child + " >/dev/null 2>&1 & wait")!r}, shell=True, start_new_session=True)
+                while not Path({str(pidfile)!r}).exists():
+                    time.sleep(0.05)
+                time.sleep(0.2)
+                stop_server(proc)
+                print(Path({str(pidfile)!r}).read_text())
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            pid = int(result.stdout.strip())
+            for _ in range(50):  # o init pode levar um instante para recolher o processo
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.1)
+            else:
+                os.kill(pid, 9)
+                self.fail("o filho que ignora SIGTERM continuou vivo")
 
     def test_chatty_server_does_not_block_on_full_pipe(self):
         with socket.socket() as probe:
