@@ -34,7 +34,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-from office.helpers import refuse_linked_path, rezip, safe_extract
+from office.helpers import refuse_linked_path, refuse_links, rezip, safe_extract
 
 MINIMAL_SLIDE_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
@@ -90,7 +90,16 @@ def parse_source(source: str) -> tuple[str, str | None]:
     return ("slide", None)
 
 
+def _refuse_package_links(unpacked_dir: Path) -> None:
+    """Sources are read and copied too: a linked slide, layout or .rels would copy a private file in."""
+    try:
+        refuse_links(Path(unpacked_dir))
+    except ValueError as e:
+        _die(str(e))
+
+
 def create_slide_from_layout(unpacked_dir: Path, layout_file: str, after: str | None = None) -> str:
+    _refuse_package_links(unpacked_dir)
     slides_dir = unpacked_dir / "ppt" / "slides"
     rels_dir = slides_dir / "_rels"
     layout_path = unpacked_dir / "ppt" / "slideLayouts" / layout_file
@@ -117,6 +126,7 @@ def create_slide_from_layout(unpacked_dir: Path, layout_file: str, after: str | 
 
 
 def duplicate_slide(unpacked_dir: Path, source: str, after: str | None = None) -> str:
+    _refuse_package_links(unpacked_dir)
     slides_dir = unpacked_dir / "ppt" / "slides"
     rels_dir = slides_dir / "_rels"
     source_slide = slides_dir / source

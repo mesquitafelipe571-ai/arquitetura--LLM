@@ -743,6 +743,32 @@ class OfficeSkillTests(unittest.TestCase):
                 self.assertIn("output folder goes through a symlink", result.stdout)
                 self.assertEqual(os.listdir(outside), [])
 
+    def test_add_slide_refuses_linked_source_slide(self):
+        # ppt/slides/slide1.xml -> arquivo privado: duplicar não pode copiá-lo para slide2.xml.
+        rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        pkg = "http://schemas.openxmlformats.org/package/2006/relationships"
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
+            root = Path(tmp)
+            (root / "ppt/_rels").mkdir(parents=True)
+            (root / "ppt/slides/_rels").mkdir(parents=True)
+            (root / "ppt/presentation.xml").write_text(
+                f'<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"'
+                f' xmlns:r="{rel_ns}"><p:sldIdLst><p:sldId id="256" r:id="rId1"/></p:sldIdLst></p:presentation>')
+            (root / "ppt/_rels/presentation.xml.rels").write_text(
+                f'<Relationships xmlns="{pkg}"><Relationship Id="rId1" Type="{rel_ns}/slide"'
+                ' Target="slides/slide1.xml"/></Relationships>')
+            (root / "[Content_Types].xml").write_text(
+                '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>')
+            (root / "ppt/slides/_rels/slide1.xml.rels").write_text(f'<Relationships xmlns="{pkg}"/>')
+            secret = Path(outside) / "secret.xml"
+            secret.write_text("<p:sld>SEGREDO</p:sld>")
+            (root / "ppt/slides/slide1.xml").symlink_to(secret)
+            result = subprocess.run([sys.executable, "add_slide.py", tmp, "slide1.xml"],
+                                    cwd=SKILLS / "pptx/scripts", capture_output=True, text=True, timeout=60)
+            self.assertNotEqual(result.returncode, 0, result.stdout)
+            self.assertIn("is a symlink", result.stdout + result.stderr)
+            self.assertFalse((root / "ppt/slides/slide2.xml").exists())
+
     def test_in_place_editors_refuse_linked_unpacked_root(self):
         # unpacked -> outside: os.walk entra no destino; nenhum editor pode regravar outside/word/document.xml.
         w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
