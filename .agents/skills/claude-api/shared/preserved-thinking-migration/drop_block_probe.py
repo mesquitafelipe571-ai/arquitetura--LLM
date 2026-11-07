@@ -471,8 +471,8 @@ def parse_body(status, raw, streamed):
         return msg or {"type": "stream", "raw_head": text[:200]}, transformations
     try:
         obj = json.loads(text)
-    except ValueError:
-        return {"type": "unparsable", "raw_head": text[:300]}, []
+    except ValueError:  # an HTML error page on a 200 never reached the check: None, so not evaluated
+        return {"type": "unparsable", "raw_head": text[:300]}, None
     if status != 200:
         return obj, []
     if "input_transformations" not in obj:

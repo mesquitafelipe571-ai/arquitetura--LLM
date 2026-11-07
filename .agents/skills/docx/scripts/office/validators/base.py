@@ -564,6 +564,7 @@ class BaseSchemaValidator:
 
             all_files = list(self.unpacked_dir.rglob("*"))
             all_files = [f for f in all_files if f.is_file()]
+            declared_parts_lower = {p.lower() for p in declared_parts}  # OPC part names ignore case
 
             for xml_file in self.xml_files:
                 path_str = str(xml_file.relative_to(self.unpacked_dir)).replace(
@@ -597,9 +598,11 @@ class BaseSchemaValidator:
                     continue
 
                 extension = file_path.suffix.lstrip(".").lower()
-                if extension and extension not in declared_extensions:
+                relative_path = file_path.relative_to(self.unpacked_dir)
+                # An <Override> for the part declares its type just as a <Default> for the extension does.
+                if (extension and extension not in declared_extensions
+                        and relative_path.as_posix().lower() not in declared_parts_lower):
                     if extension in media_extensions:
-                        relative_path = file_path.relative_to(self.unpacked_dir)
                         errors.append(
                             f'  {relative_path}: File with extension \'{extension}\' not declared in [Content_Types].xml - should add: <Default Extension="{extension}" ContentType="{media_extensions[extension]}"/>'
                         )

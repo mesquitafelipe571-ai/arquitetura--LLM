@@ -84,6 +84,79 @@ class OfficeSkillTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual(result.stdout.strip().splitlines()[-1], str(expected))
 
+    def test_pptx_new_slide_id_declares_its_namespaces(self):
+        # xmlns:r só no <p:sldId> existente: o novo irmão precisa declarar o prefixo, ou o XML quebra.
+        pml = "http://schemas.openxmlformats.org/presentationml/2006/main"
+        rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "ppt").mkdir()
+            pres = Path(tmp) / "ppt/presentation.xml"
+            pres.write_text(f'<p:presentation xmlns:p="{pml}"><p:sldIdLst>'
+                            f'<p:sldId xmlns:r="{rel}" id="256" r:id="rId1"/></p:sldIdLst></p:presentation>')
+            result = run_in(SKILLS / "pptx/scripts", f"""
+                from pathlib import Path
+                from add_slide import _insert_into_sld_id_lst
+                print(_insert_into_sld_id_lst(Path({tmp!r}), 257, "rId2"))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            ids = [(e.get("id"), e.get(f"{{{rel}}}id")) for e in ET.parse(pres).getroot().iter(f"{{{pml}}}sldId")]
+            self.assertEqual(ids, [("256", "rId1"), ("257", "rId2")])
+
+    def test_office_rezip_refuses_linked_output_folder(self):
+        # exports -> pasta externa: o ZIP substituiria outside/result.docx; o empacotamento é recusado.
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
+                pkg = Path(tmp) / "pkg"
+                pkg.mkdir()
+                (pkg / "a.xml").write_text("<a/>")
+                (Path(outside) / "result.docx").write_text("externo")
+                (Path(tmp) / "exports").symlink_to(outside)
+                result = run_in(SKILLS / f"{skill}/scripts", f"""
+                    from pathlib import Path
+                    from office.helpers import rezip
+                    try:
+                        rezip(Path({str(pkg)!r}), Path({str(Path(tmp) / "exports/result.docx")!r}))
+                    except ValueError as e:
+                        print("recusado:", e)
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("recusado: output folder goes through a symlink", result.stdout)
+                self.assertEqual((Path(outside) / "result.docx").read_text(), "externo")
+                self.assertEqual(os.listdir(outside), ["result.docx"])
+
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
+    def test_content_types_accepts_media_override(self):
+        # Uma <Override> para a imagem declara o tipo tanto quanto uma <Default> para png.
+        ct = "http://schemas.openxmlformats.org/package/2006/content-types"
+        for skill in ("docx", "pptx", "xlsx"):
+            for decl, expected in (('<Override PartName="/word/media/Image1.PNG" ContentType="image/png"/>', "True"),
+                                   ("", "False")):
+                with self.subTest(skill=skill, decl=decl), tempfile.TemporaryDirectory() as tmp:
+                    (Path(tmp) / "word/media").mkdir(parents=True)
+                    (Path(tmp) / "word/media/image1.png").write_bytes(b"\x89PNG")
+                    (Path(tmp) / "[Content_Types].xml").write_text(f'<Types xmlns="{ct}">{decl}</Types>')
+                    result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                        from validators.base import BaseSchemaValidator
+                        class V(BaseSchemaValidator):
+                            def validate(self):
+                                return True
+                        print(V({tmp!r}).validate_content_types())
+                    """)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout.strip().splitlines()[-1], expected, result.stdout)
+
+    def test_drop_block_probe_unparsable_200_is_not_evaluated(self):
+        # Uma página HTML com status 200 nunca passou pela verificação: None, não uma lista vazia (limpa).
+        probe_dir = SKILLS / "claude-api/shared/preserved-thinking-migration"
+        result = run_in(probe_dir, """
+            from drop_block_probe import parse_body
+            print(parse_body(200, b"<html>gateway</html>", False)[1])
+            print(parse_body(502, b"<html>gateway</html>", False)[1])
+            print(parse_body(200, b'{"input_transformations": []}', False)[1])
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.split(), ["None", "None", "[]"])
+
     def test_pptx_clean_keeps_slides_listed_with_other_prefix(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

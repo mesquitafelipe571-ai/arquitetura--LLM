@@ -311,7 +311,9 @@ def _insert_into_sld_id_lst(
     xml = pres_path.read_text(encoding="utf-8")
     p, r = _prefixes(xml)
     P, R = re.escape(p), re.escape(r)
-    entry = f'<{p}sldId id="{slide_id}" {r}id="{rid}"/>'
+    # Self-declared: the prefixes may be bound only on a sibling <p:sldId>, out of scope for a new one.
+    p_decl = f'xmlns:{p[:-1]}="{PML_NS}"' if p else f'xmlns="{PML_NS}"'
+    entry = f'<{p}sldId {p_decl} xmlns:{r[:-1]}="{REL_NS}" id="{slide_id}" {r}id="{rid}"/>'
 
     if re.search(rf'{R}id\s*=\s*["\']{re.escape(rid)}["\']', xml):
         _die(f"presentation.xml already references {rid}; refusing to add a duplicate")

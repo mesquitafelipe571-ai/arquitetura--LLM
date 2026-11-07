@@ -142,6 +142,8 @@ def rezip(src_dir: Path, out_path: Path) -> None:
         raise ValueError(f"refusing to pack symlinks: {', '.join(str(p.relative_to(src_dir)) for p in links)}")
     files = sorted(p for p in src_dir.rglob("*") if p.is_file())
     ct = src_dir / "[Content_Types].xml"
+    # The output itself may be a link (os.replace swaps it out); a linked folder above it may not.
+    refuse_linked_path(out_path.parent, "output folder")
     fd, tmp_name = tempfile.mkstemp(
         prefix=out_path.name + ".", suffix=".tmp", dir=out_path.parent
     )
