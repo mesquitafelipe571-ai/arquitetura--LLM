@@ -26,8 +26,8 @@ pela conexão GitHub nesta revisão.
 | claude-melhores-skills | CONFIRMADO: catálogo disponível | Submódulo no commit `2c52b2a`; o repositório não declara licença. |
 | Awesome Claude Code Mods | CONFIRMADO: catálogo disponível | Submódulo no commit `febe9d6`; licença CC0. |
 
-As 105 skills estão disponíveis como arquivos de projeto para uma nova sessão do
-Codex. As 105 possuem frontmatter válido, descrição e nomes únicos. A verificação
+As 123 skills estão disponíveis como arquivos de projeto para uma nova sessão do
+Codex. As 123 possuem frontmatter válido, descrição e nomes únicos. A verificação
 de integridade não representa um teste de cada serviço externo citado pelas skills. A distribuição Codex do ECC possui 47 skills; ela
 tem escopo próprio, documentado em `.agents/ecc/SOURCE.md`.
 

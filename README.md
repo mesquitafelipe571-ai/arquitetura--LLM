@@ -16,7 +16,7 @@ npm run setup
 ```
 
 Esse comando baixa o catálogo, instala o Orca (incluindo a verificação obrigatória
-do Electron) e prepara o Paperclip. As 105 skills já são arquivos do projeto.
+do Electron) e prepara o Paperclip. As 123 skills já são arquivos do projeto.
 No GitHub Codespaces, o ambiente inclui Node.js 24, Rust 1.97.1 e desktop virtual,
 e executa esse mesmo comando ao ser criado.
 
@@ -267,6 +267,14 @@ ficam disponíveis ao abrir uma nova sessão do Codex neste repositório:
 
 Os hooks e as instalações como plugin não fazem parte desta cópia; cada
 `SOURCE.md` explica o que ficou de fora e como atualizar.
+
+## Skills da Anthropic
+
+18 skills do repositório [anthropics/skills](https://github.com/anthropics/skills)
+estão em [.agents/skills](.agents/skills), como `$docx`, `$pdf`, `$pptx`, `$xlsx`,
+`$skill-creator`, `$mcp-builder`, `$webapp-testing` e `$claude-api`. Licença
+Apache 2.0; a `doc-coauthoring` ficou de fora por não ter licença. Consulte a
+[origem e a lista completa](.agents/anthropic-skills/SOURCE.md).
 
 ## REA
 
