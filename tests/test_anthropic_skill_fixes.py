@@ -743,6 +743,46 @@ class OfficeSkillTests(unittest.TestCase):
                 self.assertIn("output folder goes through a symlink", result.stdout)
                 self.assertEqual(os.listdir(outside), [])
 
+    def test_in_place_editors_refuse_linked_unpacked_root(self):
+        # unpacked -> outside: os.walk entra no destino; nenhum editor pode regravar outside/word/document.xml.
+        w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        doc = (f'<w:document xmlns:w="{w}"><w:body><w:p><w:r><w:t>A</w:t></w:r>'
+               '<w:r><w:t>B</w:t></w:r></w:p></w:body></w:document>')
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
+            (Path(outside) / "word").mkdir()
+            (Path(outside) / "word/document.xml").write_text(doc)
+            unpacked = Path(tmp) / "unpacked"
+            unpacked.symlink_to(outside)
+            for skill in ("docx", "pptx", "xlsx"):
+                with self.subTest(skill):
+                    result = run_in(SKILLS / f"{skill}/scripts", f"""
+                        from pathlib import Path
+                        from office.helpers import refuse_links
+                        try:
+                            refuse_links(Path({str(unpacked)!r}))
+                        except ValueError as e:
+                            print("recusado:", e)
+                    """)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn("recusado: unpacked directory goes through a symlink", result.stdout)
+            merge = run_in(SKILLS / "docx/scripts", f"""
+                from merge_runs import merge_runs
+                print(merge_runs({str(unpacked)!r}))
+            """)
+            self.assertEqual(merge.returncode, 0, merge.stderr)
+            self.assertIn("unpacked directory goes through a symlink", merge.stdout)
+            clean = run_in(SKILLS / "pptx/scripts", f"""
+                from pathlib import Path
+                from clean import RefusedToClean, clean_unused_files
+                try:
+                    clean_unused_files(Path({str(unpacked)!r}))
+                except RefusedToClean as e:
+                    print("recusado:", e)
+            """)
+            self.assertEqual(clean.returncode, 0, clean.stderr)
+            self.assertIn("recusado: unpacked directory goes through a symlink", clean.stdout)
+            self.assertEqual((Path(outside) / "word/document.xml").read_text(), doc)
+
     def test_docx_refuses_linked_folder_outside_cwd(self):
         # workspace/docs -> pasta privada, com o script rodando fora do workspace: a pasta-link também conta.
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:

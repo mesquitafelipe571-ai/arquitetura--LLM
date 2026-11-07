@@ -127,6 +127,8 @@ def refuse_linked_path(target: Path, what: str = "extraction destination") -> No
 def refuse_links(root: Path) -> None:
     """An extracted package has no links (safe_extract refuses them); one inside an unpacked
     directory would make an in-place edit read and rewrite a file outside the package."""
+    # os.walk enters a linked root even with followlinks=False: the root and its parents count too.
+    refuse_linked_path(Path(root), "unpacked directory")
     for dirpath, dirnames, filenames in os.walk(root):  # followlinks=False: never descends into one
         for name in dirnames + filenames:
             if os.path.islink(os.path.join(dirpath, name)):

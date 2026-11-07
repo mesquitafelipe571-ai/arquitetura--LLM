@@ -174,6 +174,10 @@ def _refuse_linked_writes(unpacked_dir: Path, dest: str) -> None:
     """Every part this script writes, checked before the first write: a link at the part or at a
     folder between it and the package root would make the write land outside the package."""
     root = Path(os.path.abspath(unpacked_dir))
+    try:
+        refuse_linked_path(root, "unpacked directory")  # a linked root puts every part outside
+    except ValueError as e:
+        _die(str(e))
     slides = root / "ppt" / "slides"
     for part in (slides / dest, slides / "_rels" / f"{dest}.rels", root / "[Content_Types].xml",
                  root / "ppt" / "_rels" / "presentation.xml.rels", root / "ppt" / "presentation.xml"):

@@ -22,7 +22,7 @@ from pathlib import Path
 
 import defusedxml.minidom
 
-from office.helpers import SLIDE_REL_TYPE, listed_slide_rids, opc_target, rels_source_part
+from office.helpers import SLIDE_REL_TYPE, listed_slide_rids, opc_target, refuse_linked_path, rels_source_part
 
 
 def _slide_rids(pres_rels_path: Path, unpacked_dir: Path) -> dict[str, str]:
@@ -271,6 +271,10 @@ def update_content_types(unpacked_dir: Path, removed_files: list[str]) -> None:
 def _refuse_links(unpacked_dir: Path) -> None:
     """An extracted package has no links; one (e.g. ppt/media -> ~/.ssh) would make the unlink()
     and rewrite calls below act outside the package, so nothing is touched if any is found."""
+    try:
+        refuse_linked_path(Path(unpacked_dir), "unpacked directory")  # os.walk would enter a linked root
+    except ValueError as e:
+        raise RefusedToClean(str(e))
     for dirpath, dirnames, filenames in os.walk(unpacked_dir):  # followlinks=False: never descends into one
         for name in dirnames + filenames:
             if os.path.islink(os.path.join(dirpath, name)):
