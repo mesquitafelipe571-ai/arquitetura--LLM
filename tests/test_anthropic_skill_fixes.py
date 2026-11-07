@@ -385,6 +385,55 @@ class XlsxPdfTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), "['name']")
 
+    def test_pdf_checkbox_with_separate_widget_stays_checkbox(self):
+        result = run_in(SKILLS / "pdf/scripts", """
+            from extract_form_field_info import get_field_info
+            class Obj(dict):
+                def get_object(self):
+                    return self
+            field = Obj({"/FT": "/Btn", "/T": "agree", "/Ff": 0})
+            widget = Obj({"/Parent": field, "/Rect": [0, 0, 10, 10],
+                          "/AP": {"/N": {"/Yes": None, "/Off": None}}})
+            field["/Kids"] = [widget]
+            class Reader:
+                pages = [{"/Annots": [widget]}]
+                def get_fields(self):
+                    return {"agree": field}
+            f = get_field_info(Reader())[0]
+            print(f["type"], f["checked_value"], f["unchecked_value"])
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "checkbox /Yes /Off")
+
+    def test_pdf_bounding_box_height_uses_points_for_image_coordinates(self):
+        fields = json.dumps({
+            "pages": [{"page_number": 1, "image_width": 1275, "image_height": 1650}],
+            "form_fields": [{"page_number": 1, "description": "nome",
+                             "label_bounding_box": [0, 0, 50, 12], "entry_bounding_box": [60, 0, 300, 12],
+                             "entry_text": {"text": "x", "font_size": 10}}]})
+        result = run_in(SKILLS / "pdf/scripts", f"""
+            import io
+            from check_bounding_boxes import get_bounding_box_messages
+            print(get_bounding_box_messages(io.StringIO({fields!r}), {{1: 792.0}})[-1].split(":")[0])
+            print(get_bounding_box_messages(io.StringIO({fields!r}))[-2].split(":")[0])
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.split(), ["FAILURE", "WARNING"])
+
+    def test_pdf_convert_creates_missing_output_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "novo/images_dir"
+            result = run_in(SKILLS / "pdf/scripts", f"""
+                import sys, types
+                from PIL import Image
+                sys.modules["pdf2image"] = types.SimpleNamespace(
+                    convert_from_path=lambda path, dpi: [Image.new("RGB", (10, 10))])
+                from convert_pdf_to_images import convert
+                convert("x.pdf", {str(out)!r})
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((out / "page_1.png").exists())
+
     def test_pdf_choice_options_accept_plain_strings(self):
         result = run_in(SKILLS / "pdf/scripts", """
             from extract_form_field_info import make_field_dict

@@ -246,8 +246,8 @@ Create fields.json using `image_width` and `image_height` (signals image coordin
 
 ### B.5: Validate Bounding Boxes
 
-Before filling, check your bounding boxes for errors:
-`python scripts/check_bounding_boxes.py fields.json`
+Before filling, check your bounding boxes for errors (pass the PDF so pixel heights are converted to points):
+`python scripts/check_bounding_boxes.py fields.json <input.pdf>`
 
 This checks for intersecting bounding boxes and entry boxes that are too small for the font size. Fix any reported errors before filling.
 
@@ -269,8 +269,8 @@ Use this when structure extraction works for most fields but misses some element
 
 ## Step 2: Validate Before Filling
 
-**Always validate bounding boxes before filling:**
-`python scripts/check_bounding_boxes.py fields.json`
+**Always validate bounding boxes before filling** (add `<input.pdf>` when any page uses image coordinates):
+`python scripts/check_bounding_boxes.py fields.json <input.pdf>`
 
 This checks for:
 - Intersecting bounding boxes (which would cause overlapping text)

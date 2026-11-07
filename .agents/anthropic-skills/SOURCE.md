@@ -39,6 +39,9 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `pptx/scripts/clean.py` | Relacionamentos e overrides lidos pelo nome literal; com o prefixo `r:` em um `.rels`, apagava mídia ainda usada | `Relationship` e `Override` lidos pelo nome local em qualquer namespace |
 | `pdf/scripts/extract_form_field_info.py` | Campo com widgets separados em `/Kids` era descartado e depois recusado no preenchimento | Só pula contêineres (filhos com `/T`); campos terminais com widgets ficam |
 | `slack-gif-creator/core/gif_builder.py` | Ao reduzir frames para emoji, mantinha o FPS e acelerava a animação | Duração de cada frame multiplicada pelo passo de amostragem; `duration_seconds` corrigido |
+| `pdf/scripts/extract_form_field_info.py` | Checkbox com widget separado era tratado como grupo de rádio e não podia ser desmarcado | Só vira grupo de rádio com o flag de rádio em `/Ff`; estados do checkbox lidos do widget |
+| `pdf/scripts/check_bounding_boxes.py` + `forms.md` | Comparava altura em pixels com fonte em pontos e podia aprovar caixas pequenas demais | Aceita o PDF como 2º argumento e converte para pontos; sem ele, avisa que a altura não foi conferida |
+| `pdf/scripts/convert_pdf_to_images.py` | Falhava quando a pasta de saída não existia | Cria a pasta antes de salvar |
 | `skill-creator/eval-viewer/viewer.html` (segurança) | `escapeHtml()` não escapava aspas; uma evidência com `"` saía do atributo `title` e injetava JavaScript no visualizador | `escapeHtml()` escapa `"` e `'`; `run_number` também passa por ela |
 | `skill-creator/eval-viewer/generate_review.py` + `viewer.html` (segurança) | O servidor local (porta 3117) entregava saídas e aceitava feedback sem autenticação; outro usuário da máquina podia ler e adulterar | Token aleatório por execução exigido em todas as rotas; a URL aberta no navegador já o contém |
 

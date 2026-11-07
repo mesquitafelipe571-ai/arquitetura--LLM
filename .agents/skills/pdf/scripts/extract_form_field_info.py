@@ -24,6 +24,11 @@ def make_field_dict(field, field_id):
     elif ft == "/Btn":
         field_dict["type"] = "checkbox"  
         states = field.get("/_States_", [])
+        if not states:
+            # Separate widget in /Kids: the on/off appearance states live on the widget.
+            states = list(dict.fromkeys(
+                state for kid in field.get("/Kids", [])
+                for state in kid.get_object().get("/AP", {}).get("/N", {})))
         if len(states) == 2:
             if "/Off" in states:
                 field_dict["checked_value"] = states[0] if states[0] != "/Off" else states[1]
@@ -55,7 +60,8 @@ def get_field_info(reader: PdfReader):
     for field_id, field in fields.items():
         kids = field.get("/Kids")
         if kids:
-            if field.get("/FT") == "/Btn":
+            # Only radio buttons (/Ff bit 16) become groups; a checkbox with a separate widget stays a checkbox.
+            if field.get("/FT") == "/Btn" and int(field.get("/Ff", 0)) & (1 << 15):
                 possible_radio_names.add(field_id)
                 continue
             # Kids with their own /T are child fields (this is a container); kids without
