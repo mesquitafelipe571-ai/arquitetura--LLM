@@ -125,9 +125,12 @@ def build_run(root: Path, run_dir: Path) -> dict | None:
     outputs_dir = run_dir / "outputs"
     output_files: list[dict] = []
     if outputs_dir.is_dir():
-        for f in sorted(outputs_dir.iterdir()):
+        # Artifacts can live in subfolders (outputs/site/index.html); show them by relative path.
+        for f in sorted(outputs_dir.rglob("*")):
             if f.is_file() and f.name not in METADATA_FILES:
-                output_files.append(embed_file(f))
+                embedded = embed_file(f)
+                embedded["name"] = f.relative_to(outputs_dir).as_posix()
+                output_files.append(embedded)
 
     # Load grading if present
     grading = None

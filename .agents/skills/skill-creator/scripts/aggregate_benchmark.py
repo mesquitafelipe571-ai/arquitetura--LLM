@@ -67,6 +67,12 @@ def calculate_stats(values: list[float]) -> dict:
 BASELINE_CONFIGS = {"without_skill", "old_skill"}
 
 
+def _eval_dirs(parent: Path) -> list[Path]:
+    """Eval case dirs: `eval-*`, or any dir with eval_metadata.json (SKILL.md suggests descriptive names)."""
+    return sorted(d for d in parent.iterdir() if d.is_dir()
+                  and (d.name.startswith("eval-") or (d / "eval_metadata.json").exists()))
+
+
 def load_run_results(benchmark_dir: Path) -> dict:
     """
     Load all run results from a benchmark directory.
@@ -78,7 +84,7 @@ def load_run_results(benchmark_dir: Path) -> dict:
     runs_dir = benchmark_dir / "runs"
     if runs_dir.exists():
         search_dir = runs_dir
-    elif list(benchmark_dir.glob("eval-*")):
+    elif _eval_dirs(benchmark_dir):
         search_dir = benchmark_dir
     else:
         print(f"No eval directories found in {benchmark_dir} or {benchmark_dir / 'runs'}")
@@ -86,7 +92,7 @@ def load_run_results(benchmark_dir: Path) -> dict:
 
     results: dict[str, list] = {}
 
-    for eval_idx, eval_dir in enumerate(sorted(search_dir.glob("eval-*"))):
+    for eval_idx, eval_dir in enumerate(_eval_dirs(search_dir)):
         metadata_path = eval_dir / "eval_metadata.json"
         if metadata_path.exists():
             try:

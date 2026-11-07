@@ -767,6 +767,36 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertNotIn(forbidden, source)
         self.assertIn('HTTPServer(("127.0.0.1", 0), handler)', source)
 
+    def test_viewer_lists_outputs_in_subfolders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "eval-0/with_skill/outputs"
+            (out / "site").mkdir(parents=True)
+            (out / "site/index.html").write_text("<p>ok</p>")
+            (out / "notes.txt").write_text("x")
+            result = run_in(SKILLS / "skill-creator/eval-viewer", f"""
+                from pathlib import Path
+                from generate_review import find_runs
+                print([o["name"] for o in find_runs(Path({tmp!r}))[0]["outputs"]])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "['notes.txt', 'site/index.html']")
+
+    def test_benchmark_finds_cases_with_descriptive_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            case = Path(tmp) / "invoice-summary"
+            case.mkdir()
+            (case / "eval_metadata.json").write_text(json.dumps({"eval_id": 0, "prompt": "p"}))
+            for config, rate in (("with_skill", 1.0), ("without_skill", 0.0)):
+                (case / config / "outputs").mkdir(parents=True)
+                (case / config / "grading.json").write_text(json.dumps({"summary": {"pass_rate": rate}}))
+            result = run_in(SKILLS / "skill-creator", f"""
+                from pathlib import Path
+                from scripts.aggregate_benchmark import load_run_results
+                print(sorted((k, len(v)) for k, v in load_run_results(Path({tmp!r})).items()))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "[('with_skill', 1), ('without_skill', 1)]")
+
     def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
         with tempfile.TemporaryDirectory() as tmp:
             run = Path(tmp) / "eval-1/with_skill/run-1"
@@ -1025,10 +1055,34 @@ class GifBuilderTests(unittest.TestCase):
                 for i in range(24):
                     b.add_frame(np.full((128, 128, 3), i * 10, dtype=np.uint8))
                 info = b.save({str(Path(tmp) / "e.gif")!r}, optimize_for_emoji=True)
-                print(round(seen["duration"] * info["frame_count"]), info["duration_seconds"])
+                d = seen["duration"]
+                total = sum(d) if isinstance(d, list) else d * info["frame_count"]
+                print(round(total), info["duration_seconds"])
             """)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.splitlines()[-1].split(), ["2000", "2.0"])
+
+    def test_removing_duplicate_frames_keeps_their_time(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run_in(SKILLS / "slack-gif-creator", f"""
+                import sys, types
+                seen = {{}}
+                def imwrite(path, frames, duration, loop):
+                    seen["duration"] = duration
+                    open(path, "wb").write(b"gif")
+                sys.modules["imageio"] = types.ModuleType("imageio")
+                sys.modules["imageio.v3"] = types.SimpleNamespace(imwrite=imwrite)
+                import numpy as np
+                from core.gif_builder import GIFBuilder
+                b = GIFBuilder(64, 64, fps=10)
+                for value in [0] * 10 + [255] * 10:  # duas poses de 1 s cada
+                    b.add_frame(np.full((64, 64, 3), value, dtype=np.uint8))
+                info = b.save({str(Path(tmp) / "d.gif")!r}, remove_duplicates=True)
+                print(seen["duration"], info["duration_seconds"])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.splitlines()[-1], "[1000.0, 1000.0] 2.0")
+
 
 @unittest.skipIf(sys.platform == "win32", "grupo de processos POSIX")
 class WithServerTests(unittest.TestCase):

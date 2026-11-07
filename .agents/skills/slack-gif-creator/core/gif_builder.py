@@ -50,6 +50,8 @@ class GIFBuilder:
             frame = np.array(pil_frame)
 
         self.frames.append(frame)
+        if getattr(self, "_frame_counts", None) is not None:
+            self._frame_counts.append(1)
 
     def add_frames(self, frames: list[np.ndarray | Image.Image]):
         """Add multiple frames at once."""
@@ -121,6 +123,10 @@ class GIFBuilder:
 
         return optimized
 
+    def _current_frame_counts(self) -> list[int]:
+        counts = getattr(self, "_frame_counts", None)
+        return list(counts) if counts and len(counts) == len(self.frames) else [1] * len(self.frames)
+
     def deduplicate_frames(self, threshold: float = 0.9995) -> int:
         """
         Remove duplicate or near-duplicate consecutive frames.
@@ -135,7 +141,10 @@ class GIFBuilder:
         if len(self.frames) < 2:
             return 0
 
+        # How many original frames each kept frame stands for, so removal keeps the timing.
+        counts = self._current_frame_counts()
         deduplicated = [self.frames[0]]
+        kept_counts = [counts[0]]
         removed_count = 0
 
         for i in range(1, len(self.frames)):
@@ -151,10 +160,13 @@ class GIFBuilder:
             # High threshold (0.9995+) means only remove nearly identical frames
             if similarity < threshold:
                 deduplicated.append(self.frames[i])
+                kept_counts.append(counts[i])
             else:
                 removed_count += 1
+                kept_counts[-1] += counts[i]  # the kept frame is shown for the removed one too
 
         self.frames = deduplicated
+        self._frame_counts = kept_counts
         return removed_count
 
     def save(
@@ -178,8 +190,6 @@ class GIFBuilder:
         """
         if not self.frames:
             raise ValueError("No frames to save. Add frames with add_frame() first.")
-
-        frame_step = 1
 
         output_path = Path(output_path)
 
@@ -215,22 +225,25 @@ class GIFBuilder:
                 )
                 # Keep every nth frame to get close to 12 frames
                 keep_every = max(1, len(self.frames) // 12)
+                counts = self._current_frame_counts()
+                self._frame_counts = [
+                    sum(counts[i:i + keep_every]) for i in range(0, len(self.frames), keep_every)
+                ]
                 self.frames = [
                     self.frames[i] for i in range(0, len(self.frames), keep_every)
                 ]
-                frame_step = keep_every
 
         # Optimize colors with global palette
         optimized_frames = self.optimize_colors(num_colors, use_global_palette=True)
 
-        # Calculate frame duration in milliseconds; dropped frames lengthen the kept ones
-        frame_duration = 1000 / self.fps * frame_step
+        # Per-frame duration in ms: a frame dropped (dedup or emoji reduction) lengthens the one kept
+        durations = [1000 / self.fps * c for c in self._current_frame_counts()]
 
         # Save GIF
         imageio.imwrite(
             output_path,
             optimized_frames,
-            duration=frame_duration,
+            duration=durations,
             loop=0,  # Infinite loop
         )
 
@@ -245,7 +258,7 @@ class GIFBuilder:
             "dimensions": f"{self.width}x{self.height}",
             "frame_count": len(optimized_frames),
             "fps": self.fps,
-            "duration_seconds": len(optimized_frames) * frame_duration / 1000,
+            "duration_seconds": sum(durations) / 1000,
             "colors": num_colors,
         }
 
@@ -270,3 +283,4 @@ class GIFBuilder:
     def clear(self):
         """Clear all frames (useful for creating multiple GIFs)."""
         self.frames = []
+        self._frame_counts = None
