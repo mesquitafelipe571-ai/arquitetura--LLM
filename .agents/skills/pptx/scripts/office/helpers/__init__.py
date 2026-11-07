@@ -96,13 +96,17 @@ _RATIO_MIN_BYTES = 1024**2
 
 def check_archive_limits(zf: zipfile.ZipFile) -> None:
     """Refuse a zip bomb before anything is extracted or read from the archive."""
-    total = 0
+    total = compressed = 0
     for m in zf.infolist():
         total += m.file_size
+        compressed += m.compress_size
         if total > MAX_EXTRACTED_BYTES:
             raise ValueError(f"archive expands to more than {MAX_EXTRACTED_BYTES} bytes")
         if m.file_size > _RATIO_MIN_BYTES and m.file_size > MAX_COMPRESSION_RATIO * max(m.compress_size, 1):
             raise ValueError(f"suspicious compression ratio for archive entry: {m.filename!r}")
+    # A bomb split into many entries of at most 1 MiB each slips past the per-entry check.
+    if total > _RATIO_MIN_BYTES and total > MAX_COMPRESSION_RATIO * max(compressed, 1):
+        raise ValueError("suspicious compression ratio for the archive as a whole")
 
 
 def _refuse_linked_destination(dest: Path) -> None:

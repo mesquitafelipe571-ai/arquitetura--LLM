@@ -100,7 +100,8 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   de terceiro com uma entrada muito comprimida podia esgotar o disco ao ser
   descompactado. Agora a extração é recusada antes de começar quando o total
   declarado passa de 2 GiB ou uma entrada acima de 1 MiB tem taxa de compressão
-  acima de 200x.
+  acima de 200x. A mesma razão vale para o arquivo inteiro, para uma bomba dividida em
+  muitas entradas pequenas não escapar da checagem por entrada.
   Depois, os comandos de extração dos fluxos de edição (`pptx/SKILL.md` e
   `docx/SKILL.md`), que usavam `extractall()`/`unzip`, passaram a chamar `safe_extract()`.
   Os limites viraram `check_archive_limits()`, também chamado por `pptx/scripts/thumbnail.py`

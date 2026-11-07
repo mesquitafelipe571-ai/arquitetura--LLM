@@ -383,6 +383,26 @@ class OfficeSkillTests(unittest.TestCase):
                 self.assertEqual((victim / "startup.conf").read_text(), "da vítima")
                 self.assertFalse((victim / "novo").exists())
 
+    def test_office_archive_limits_catch_split_bomb(self):
+        # Várias entradas de exatamente 1 MiB escapavam da razão por entrada; a razão do arquivo inteiro pega.
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:
+                bomb = Path(tmp) / "split.docx"
+                with zipfile.ZipFile(bomb, "w", zipfile.ZIP_DEFLATED) as zf:
+                    for i in range(16):
+                        zf.writestr(f"word/media/z{i}.bin", b"\0" * (1024 * 1024))
+                result = run_in(SKILLS / f"{skill}/scripts", f"""
+                    import zipfile
+                    from office.helpers import check_archive_limits
+                    try:
+                        check_archive_limits(zipfile.ZipFile({str(bomb)!r}))
+                        print("aceito")
+                    except ValueError as e:
+                        print("recusado:", e)
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), "recusado: suspicious compression ratio for the archive as a whole")
+
     def test_office_safe_extract_rejects_zip_bomb(self):
         for skill in ("docx", "pptx", "xlsx"):
             with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:

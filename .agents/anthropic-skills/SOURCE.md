@@ -108,6 +108,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `pptx/scripts/add_slide.py` | Procurava `<p:sldIdLst>`, `<p:sldId>` e `r:id` com prefixos fixos; um `presentation.xml` com outros prefixos para os mesmos namespaces era recusado | Usa os prefixos que o `presentation.xml` declara para PresentationML e relacionamentos |
 | `pptx/scripts/add_slide.py` | `Type = "…/notesSlide"` (espaços em volta do `=`, XML válido) não era reconhecido; o slide duplicado continuava compartilhando as notas do original | A expressão aceita espaços em volta do `=` |
 | `claude-api/shared/evals/report/runner-scaffold.mjs` | Se uma gravação falhava depois do juiz, a linha de `errors.jsonl` perdia `judge_model`/`judge_usage` e o gasto do juiz sumia da contabilidade | Guarda o retorno do juiz e o usa na linha de erro |
+| `office/helpers` `check_archive_limits()` em docx/pptx/xlsx (segurança) | A razão de compressão só valia para entradas acima de 1 MiB; uma bomba dividida em milhares de entradas de 1 MiB expandia ~2 GiB a partir de ~2 MiB | Também recusa quando a razão do arquivo inteiro passa de 200x |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.
