@@ -15,6 +15,7 @@ This script removes:
 - Content-Type overrides for deleted files
 """
 
+import os
 import posixpath
 import sys
 from pathlib import Path
@@ -267,8 +268,18 @@ def update_content_types(unpacked_dir: Path, removed_files: list[str]) -> None:
             f.write(dom.toxml(encoding="utf-8"))
 
 
+def _refuse_links(unpacked_dir: Path) -> None:
+    """An extracted package has no links; one (e.g. ppt/media -> ~/.ssh) would make the unlink()
+    and rewrite calls below act outside the package, so nothing is touched if any is found."""
+    for dirpath, dirnames, filenames in os.walk(unpacked_dir):  # followlinks=False: never descends into one
+        for name in dirnames + filenames:
+            if os.path.islink(os.path.join(dirpath, name)):
+                raise RefusedToClean(f"{os.path.join(dirpath, name)} is a symlink; re-extract the package")
+
+
 def clean_unused_files(unpacked_dir: Path) -> list[str]:
     all_removed = []
+    _refuse_links(unpacked_dir)
 
     if list(unpacked_dir.rglob("*.rels")) and not get_referenced_files(unpacked_dir):
         raise RefusedToClean(

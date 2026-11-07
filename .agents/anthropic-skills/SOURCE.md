@@ -140,6 +140,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `office/helpers/pptx_theme.py` (3 cópias) | A ordem `sldIdLst` → `notesMasterIdLst` era lida por regex com `p:` fixo; com outro prefixo para o mesmo URI, um tema compartilhado inerte virava erro | Lê `presentation.xml` com defusedxml e compara URI e nome local dos filhos da raiz |
 | `docx/scripts/comment.py` | `--id` explícito já usado criava um segundo `w:comment` com o mesmo `w:id` | O ID é conferido antes de mexer nas partes; um ID repetido levanta `ValueError` |
 | `pptx/scripts/add_slide.py` (segurança) | `copy2()`/`write_text()` seguiam um link em `slideN.xml(.rels)` ou nas partes registradas e gravavam fora do pacote | `_refuse_linked_writes()` confere todas as partes gravadas, e as pastas até a raiz, antes da primeira gravação |
+| `pptx/scripts/clean.py` (segurança) | `glob()`/`unlink()` seguiam um link de diretório (ex.: `ppt/media` → `~/.ssh`) e apagavam arquivos fora do pacote | `_refuse_links()` percorre o pacote sem seguir links e recusa a limpeza, sem apagar nada, se achar algum |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

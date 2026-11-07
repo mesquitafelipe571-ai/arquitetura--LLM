@@ -129,6 +129,21 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "[{'name': 'slide1.xml', 'hidden': False}]")
 
+    def test_pptx_clean_refuses_linked_directories(self):
+        # ppt/media -> fora do pacote: a limpeza apagaria id_rsa no destino; nada pode ser apagado.
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
+            root = Path(tmp)
+            (root / "ppt").mkdir()
+            secret = Path(outside) / "id_rsa"
+            secret.write_text("segredo")
+            (root / "ppt/media").symlink_to(outside, target_is_directory=True)
+            result = subprocess.run([sys.executable, "clean.py", str(root)], cwd=SKILLS / "pptx/scripts",
+                                    capture_output=True, text=True, timeout=60)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("symlink", result.stderr)
+            self.assertIn("Nothing was deleted.", result.stderr)
+            self.assertEqual(secret.read_text(), "segredo")
+
     def test_pptx_clean_refuses_when_presentation_index_is_missing(self):
         rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
         with tempfile.TemporaryDirectory() as tmp:
