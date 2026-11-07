@@ -171,6 +171,9 @@ def run_single_query(
                                 return True
 
                     elif event.get("type") == "result":
+                        # An error result (e.g. error_during_execution) is a failed run, not "did not trigger".
+                        if event.get("is_error") or str(event.get("subtype", "")).startswith("error"):
+                            raise RuntimeError(f"claude -p failed: {event.get('subtype') or 'error result'}")
                         return triggered
 
                 if done:

@@ -102,6 +102,8 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `skill-creator/eval-viewer/generate_review.py` (segurança) | `--static` gravava com `write_text()`; um `review.html` que fosse link tinha o alvo sobrescrito pelo HTML | Grava em arquivo temporário e substitui com `os.replace()` |
 | `xlsx/scripts/recalc.py` (segurança) | Recalculava fórmulas `WEBSERVICE`/`DDE` de planilhas de terceiros; o LibreOffice buscava URLs locais/internas e gravava a resposta no arquivo | Recusa recalcular (também com `--force`) quando uma fórmula, nome definido ou formatação condicional chama essas funções; o XML é interpretado (`defusedxml`) antes da busca, então referências como `&#73;` não escondem a chamada, e uma parte que não pode ser lida com segurança também bloqueia |
 | `office/helpers` `safe_extract()` em docx/pptx/xlsx (segurança) | `dest.resolve()` seguia um destino que fosse link (`unpacked -> victim`), e a extração gravava ou sobrescrevia arquivos fora do workspace | Recusa o destino, e pastas acima dele dentro do diretório de trabalho, quando são links |
+| `skill-creator/eval-viewer/generate_review.py` | `eval-a/b-c` e `eval-a-b/c` recebiam o mesmo id (`eval-a-b-c`); o feedback de um sobrescrevia o do outro | IDs únicos ficam como antes; os que colidem passam a ser o caminho relativo |
+| `skill-creator/scripts/run_eval.py` | Um evento `result` com erro (`is_error`, `error_during_execution`) virava "não acionou"; consultas com `should_trigger: false` passavam numa execução que falhou | O erro levanta exceção e entra na contagem de erros |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

@@ -62,6 +62,15 @@ def find_runs(workspace: Path) -> list[dict]:
     """Recursively find directories that contain an outputs/ subdirectory."""
     runs: list[dict] = []
     _find_runs_recursive(workspace, workspace, runs)
+    # "eval-a/b-c" and "eval-a-b/c" both flatten to "eval-a-b-c"; feedback is keyed by id, so a
+    # clash would merge two runs' reviews. Clashing ids fall back to the (unique) relative path.
+    seen: dict[str, int] = {}
+    for run in runs:
+        seen[run["id"]] = seen.get(run["id"], 0) + 1
+    for run in runs:
+        path = run.pop("_path")
+        if seen[run["id"]] > 1:
+            run["id"] = path
     # build_run() stores eval_id=None when metadata is missing; None cannot be compared with ints.
     runs.sort(key=lambda r: (float("inf") if r.get("eval_id") is None else r["eval_id"], r["id"]))
     return runs
@@ -175,6 +184,7 @@ def build_run(root: Path, run_dir: Path) -> dict | None:
 
     return {
         "id": run_id,
+        "_path": run_dir.relative_to(root).as_posix(),
         "prompt": prompt,
         "eval_id": eval_id,
         "outputs": output_files,

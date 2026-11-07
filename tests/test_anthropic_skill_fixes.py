@@ -843,6 +843,41 @@ class SkillCreatorTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout.strip(), "True")
 
+    def test_run_single_query_error_result_is_a_failure(self):
+        # Um evento result com is_error é falha da execução, não "não acionou" (que aprovaria should_trigger: false).
+        event = {"type": "result", "subtype": "error_during_execution", "is_error": True}
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run_in(SKILLS / "skill-creator", f"""
+                import io, json
+                from unittest import mock
+                from scripts import run_eval
+                class Done:
+                    stdout = io.BytesIO(json.dumps({event!r}).encode())
+                    def poll(self):
+                        return 1
+                with mock.patch.object(run_eval.subprocess, "Popen", return_value=Done()):
+                    try:
+                        print(run_eval.run_single_query("q", "demo", "d", 5, {tmp!r}))
+                    except RuntimeError as e:
+                        print("erro:", e)
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "erro: claude -p failed: error_during_execution")
+
+    def test_viewer_run_ids_stay_distinct(self):
+        # eval-a/b-c e eval-a-b/c viravam o mesmo id e um feedback sobrescrevia o outro.
+        with tempfile.TemporaryDirectory() as tmp:
+            for rel in ("eval-a/b-c", "eval-a-b/c", "eval-0/with_skill"):
+                (Path(tmp) / rel / "outputs").mkdir(parents=True)
+                (Path(tmp) / rel / "outputs/answer.txt").write_text("x")
+            result = run_in(SKILLS / "skill-creator/eval-viewer", f"""
+                from pathlib import Path
+                from generate_review import find_runs
+                print(sorted(r["id"] for r in find_runs(Path({tmp!r}))), all("_path" not in r for r in find_runs(Path({tmp!r}))))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "['eval-0-with_skill', 'eval-a-b/c', 'eval-a/b-c'] True")
+
     def test_package_skill_skips_its_own_output_inside_the_skill(self):
         with tempfile.TemporaryDirectory() as tmp:
             skill = Path(tmp) / "my-skill"
