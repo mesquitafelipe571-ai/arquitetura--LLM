@@ -29,6 +29,32 @@ def run_in(scripts_dir, code):
 
 @unittest.skipUnless(HAS_DEFUSEDXML, "defusedxml não instalado")
 class OfficeSkillTests(unittest.TestCase):
+    def test_redlining_counts_tabs_and_breaks(self):
+        # Remover <w:tab/> sem rastrear muda o texto visível; com <w:del> a mudança está registrada.
+        w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        doc = f'<w:document xmlns:w="{w}"><w:body><w:p>{{}}</w:p></w:body></w:document>'
+        original = '<w:r><w:t>Pay</w:t><w:tab/><w:t>100</w:t></w:r>'
+        cases = {
+            "untracked": ('<w:r><w:t>Pay100</w:t></w:r>', False),
+            "tracked": ('<w:r><w:t>Pay</w:t></w:r><w:del w:author="A"><w:r><w:tab/></w:r></w:del>'
+                        '<w:r><w:t>100</w:t></w:r>', True),
+            "br": ('<w:r><w:t>Pay</w:t><w:br/><w:t>100</w:t></w:r>', False),
+        }
+        for skill in ("docx", "pptx", "xlsx"):
+            for name, (modified, expected) in cases.items():
+                with self.subTest(skill=skill, case=name), tempfile.TemporaryDirectory() as tmp:
+                    src = Path(tmp) / "original.docx"
+                    with zipfile.ZipFile(src, "w") as z:
+                        z.writestr("word/document.xml", doc.format(original))
+                    (Path(tmp) / "out/word").mkdir(parents=True)
+                    (Path(tmp) / "out/word/document.xml").write_text(doc.format(modified))
+                    result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                        from validators.redlining import RedliningValidator
+                        print(RedliningValidator({str(Path(tmp) / "out")!r}, {str(src)!r}).validate())
+                    """)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout.strip().splitlines()[-1], str(expected))
+
     def test_pptx_clean_keeps_slides_listed_with_other_prefix(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1395,6 +1421,24 @@ class SkillCreatorTests(unittest.TestCase):
             ex = ET.parse(root / "word/commentsExtended.xml").getroot()
             parents = [e.get(f"{{{w15}}}paraIdParent") for e in ex if e.get(f"{{{w15}}}paraIdParent")]
             self.assertEqual(parents, ["0000000B"])
+
+    def test_benchmark_delta_needs_same_graded_runs(self):
+        # eval-1 de with_skill não foi avaliada: só eval-0 é pareada e empata, então não há delta.
+        with tempfile.TemporaryDirectory() as tmp:
+            for eval_id, config, rate in ((0, "with_skill", 1.0), (0, "without_skill", 1.0),
+                                          (1, "with_skill", None), (1, "without_skill", 0.0)):
+                d = Path(tmp) / f"eval-{eval_id}" / config / "run-1"
+                (d / "outputs").mkdir(parents=True)
+                if rate is not None:
+                    (d / "grading.json").write_text(json.dumps({"summary": {"pass_rate": rate}}))
+            result = run_in(SKILLS / "skill-creator", f"""
+                from pathlib import Path
+                from scripts.aggregate_benchmark import aggregate_results, load_run_results
+                delta = aggregate_results(load_run_results(Path({tmp!r})))["delta"]
+                print(delta["pass_rate"], delta["time_seconds"])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines()[-1], "— —")
 
     def test_benchmark_never_mixes_output_chars_into_tokens(self):
         # Só a baseline tem tokens reais; a outra só tem output_chars. O delta de tokens não é medido.

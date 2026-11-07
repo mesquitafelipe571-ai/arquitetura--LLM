@@ -280,14 +280,20 @@ class RedliningValidator:
                 parent.remove(del_elem)
 
     def _extract_text_content(self, root):
-        p_tag = f"{{{self.namespaces['w']}}}p"
-        t_tag = f"{{{self.namespaces['w']}}}t"
+        w = self.namespaces['w']
+        p_tag = f"{{{w}}}p"
+        t_tag = f"{{{w}}}t"
+        # Tabs and breaks are visible content too: dropping one untracked must not compare equal.
+        separators = {f"{{{w}}}tab": "\t", f"{{{w}}}br": "\n", f"{{{w}}}cr": "\n"}
 
         paragraphs = []
         for p_elem in root.findall(f".//{p_tag}"):
             text_parts = []
-            for t_elem in p_elem.findall(f".//{t_tag}"):
-                text_parts.append(self._rendered_text(t_elem))
+            for elem in p_elem.iter():
+                if elem.tag == t_tag:
+                    text_parts.append(self._rendered_text(elem))
+                elif elem.tag in separators:
+                    text_parts.append(separators[elem.tag])
             paragraph_text = "".join(text_parts)
             if paragraph_text:
                 paragraphs.append(paragraph_text)

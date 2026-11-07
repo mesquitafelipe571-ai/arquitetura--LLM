@@ -121,6 +121,8 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `skill-creator/scripts/aggregate_benchmark.py` + `run_loop.py`, `improve_description.py`, `generate_report.py`, `utils.py` (segurança) | `benchmark.json`/`.md`, `results.json`, `report.html`, o log de iteração e o `--output` eram gravados com `open(..., "w")`/`write_text()` seguindo links plantados | `utils.write_text_replace()` grava num temporário ao lado e substitui com `os.replace()` |
 | `docx/scripts/comment.py` | Num comentário com vários parágrafos, a resposta apontava para o `paraId` do primeiro, mas `commentsExtended.xml` registra o comentário pelo último | `_find_para_id()` usa o `paraId` do último parágrafo |
 | `skill-creator/scripts/aggregate_benchmark.py` | Uma configuração com `run-*` sem nenhum `grading.json` virava 0% e gerava delta inventado (ex.: `+1.00`) | Sem execuções avaliadas nos dois lados, os deltas de taxa e tempo ficam `—` |
+| `office/validators/redlining.py` (3 cópias) | A comparação de texto ignorava `w:tab`, `w:br` e `w:cr`; remover uma tabulação sem rastrear passava como rastreado | `_extract_text_content()` percorre o parágrafo em ordem e representa tabulação e quebras |
+| `skill-creator/scripts/aggregate_benchmark.py` | Com `grading.json` faltando só em alguns casos de um lado, a média comparava conjuntos diferentes (ex.: 100% × 50%, `+0.50`) | Os deltas só são calculados quando os dois lados avaliaram os mesmos pares `(eval_id, run_number)`; senão ficam `—` |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

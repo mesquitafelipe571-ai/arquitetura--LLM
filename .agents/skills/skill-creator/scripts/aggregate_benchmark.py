@@ -240,13 +240,15 @@ def aggregate_results(results: dict) -> dict:
     delta_tokens = primary.get("tokens", {}).get("mean", 0) - baseline.get("tokens", {}).get("mean", 0)
     # A token delta needs real counts on every run of both sides; otherwise it is not measured.
     tokens_known = len(configs) >= 2 and all(tokens_complete.get(c, False) for c in configs[:2])
-    # A side without any graded run was not measured: comparing against its zeros invents a delta.
-    measured = len(configs) >= 2 and all(results.get(c) for c in configs[:2])
+    # Compare only when both sides graded the same (eval_id, run_number) pairs: a missing or
+    # one-sided grading would turn absent measurements into an invented delta.
+    graded = [{(r["eval_id"], r["run_number"]) for r in results.get(c, [])} for c in configs[:2]]
+    measured = len(graded) == 2 and bool(graded[0]) and graded[0] == graded[1]
 
     run_summary["delta"] = {
         "pass_rate": f"{delta_pass_rate:+.2f}" if measured else "—",
         "time_seconds": f"{delta_time:+.1f}" if measured else "—",
-        "tokens": f"{delta_tokens:+.0f}" if tokens_known else "—"
+        "tokens": f"{delta_tokens:+.0f}" if tokens_known and measured else "—"
     }
 
     return run_summary
