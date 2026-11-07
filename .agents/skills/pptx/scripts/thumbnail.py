@@ -25,7 +25,7 @@ from pathlib import Path
 
 import defusedxml.minidom
 from defusedxml import ElementTree
-from office.helpers import SLIDE_REL_TYPE, listed_slide_rids, opc_target
+from office.helpers import SLIDE_REL_TYPE, check_archive_limits, listed_slide_rids, opc_target
 from office.soffice import run_soffice
 from PIL import Image, ImageDraw, ImageFont
 
@@ -108,6 +108,7 @@ def _is_hidden(zf: zipfile.ZipFile, part: str) -> bool:
 
 def get_slide_info(pptx_path: Path) -> list[dict]:
     with zipfile.ZipFile(pptx_path, "r") as zf:
+        check_archive_limits(zf)  # untrusted decks: refuse a zip bomb before reading any part
         rels_content = zf.read("ppt/_rels/presentation.xml.rels").decode("utf-8")
         rels_dom = defusedxml.minidom.parseString(rels_content)
 

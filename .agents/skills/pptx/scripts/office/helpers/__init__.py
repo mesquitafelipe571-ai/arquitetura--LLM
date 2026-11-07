@@ -94,16 +94,21 @@ MAX_COMPRESSION_RATIO = 200  # Office XML compresses ~10-30x; only applied to en
 _RATIO_MIN_BYTES = 1024**2
 
 
-def safe_extract(zf: zipfile.ZipFile, dest: Path) -> None:
-    dest = dest.resolve()
-    members = zf.infolist()
+def check_archive_limits(zf: zipfile.ZipFile) -> None:
+    """Refuse a zip bomb before anything is extracted or read from the archive."""
     total = 0
-    for m in members:
+    for m in zf.infolist():
         total += m.file_size
         if total > MAX_EXTRACTED_BYTES:
             raise ValueError(f"archive expands to more than {MAX_EXTRACTED_BYTES} bytes")
         if m.file_size > _RATIO_MIN_BYTES and m.file_size > MAX_COMPRESSION_RATIO * max(m.compress_size, 1):
             raise ValueError(f"suspicious compression ratio for archive entry: {m.filename!r}")
+
+
+def safe_extract(zf: zipfile.ZipFile, dest: Path) -> None:
+    dest = dest.resolve()
+    check_archive_limits(zf)
+    members = zf.infolist()
     for m in members:
         if stat.S_ISLNK(m.external_attr >> 16):
             raise ValueError(f"symlink archive entry not allowed: {m.filename!r}")

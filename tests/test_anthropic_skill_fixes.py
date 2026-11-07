@@ -124,6 +124,23 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertIn("rId2", result.stdout)
             self.assertTrue((root / "ppt/slides/slide2.xml").exists())
 
+    def test_pptx_thumbnail_refuses_zip_bomb_before_reading(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pptx = Path(tmp) / "bomb.pptx"
+            with zipfile.ZipFile(pptx, "w", zipfile.ZIP_DEFLATED) as zf:
+                zf.writestr("ppt/presentation.xml", b" " * (32 * 1024 * 1024))  # ~32 KB comprimido
+            result = run_in(SKILLS / "pptx/scripts", f"""
+                from pathlib import Path
+                from thumbnail import get_slide_info
+                try:
+                    get_slide_info(Path({str(pptx)!r}))
+                    print("lido")
+                except ValueError as e:
+                    print("recusado:", e)
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue(result.stdout.startswith("recusado: suspicious compression ratio"), result.stdout)
+
     def test_pptx_clean_keeps_media_referenced_with_prefixed_rels(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1072,6 +1089,35 @@ class SkillCreatorTests(unittest.TestCase):
         result = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), ["complete"])
+
+    def test_run_loop_report_never_follows_planted_link(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "victim.txt"
+            target.write_text("original")
+            skill = Path(tmp) / "demo"
+            skill.mkdir()
+            (skill / "SKILL.md").write_text("---\nname: demo\ndescription: d\n---\n")
+            (Path(tmp) / "evals.json").write_text("[]")
+            # O nome antigo era previsível: skill_description_report_<skill>_<timestamp>.html no tmp compartilhado.
+            (Path(tmp) / "skill_description_report_demo_20260101_000000.html").symlink_to(target)
+            result = run_in(SKILLS / "skill-creator", f"""
+                import os, sys, tempfile
+                from unittest import mock
+                tempfile.tempdir = {tmp!r}
+                from scripts import run_loop
+                sys.argv = ["run_loop", "--eval-set", {str(Path(tmp) / "evals.json")!r},
+                            "--skill-path", {str(skill)!r}, "--model", "m"]
+                with mock.patch.object(run_loop.time, "strftime", return_value="20260101_000000"), \\
+                     mock.patch.object(run_loop.webbrowser, "open"), \\
+                     mock.patch.object(run_loop, "run_loop", side_effect=SystemExit(0)), \\
+                     mock.patch.object(run_loop, "parse_skill_md", return_value=("demo", "d", "")):
+                    try:
+                        run_loop.main()
+                    except SystemExit:
+                        pass
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(target.read_text(), "original")
 
     def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
         with tempfile.TemporaryDirectory() as tmp:

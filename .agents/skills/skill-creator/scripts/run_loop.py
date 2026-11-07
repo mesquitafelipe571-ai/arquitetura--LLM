@@ -7,6 +7,7 @@ overfitting.
 """
 
 import argparse
+import os
 import json
 import random
 import sys
@@ -277,7 +278,12 @@ def main():
     if args.report != "none":
         if args.report == "auto":
             timestamp = time.strftime("%Y%m%d_%H%M%S")
-            live_report_path = Path(tempfile.gettempdir()) / f"skill_description_report_{skill_path.name}_{timestamp}.html"
+            # mkstemp creates the file exclusively with a random name: a link planted at a guessable
+            # path in a shared temp dir is never followed. Later updates rewrite this same file.
+            fd, report_name = tempfile.mkstemp(
+                prefix=f"skill_description_report_{skill_path.name}_{timestamp}_", suffix=".html")
+            os.close(fd)
+            live_report_path = Path(report_name)
         else:
             live_report_path = Path(args.report)
         # Open the report immediately so the user can watch
