@@ -84,6 +84,17 @@ def remove_orphaned_slides(unpacked_dir: Path) -> list[str]:
                 f"{index.relative_to(unpacked_dir)} is missing but {len(on_disk)} slide(s) are on disk. "
                 f"Refusing to delete them — restore the file or re-extract the package."
             )
+    # A listed r:id with no slide relationship means the map is incomplete: deleting "orphans"
+    # would destroy the slides it should have pointed to.
+    if on_disk:
+        rid_to_slide = _slide_rids(pres_rels_path, unpacked_dir)
+        unresolved = [r for r in _listed_slide_rids(unpacked_dir / "ppt" / "presentation.xml")
+                      if r not in rid_to_slide]
+        if unresolved:
+            raise RefusedToClean(
+                f"<p:sldIdLst> lists {', '.join(unresolved)} with no slide relationship in "
+                f"presentation.xml.rels. Refusing to delete slides — fix the relationships first."
+            )
     referenced_slides = get_slides_in_sldidlst(unpacked_dir)
 
     if on_disk and not any(s.name in referenced_slides for s in on_disk):

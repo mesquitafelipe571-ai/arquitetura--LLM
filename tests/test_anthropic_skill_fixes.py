@@ -96,6 +96,34 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertTrue(result.stdout.startswith("recusado:"), result.stdout)
             self.assertTrue((root / "ppt/slides/slide1.xml").exists())
 
+    def test_pptx_clean_refuses_when_listed_slide_has_no_relationship(self):
+        rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "ppt/_rels").mkdir(parents=True)
+            (root / "ppt/slides").mkdir()
+            (root / "ppt/presentation.xml").write_text(
+                '<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"'
+                f' xmlns:r="{rel_ns}"><p:sldIdLst><p:sldId id="256" r:id="rId1"/><p:sldId id="257" r:id="rId2"/>'
+                '</p:sldIdLst></p:presentation>')
+            (root / "ppt/_rels/presentation.xml.rels").write_text(
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                f'<Relationship Id="rId1" Type="{rel_ns}/slide" Target="slides/slide1.xml"/></Relationships>')
+            for n in (1, 2):
+                (root / f"ppt/slides/slide{n}.xml").write_text("<p:sld/>")
+            result = run_in(SKILLS / "pptx/scripts", f"""
+                from pathlib import Path
+                from clean import RefusedToClean, clean_unused_files
+                try:
+                    print(clean_unused_files(Path({tmp!r})))
+                except RefusedToClean as e:
+                    print("recusado:", e)
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue(result.stdout.startswith("recusado:"), result.stdout)
+            self.assertIn("rId2", result.stdout)
+            self.assertTrue((root / "ppt/slides/slide2.xml").exists())
+
     def test_pptx_clean_keeps_media_referenced_with_prefixed_rels(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1018,6 +1046,32 @@ class SkillCreatorTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("&lt;img", result.stdout)  # o valor aparece, mas como texto
         self.assertNotIn("<img", result.stdout)
+
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_viewer_closing_done_dialog_keeps_submission_complete(self):
+        html = (SKILLS / "skill-creator/eval-viewer/viewer.html").read_text()
+        state = re.search(r"// ---- State ----\n(.*?)\n\n", html, re.S).group(1)
+        funcs = [re.search(rf"function {name}\(\) \{{.*?\n    \}}", html, re.S).group(0)
+                 for name in ("saveCurrentFeedback", "showDoneDialog", "closeDoneDialog")]
+        script = textwrap.dedent("""
+            const EMBEDDED_DATA = {skill_name: "s", runs: [{id: "r1"}, {id: "r2"}]};
+            const location = {search: ""};
+            const posts = [];
+            async function fetch(url, opts) {
+              if (opts && opts.method === "POST") posts.push(JSON.parse(opts.body).status);
+              return {ok: true, status: 200};
+            }
+            const els = {feedback: {value: "nota"}};
+            const document = {getElementById(id) {
+              return els[id] || (els[id] = {value: "", classList: {add() {}, remove() {}}, set textContent(t) {}});
+            }};
+        """) + state + "\n" + "\n".join(funcs) + textwrap.dedent("""
+            showDoneDialog();
+            setTimeout(() => { closeDoneDialog(); setTimeout(() => process.stdout.write(JSON.stringify(posts)), 50); }, 50);
+        """)
+        result = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), ["complete"])
 
     def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
         with tempfile.TemporaryDirectory() as tmp:

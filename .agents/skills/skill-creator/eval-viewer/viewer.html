@@ -1064,8 +1064,8 @@
     }
 
     function closeDoneDialog() {
-      // Reset status back to in_progress
-      saveCurrentFeedback();
+      // Only close: saving here would overwrite the "complete" submission with "in_progress".
+      // A later edit saves again through the normal auto-save.
       document.getElementById("done-overlay").classList.remove("visible");
     }
 
