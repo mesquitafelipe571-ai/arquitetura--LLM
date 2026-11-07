@@ -159,7 +159,7 @@ do projeto. Pontos verificados:
 | Análise estática | Nenhuma | CodeQL para Python e para os workflows (Actions). Sem JavaScript: o projeto não tem JS próprio; o JS das skills de terceiros fica em `.agents/`, que o CodeQL ignora |
 | Dependências | Sem Dependabot | Dependabot para npm, pip, Actions, Docker, dev container e submódulos |
 | Instalação do Ollaya (`scripts/ollaya.sh`) | `OLLAYA_APPROVE_INSTALL=1` pulava a confirmação, então um agente sem TTY podia liberar sozinho o download e a execução do instalador | Só roda com "s" digitado num terminal; a variável não tem mais efeito (coberto por `tests/test_ollaya_wrapper.py`) |
-| Skills `decisao` e `rea` do Claude Code | `$ARGUMENTS` entrava solto no prompt do agente | O pedido vai num bloco `<pedido_do_usuario>`, marcado como dado que não muda regras, ferramentas nem formato |
+| Skills `decisao` e `rea` do Claude Code | `$ARGUMENTS` entrava solto no prompt do agente | O pedido vai no fim do prompt, depois de "Pedido do usuário:", sem marcador de fechamento que ele possa forjar; tudo até o fim é dado que não muda regras, ferramentas nem formato |
 
 Já estavam corretos: `permissions: contents: read` nos dois workflows existentes.
 
