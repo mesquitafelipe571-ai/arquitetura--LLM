@@ -87,9 +87,24 @@ def rendered_text(text: str, preserve: bool) -> str:
     return text if preserve else text.strip(XML_SPACE)
 
 
+# Expansion limits against zip bombs. Declared sizes bound what extract() writes (zipfile stops
+# at file_size), so checking them before extracting is enough.
+MAX_EXTRACTED_BYTES = 2 * 1024**3
+MAX_COMPRESSION_RATIO = 200  # Office XML compresses ~10-30x; only applied to entries over 1 MiB
+_RATIO_MIN_BYTES = 1024**2
+
+
 def safe_extract(zf: zipfile.ZipFile, dest: Path) -> None:
     dest = dest.resolve()
-    for m in zf.infolist():
+    members = zf.infolist()
+    total = 0
+    for m in members:
+        total += m.file_size
+        if total > MAX_EXTRACTED_BYTES:
+            raise ValueError(f"archive expands to more than {MAX_EXTRACTED_BYTES} bytes")
+        if m.file_size > _RATIO_MIN_BYTES and m.file_size > MAX_COMPRESSION_RATIO * max(m.compress_size, 1):
+            raise ValueError(f"suspicious compression ratio for archive entry: {m.filename!r}")
+    for m in members:
         if stat.S_ISLNK(m.external_attr >> 16):
             raise ValueError(f"symlink archive entry not allowed: {m.filename!r}")
         target = (dest / m.filename).resolve()

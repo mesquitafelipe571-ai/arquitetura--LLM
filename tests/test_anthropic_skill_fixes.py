@@ -255,6 +255,28 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual(len(runs), 1)
             self.assertIsNotNone(runs[0].find(f".//{{{a}}}graphic"))
 
+    def test_office_safe_extract_rejects_zip_bomb(self):
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:
+                bomb = Path(tmp) / "bomb.docx"
+                with zipfile.ZipFile(bomb, "w", zipfile.ZIP_DEFLATED) as zf:
+                    zf.writestr("word/document.xml", "<w:document/>")
+                    zf.writestr("word/media/zeros.bin", b"\0" * (16 * 1024 * 1024))  # ~16 KB comprimido
+                out = Path(tmp) / "out"
+                result = run_in(SKILLS / f"{skill}/scripts", f"""
+                    import zipfile
+                    from pathlib import Path
+                    from office.helpers import safe_extract
+                    try:
+                        safe_extract(zipfile.ZipFile({str(bomb)!r}), Path({str(out)!r}))
+                        print("extraído")
+                    except ValueError as e:
+                        print("recusado:", e)
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertTrue(result.stdout.startswith("recusado: suspicious compression ratio"), result.stdout)
+                self.assertFalse((out / "word/media/zeros.bin").exists())
+
     def test_docx_accept_changes_timeout_is_an_error(self):
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "in.docx"

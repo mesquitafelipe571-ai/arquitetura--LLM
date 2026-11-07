@@ -95,6 +95,12 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   Depois, o próprio caminho de saída também deixou de ser seguido: um
   `demo.skill` que fosse um link tinha o destino truncado; agora o pacote é gravado
   em arquivo temporário e substitui o link, não o alvo.
+- **Extração sem limite de tamanho** (`office/helpers` `safe_extract()` em docx, pptx e
+  xlsx, apontado pela revisão de segurança do Codex, gravidade baixa): um DOCX/PPTX/XLSX
+  de terceiro com uma entrada muito comprimida podia esgotar o disco ao ser
+  descompactado. Agora a extração é recusada antes de começar quando o total
+  declarado passa de 2 GiB ou uma entrada acima de 1 MiB tem taxa de compressão
+  acima de 200x.
 - Testes em `tests/test_anthropic_skill_fixes.py`, que falham com os arquivos
   originais. Pendente: reportar à origem.
 
