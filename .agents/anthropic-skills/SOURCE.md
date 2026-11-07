@@ -134,6 +134,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `pdf/scripts/*` + novo `_replace_write.py` (segurança) | PDFs preenchidos, JSON de campos/estrutura e imagens eram gravados com `open(..., "w")`/`.save()` seguindo um link plantado no caminho de saída | `replacing()` grava num temporário ao lado e substitui com `os.replace()`, nos 6 pontos de gravação |
 | `docx/scripts/comment.py` | Um pai que já tinha `paraId`, mas nenhum `commentEx`, não era registrado; a resposta apontava para um pai inexistente em `commentsExtended.xml` | O `commentEx` do pai é criado sempre que falta, tenha o `paraId` sido atribuído agora ou não |
 | `skill-creator/eval-viewer/viewer.html` | `lastSave` guardava só a última gravação automática; uma anterior mais lenta podia sobrescrever o `feedback.json` depois da submissão final | As gravações são encadeadas em `lastSave`, em ordem, e a submissão final espera todas |
+| `skill-creator/scripts/improve_description.py` + `run_eval.py` (segurança) | `claude -p` rodava com todas as ferramentas, MCPs e permissões do usuário; um `SKILL.md`/consulta de terceiro podia pedir Bash, Write ou WebFetch | `improve_description` usa `--tools "" --strict-mcp-config`; `run_eval` usa só `--tools Skill,Read` (o que a detecção precisa) e `--strict-mcp-config` |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

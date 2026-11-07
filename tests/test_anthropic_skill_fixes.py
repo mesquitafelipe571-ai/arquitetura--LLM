@@ -1171,6 +1171,40 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "True")
 
+    def test_claude_subprocesses_get_no_free_tools(self):
+        # O SKILL.md/consulta pode vir de terceiro: improve sem ferramentas, run_eval só com Skill/Read; sem MCP.
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run_in(SKILLS / "skill-creator", f"""
+                import io, json, subprocess
+                from unittest import mock
+                from scripts import improve_description, run_eval
+                seen = []
+                def fake_run(cmd, **kw):
+                    seen.append(cmd); return subprocess.CompletedProcess(cmd, 0, "ok", "")
+                class Done:
+                    stdout = io.BytesIO(b"")
+                    returncode = 0
+                    def poll(self):
+                        return 0
+                    def wait(self, timeout=None):
+                        return 0
+                    def kill(self):
+                        pass
+                def fake_popen(cmd, **kw):
+                    seen.append(cmd); return Done()
+                with mock.patch.object(improve_description.subprocess, "run", fake_run):
+                    improve_description._call_claude("p", None)
+                with mock.patch.object(run_eval.subprocess, "Popen", fake_popen):
+                    run_eval.run_single_query("q", "demo", "d", 5, {tmp!r})
+                print(json.dumps(seen))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            improve, evaluate = json.loads(result.stdout.strip().splitlines()[-1])
+            self.assertEqual(improve[improve.index("--tools") + 1], "")
+            self.assertEqual(evaluate[evaluate.index("--tools") + 1], "Skill,Read")
+            self.assertIn("--strict-mcp-config", improve)
+            self.assertIn("--strict-mcp-config", evaluate)
+
     def test_run_single_query_keeps_reading_after_other_tools(self):
         # Read de outro arquivo antes do Skill, nos dois formatos de saída (mensagem completa e streaming).
         read = {"type": "tool_use", "name": "Read", "input": {"file_path": "/tmp/context.md"}}

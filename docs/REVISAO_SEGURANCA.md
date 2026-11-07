@@ -127,6 +127,7 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   O HTML do `--static` também deixou de seguir um link no caminho de saída.
   Pelo mesmo motivo, `docx/scripts/accept_changes.py` passou a trabalhar numa cópia temporária
   e a substituir o destino com `os.replace()`, em vez de copiar direto para um `out.docx` que fosse link.
+  Os subprocessos `claude -p` do skill-creator rodam sem ferramentas (`improve_description.py`) ou só com `Skill`/`Read` (`run_eval.py`), sempre com `--strict-mcp-config`: um `SKILL.md` de terceiro não comanda Bash, escrita nem rede.
   Os relatórios do skill-creator (`benchmark.json`/`.md`, `results.json`, `report.html`, o `--report` do `run_loop.py`, logs) a grade de miniaturas do `pptx/scripts/thumbnail.py` e as saídas de `pdf/scripts` (PDFs, JSON e imagens) seguem a mesma regra.
 - **Fórmulas de rede no recálculo** (`xlsx/scripts/recalc.py`, apontado pela revisão de
   segurança do Codex): `=WEBSERVICE("http://127.0.0.1:...")` numa planilha de terceiro

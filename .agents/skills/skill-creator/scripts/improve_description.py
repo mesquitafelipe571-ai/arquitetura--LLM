@@ -23,7 +23,9 @@ def _call_claude(prompt: str, model: str | None, timeout: int = 300) -> str:
     Prompt goes over stdin (not argv) because it embeds the full SKILL.md
     body and can easily exceed comfortable argv length.
     """
-    cmd = ["claude", "-p", "--output-format", "text"]
+    # The prompt embeds a SKILL.md that may come from a third party: only text comes back, so the
+    # subprocess gets no tools and no MCP servers that an injected instruction could use.
+    cmd = ["claude", "-p", "--output-format", "text", "--tools", "", "--strict-mcp-config"]
     if model:
         cmd.extend(["--model", model])
 

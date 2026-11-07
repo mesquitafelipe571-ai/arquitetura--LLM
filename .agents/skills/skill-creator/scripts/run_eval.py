@@ -77,6 +77,10 @@ def run_single_query(
             "--output-format", "stream-json",
             "--verbose",
             "--include-partial-messages",
+            # Triggering is detected from Skill/Read calls; no other tool or MCP server is needed,
+            # so a query or skill text cannot drive Bash, Write or the network.
+            "--tools", "Skill,Read",
+            "--strict-mcp-config",
         ]
         if model:
             cmd.extend(["--model", model])
