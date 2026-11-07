@@ -23,6 +23,11 @@ import tempfile
 from collections.abc import Iterable
 from pathlib import Path
 
+try:
+    from .helpers import refuse_linked_path
+except ImportError:  # run as a script: scripts/office itself is on sys.path
+    from helpers import refuse_linked_path
+
 
 def get_soffice_env() -> dict:
     env = os.environ.copy()
@@ -37,6 +42,11 @@ def get_soffice_env() -> dict:
 
 def run_soffice(args: Iterable[str], **kwargs) -> subprocess.CompletedProcess:
     args = list(args)
+    # A linked document (or a linked folder above it, or a linked --outdir) would make soffice
+    # convert a private local file and hand it back: refuse every path argument first.
+    for a in args:
+        if not str(a).startswith("-") and os.path.lexists(a):
+            refuse_linked_path(Path(a), "soffice path")
     with contextlib.ExitStack() as stack:
         if not any(str(a).startswith("-env:UserInstallation") for a in args):
             profile = stack.enter_context(
@@ -194,5 +204,9 @@ int close(int fd) {
 
 if __name__ == "__main__":
     import sys
-    result = run_soffice(sys.argv[1:])
+    try:
+        result = run_soffice(sys.argv[1:])
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(2)
     sys.exit(result.returncode)

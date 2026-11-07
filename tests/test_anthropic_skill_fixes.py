@@ -1451,6 +1451,29 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.split(), ["True", "True", "0o700", "True", "False"])
 
+    def test_soffice_refuses_linked_document(self):
+        # submitted.doc -> ../private.doc: o soffice converteria o arquivo privado e o devolveria.
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:
+                (Path(private) / "private.doc").write_text("PRIVATE_CONTRACT_RATE_9472")
+                (Path(tmp) / "submitted.doc").symlink_to(Path(private) / "private.doc")
+                (Path(tmp) / "own.doc").write_text("ok")
+                bindir = Path(tmp) / "bin"
+                bindir.mkdir()
+                (bindir / "soffice").write_text('#!/bin/sh\ntouch "$MARK/soffice-ran"\n')
+                (bindir / "soffice").chmod(0o755)
+                env = {**os.environ, "PATH": f"{bindir}:{os.environ['PATH']}", "MARK": tmp}
+                script = str(SKILLS / f"{skill}/scripts/office/soffice.py")
+                run = lambda name: subprocess.run([sys.executable, script, "--headless", "--convert-to", "docx", name],
+                                                  cwd=tmp, env=env, capture_output=True, text=True, timeout=60)
+                refused = run("submitted.doc")
+                self.assertEqual(refused.returncode, 2, refused.stderr)
+                self.assertIn("goes through a symlink", refused.stderr)
+                self.assertFalse((Path(tmp) / "soffice-ran").exists())
+                ok = run("own.doc")
+                self.assertEqual(ok.returncode, 0, ok.stderr)
+                self.assertTrue((Path(tmp) / "soffice-ran").exists())
+
     def test_soffice_shim_never_loads_planted_tmp_library(self):
         with tempfile.TemporaryDirectory() as tmp:
             planted = Path(tmp) / "lo_socket_shim.so"

@@ -133,6 +133,7 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   O `docx/scripts/comment.py` faz a mesma conferência nas partes de comentários antes de alterá-las.
   Os modos `.docx` de `accept_changes.py`, `comment.py` e `merge_runs.py` recusam um arquivo de entrada que seja link (ou esteja sob uma pasta que seja), para não copiar um documento privado para a saída.
   O `office/validate.py` faz o mesmo com o documento validado e com o `--original`, cujo texto o diff do redlining imprimiria.
+  O `office/soffice.py` recusa do mesmo jeito qualquer caminho que receba (o documento a converter e o `--outdir`) antes de chamar o LibreOffice.
   Os validadores leem o XML com um parser sem DTD, sem entidades e sem rede, para que um `file://` declarado no documento não vire texto no relatório, qualquer que seja a versão do lxml.
   O modo `.pptx` de `pptx/scripts/add_slide.py`, o `pptx/scripts/thumbnail.py` e o `xlsx/scripts/recalc.py` (que reescreve a planilha no lugar) seguem a mesma regra.
   Na saída, `rezip()` recusa uma pasta-link acima do arquivo gerado (`exports -> fora`), que faria o `os.replace()` substituir um arquivo fora do workspace.
