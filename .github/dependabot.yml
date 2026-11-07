@@ -1,0 +1,31 @@
+# Só ecossistemas com manifesto real no repositório. Os scripts Python do projeto
+# usam apenas a biblioteca padrão; os únicos requirements.txt são da skill
+# ui-styling (dependências de teste). O package.json ainda não tem "dependencies".
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: pip
+    directories:
+      - /.agents/skills/ui-styling/scripts
+      - /.agents/skills/ui-styling/scripts/tests
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /.devcontainer
+    schedule:
+      interval: weekly
+  - package-ecosystem: devcontainers
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: weekly

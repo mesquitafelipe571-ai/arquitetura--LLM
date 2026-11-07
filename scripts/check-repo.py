@@ -65,6 +65,13 @@ for f in tracked("*.json"):
     except json.JSONDecodeError as e:
         errors.append(f"{f}: JSON inválido: {e}")
 
+# Actions de terceiros fixadas por SHA completo: uma tag pode ser movida para outro código.
+for f in tracked(".github/workflows/*.yml", ".github/workflows/*.yaml"):
+    for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+        m = re.match(r"\s*(?:-\s*)?uses:\s*['\"]?([^'\"\s#]+)", line)
+        if m and not m.group(1).startswith("./") and not re.search(r"@[0-9a-f]{40}$", m.group(1)):
+            errors.append(f"{f}:{n}: Action sem SHA completo: {m.group(1)}")
+
 for e in errors:
     print(f"ERRO {e.replace(f'{ROOT}/', '')}")
 print(f"{len(errors)} erro(s)." if errors else "Tudo certo.")
