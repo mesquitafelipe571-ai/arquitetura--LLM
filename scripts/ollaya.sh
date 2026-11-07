@@ -12,17 +12,15 @@ DIR="$ROOT/.runtime/ollaya"
 export OLLAYA_HOST=127.0.0.1:11435 OLLAYA_MODELS="$DIR/models"
 
 if [ "${1:-}" = install ]; then
-    # Executa código baixado: só com confirmação de uma pessoa no terminal, ou com
-    # OLLAYA_APPROVE_INSTALL=1 dado de propósito (CI). Um agente sem TTY para aqui.
-    if [ "${OLLAYA_APPROVE_INSTALL:-}" != 1 ]; then
-        if [ ! -t 0 ]; then
-            echo "Instalação não confirmada: rode num terminal ou defina OLLAYA_APPROVE_INSTALL=1." >&2
-            exit 1
-        fi
-        printf 'Instalar o Ollaya %s em %s (baixa e executa o instalador oficial)? [s/N] ' "$VERSION" "$DIR"
-        read -r answer
-        case $answer in s|S|sim|y|yes) ;; *) echo "Cancelado." >&2; exit 1 ;; esac
+    # Executa código baixado: só com confirmação de uma pessoa no terminal. Sem
+    # variável de ambiente que pule a pergunta, para um agente não poder liberar sozinho.
+    if [ ! -t 0 ]; then
+        echo "Instalação não confirmada: rode num terminal e responda à pergunta." >&2
+        exit 1
     fi
+    printf 'Instalar o Ollaya %s em %s (baixa e executa o instalador oficial)? [s/N] ' "$VERSION" "$DIR"
+    read -r answer
+    case $answer in s|S|sim|y|yes) ;; *) echo "Cancelado." >&2; exit 1 ;; esac
     # Baixa para um arquivo antes de executar: num pipe, uma falha do curl terminaria com sucesso.
     installer=$(mktemp)
     trap 'rm -f "$installer"' EXIT

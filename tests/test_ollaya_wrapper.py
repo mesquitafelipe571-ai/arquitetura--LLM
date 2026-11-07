@@ -1,5 +1,6 @@
 """Testes do scripts/ollaya.sh (instalação local do Ollaya)."""
 from pathlib import Path
+import os
 import subprocess
 import sys
 import tempfile
@@ -10,24 +11,41 @@ import unittest
 class OllayaWrapperTests(unittest.TestCase):
     SCRIPT = Path(__file__).resolve().parents[1] / "scripts/ollaya.sh"
 
-    def run_install(self, curl_body, approve=True):
+    def run_install(self, curl_body, approve=True, extra_env=None):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         curl = Path(tmp.name) / "curl"
         curl.write_text("#!/bin/sh\n" + curl_body)
         curl.chmod(0o755)
-        env = {"PATH": f"{tmp.name}:/usr/bin:/bin", "HOME": tmp.name, "MARK": tmp.name}
-        if approve:
-            env["OLLAYA_APPROVE_INSTALL"] = "1"
-        result = subprocess.run(["sh", str(self.SCRIPT), "install"], capture_output=True, text=True,
-                                env=env, stdin=subprocess.DEVNULL, timeout=30)
+        env = {"PATH": f"{tmp.name}:/usr/bin:/bin", "HOME": tmp.name, "MARK": tmp.name, **(extra_env or {})}
+        if not approve:
+            result = subprocess.run(["sh", str(self.SCRIPT), "install"], capture_output=True, text=True,
+                                    env=env, stdin=subprocess.DEVNULL, timeout=30)
+            return result, Path(tmp.name)
+        # Aprovação como uma pessoa faria: "s" digitado num terminal (pseudo-TTY).
+        import pty
+        master, slave = pty.openpty()
+        self.addCleanup(os.close, master)
+        os.write(master, b"s\n")
+        try:
+            result = subprocess.run(["sh", str(self.SCRIPT), "install"], capture_output=True, text=True,
+                                    env=env, stdin=slave, timeout=30)
+        finally:
+            os.close(slave)
         return result, Path(tmp.name)
 
     def test_install_without_confirmation_downloads_nothing(self):
-        # Sem terminal e sem OLLAYA_APPROVE_INSTALL=1 (como um agente), para antes do download.
+        # Sem terminal (como um agente), para antes do download.
         result, tmp = self.run_install('touch "$MARK/curl-called"\n', approve=False)
         self.assertEqual(result.returncode, 1)
         self.assertIn("não confirmada", result.stderr)
+        self.assertFalse((tmp / "curl-called").exists())
+
+    def test_env_var_does_not_skip_confirmation(self):
+        # A antiga OLLAYA_APPROVE_INSTALL=1 deixava um agente sem TTY liberar o download sozinho.
+        result, tmp = self.run_install('touch "$MARK/curl-called"\n', approve=False,
+                                       extra_env={"OLLAYA_APPROVE_INSTALL": "1"})
+        self.assertEqual(result.returncode, 1)
         self.assertFalse((tmp / "curl-called").exists())
 
     def test_install_fails_when_download_fails(self):
