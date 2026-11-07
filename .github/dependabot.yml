@@ -1,0 +1,21 @@
+# Só ecossistemas com manifesto real no repositório. Python usa apenas a
+# biblioteca padrão e o package.json não tem dependências, por isso pip e npm
+# ficam de fora até existirem requirements/pyproject ou "dependencies".
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /.devcontainer
+    schedule:
+      interval: weekly
+  - package-ecosystem: devcontainers
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: monthly
