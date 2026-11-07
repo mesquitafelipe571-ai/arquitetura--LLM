@@ -49,14 +49,15 @@ def fill_pdf_form(input_pdf_path, fields_json_path, output_pdf_path):
     pdf_dimensions = {}
     for i, page in enumerate(writer.pages):
         mediabox = page.mediabox
-        pdf_dimensions[i + 1] = [mediabox.width, mediabox.height]
+        # Origin too: a MediaBox like [100 200 700 1000] puts the page's top-left at (100, 1000).
+        pdf_dimensions[i + 1] = [mediabox.width, mediabox.height, mediabox.left, mediabox.bottom]
     
     annotations = []
     for field in fields_data["form_fields"]:
         page_num = field["page_number"]
 
         page_info = next(p for p in fields_data["pages"] if p["page_number"] == page_num)
-        pdf_width, pdf_height = pdf_dimensions[page_num]
+        pdf_width, pdf_height, origin_x, origin_y = pdf_dimensions[page_num]
 
         if "pdf_width" in page_info:
             transformed_entry_box = transform_from_pdf_coords(
@@ -72,6 +73,10 @@ def fill_pdf_form(input_pdf_path, fields_json_path, output_pdf_path):
                 float(pdf_width), float(pdf_height)
             )
         
+        left, bottom, right, top = transformed_entry_box
+        transformed_entry_box = (left + float(origin_x), bottom + float(origin_y),
+                                 right + float(origin_x), top + float(origin_y))
+
         if "entry_text" not in field or "text" not in field["entry_text"]:
             continue
         entry_text = field["entry_text"]

@@ -252,6 +252,37 @@ class OfficeSkillTests(unittest.TestCase):
             rels = ET.parse(root / "ppt/slides/_rels/slide2.xml.rels").getroot()
             self.assertEqual([r.get("Type").rsplit("/", 1)[1] for r in rels], ["slideLayout"])
 
+    def test_pptx_duplicate_slide_with_other_presentation_prefixes(self):
+        # Mesmo namespace com outros prefixos (deck:, rel:): antes a lista de slides "não existia".
+        rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        pml = "http://schemas.openxmlformats.org/presentationml/2006/main"
+        pkg = "http://schemas.openxmlformats.org/package/2006/relationships"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "ppt/_rels").mkdir(parents=True)
+            (root / "ppt/slides/_rels").mkdir(parents=True)
+            (root / "ppt/presentation.xml").write_text(
+                f'<deck:presentation xmlns:deck="{pml}" xmlns:rel="{rel_ns}">'
+                '<deck:sldIdLst><deck:sldId id="256" rel:id="rId1"/></deck:sldIdLst></deck:presentation>')
+            (root / "ppt/_rels/presentation.xml.rels").write_text(
+                f'<Relationships xmlns="{pkg}"><Relationship Id="rId1" Type="{rel_ns}/slide"'
+                ' Target="slides/slide1.xml"/></Relationships>')
+            (root / "[Content_Types].xml").write_text(
+                '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>')
+            (root / "ppt/slides/slide1.xml").write_text("<p:sld/>")
+            (root / "ppt/slides/_rels/slide1.xml.rels").write_text(
+                f'<Relationships xmlns="{pkg}"><Relationship Id="rId1" Type="{rel_ns}/slideLayout"'
+                ' Target="../slideLayouts/slideLayout1.xml"/></Relationships>')
+            result = run_in(SKILLS / "pptx/scripts", f"""
+                from pathlib import Path
+                from add_slide import add_slide
+                print(add_slide(Path({tmp!r}), "slide1.xml"))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+            ids = ET.parse(root / "ppt/presentation.xml").getroot().find(f"{{{pml}}}sldIdLst")
+            self.assertEqual([(e.get("id"), e.get(f"{{{rel_ns}}}id")) for e in ids],
+                             [("256", "rId1"), ("257", "rId2")])
+
     def test_docx_comment_declares_namespaces_used_by_new_comment(self):
         with tempfile.TemporaryDirectory() as tmp:
             comments = Path(tmp) / "comments.xml"
@@ -1705,6 +1736,28 @@ class XlsxPdfTests(unittest.TestCase):
             rect = [float(v) for v in page["/Annots"][0].get_object()["/Rect"]]
             # Na página exibida (800x600): x 100-200, y 100-120 a partir do topo -> 480-500 a partir da base.
             self.assertEqual(rect, [100.0, 480.0, 200.0, 500.0])
+
+    def test_pdf_annotations_follow_mediabox_origin(self):
+        # MediaBox [100 200 700 1000]: a caixa [10 10 110 30] da imagem 600x800 vai para (110, 970, 210, 990).
+        from pypdf import PdfReader, PdfWriter
+        from pypdf.generic import RectangleObject
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, fields = (Path(tmp) / n for n in ("off.pdf", "out.pdf", "fields.json"))
+            w = PdfWriter()
+            w.add_blank_page(600, 800).mediabox = RectangleObject([100, 200, 700, 1000])
+            with open(src, "wb") as f:
+                w.write(f)
+            fields.write_text(json.dumps({
+                "pages": [{"page_number": 1, "image_width": 600, "image_height": 800}],
+                "form_fields": [{"page_number": 1, "entry_bounding_box": [10, 10, 110, 30],
+                                 "entry_text": {"text": "Smith", "font_size": 10}}]}))
+            result = run_in(SKILLS / "pdf/scripts", f"""
+                from fill_pdf_form_with_annotations import fill_pdf_form
+                fill_pdf_form({str(src)!r}, {str(fields)!r}, {str(out)!r})
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            rect = [float(v) for v in PdfReader(out).pages[0]["/Annots"][0].get_object()["/Rect"]]
+            self.assertEqual(rect, [110.0, 970.0, 210.0, 990.0])
 
     def test_pdf_choice_options_accept_plain_strings(self):
         result = run_in(SKILLS / "pdf/scripts", """

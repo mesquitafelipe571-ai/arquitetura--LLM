@@ -154,16 +154,33 @@ def duplicate_slide(unpacked_dir: Path, source: str, after: str | None = None) -
     return dest
 
 
+PML_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
+REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+
+def _prefixes(xml: str) -> tuple[str, str]:
+    """Prefixes presentation.xml binds to PresentationML and relationships (`p:`/`r:` by convention)."""
+    pml = re.search(rf'xmlns:([\w.-]+)=["\']{re.escape(PML_NS)}["\']', xml)
+    if pml:
+        p = pml.group(1) + ":"
+    else:
+        p = "" if re.search(rf'xmlns=["\']{re.escape(PML_NS)}["\']', xml) else "p:"
+    rel = re.search(rf'xmlns:([\w.-]+)=["\']{re.escape(REL_NS)}["\']', xml)
+    return p, (rel.group(1) + ":") if rel else "r:"
+
+
 def _precheck_registration(unpacked_dir: Path, after: str | None, dest: str) -> str | None:
     pres_path = unpacked_dir / "ppt" / "presentation.xml"
     if not pres_path.exists():
         _die(f"{pres_path} not found — is this an unpacked PPTX?")
     xml = pres_path.read_text(encoding="utf-8")
+    p, r = _prefixes(xml)
+    P = re.escape(p)
 
     has_slot = (
-        "</p:sldIdLst>" in xml
-        or re.search(r"<p:sldIdLst\s*/>", xml)
-        or "</p:sldMasterIdLst>" in xml
+        f"</{p}sldIdLst>" in xml
+        or re.search(rf"<{P}sldIdLst\s*/>", xml)
+        or f"</{p}sldMasterIdLst>" in xml
     )
     if not has_slot:
         _die("presentation.xml has no <p:sldIdLst> (or <p:sldMasterIdLst> to anchor a new one)")
@@ -186,7 +203,7 @@ def _precheck_registration(unpacked_dir: Path, after: str | None, dest: str) -> 
     if not after:
         return None
     after_rid = _rid_for_slide(unpacked_dir, after)
-    if not re.search(rf'<p:sldId\b[^>]*r:id=["\']{re.escape(after_rid)}["\'][^>]*>', xml):
+    if not re.search(rf'<{P}sldId\b[^>]*{re.escape(r)}id=["\']{re.escape(after_rid)}["\'][^>]*>', xml):
         _die(f"{after} ({after_rid}) is not listed in <p:sldIdLst>")
     return after_rid
 
@@ -236,7 +253,8 @@ def _add_to_presentation_rels(unpacked_dir: Path, dest: str) -> str:
     pres_xml = (unpacked_dir / "ppt" / "presentation.xml").read_text(encoding="utf-8")
     # XML allows either quote around attribute values.
     used = {int(n) for n in re.findall(r'\bId=["\']rId(\d+)["\']', pres_rels)}
-    used |= {int(n) for n in re.findall(r'\br:id=["\']rId(\d+)["\']', pres_xml)}
+    R = re.escape(_prefixes(pres_xml)[1])
+    used |= {int(n) for n in re.findall(rf'(?<![\w.-]){R}id=["\']rId(\d+)["\']', pres_xml)}
     rid = f"rId{max(used) + 1 if used else 1}"
 
     new_rel = f'<Relationship Id="{rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/{dest}"/>'
@@ -258,7 +276,8 @@ def _find_slide_relationship(pres_rels: str, slide_name: str) -> str | None:
 
 def _get_next_slide_id(unpacked_dir: Path) -> int:
     pres_content = (unpacked_dir / "ppt" / "presentation.xml").read_text(encoding="utf-8")
-    used = {int(m) for m in re.findall(r'<p:sldId\b[^>]*\bid=["\'](\d+)["\']', pres_content)}
+    P = re.escape(_prefixes(pres_content)[0])
+    used = {int(m) for m in re.findall(rf'<{P}sldId\b[^>]*\sid=["\'](\d+)["\']', pres_content)}
 
     candidate = max((i for i in used if i >= SLIDE_ID_MIN), default=SLIDE_ID_MIN - 1) + 1
     if candidate <= SLIDE_ID_MAX and candidate not in used:
@@ -274,39 +293,41 @@ def _insert_into_sld_id_lst(
 ) -> tuple[int, int]:
     pres_path = unpacked_dir / "ppt" / "presentation.xml"
     xml = pres_path.read_text(encoding="utf-8")
-    entry = f'<p:sldId id="{slide_id}" r:id="{rid}"/>'
+    p, r = _prefixes(xml)
+    P, R = re.escape(p), re.escape(r)
+    entry = f'<{p}sldId id="{slide_id}" {r}id="{rid}"/>'
 
-    if re.search(rf'r:id=["\']{re.escape(rid)}["\']', xml):
+    if re.search(rf'{R}id=["\']{re.escape(rid)}["\']', xml):
         _die(f"presentation.xml already references {rid}; refusing to add a duplicate")
 
     if after_rid:
-        open_tag = re.search(rf'<p:sldId\b[^>]*r:id=["\']{re.escape(after_rid)}["\'][^>]*>', xml)
+        open_tag = re.search(rf'<{P}sldId\b[^>]*{R}id=["\']{re.escape(after_rid)}["\'][^>]*>', xml)
         if not open_tag:
             _die(f"{after_rid} is not listed in <p:sldIdLst>")
         end = open_tag.end()
         if not open_tag.group(0).endswith("/>"):
-            close = xml.find("</p:sldId>", end)
+            close = xml.find(f"</{p}sldId>", end)
             if close == -1:
                 _die(f"unclosed <p:sldId> for {after_rid} in presentation.xml")
-            end = close + len("</p:sldId>")
+            end = close + len(f"</{p}sldId>")
         xml = xml[:end] + entry + xml[end:]
-    elif "</p:sldIdLst>" in xml:
-        xml = xml.replace("</p:sldIdLst>", f"{entry}</p:sldIdLst>", 1)
-    elif re.search(r"<p:sldIdLst\s*/>", xml):
-        xml = re.sub(r"<p:sldIdLst\s*/>", f"<p:sldIdLst>{entry}</p:sldIdLst>", xml, count=1)
-    elif "</p:sldMasterIdLst>" in xml:
+    elif f"</{p}sldIdLst>" in xml:
+        xml = xml.replace(f"</{p}sldIdLst>", f"{entry}</{p}sldIdLst>", 1)
+    elif re.search(rf"<{P}sldIdLst\s*/>", xml):
+        xml = re.sub(rf"<{P}sldIdLst\s*/>", lambda _: f"<{p}sldIdLst>{entry}</{p}sldIdLst>", xml, count=1)
+    elif f"</{p}sldMasterIdLst>" in xml:
         xml = xml.replace(
-            "</p:sldMasterIdLst>", f"</p:sldMasterIdLst><p:sldIdLst>{entry}</p:sldIdLst>", 1
+            f"</{p}sldMasterIdLst>", f"</{p}sldMasterIdLst><{p}sldIdLst>{entry}</{p}sldIdLst>", 1
         )
     else:
         _die("presentation.xml has no <p:sldIdLst> (or <p:sldMasterIdLst> to anchor a new one)")
 
     pres_path.write_text(xml, encoding="utf-8")
 
-    lst = re.search(r"<p:sldIdLst>(.*)</p:sldIdLst>", xml, re.DOTALL)
-    entries = re.findall(r"<p:sldId\b[^>]*>", lst.group(1)) if lst else []
+    lst = re.search(rf"<{P}sldIdLst>(.*)</{P}sldIdLst>", xml, re.DOTALL)
+    entries = re.findall(rf"<{P}sldId\b[^>]*>", lst.group(1)) if lst else []
     position = next(
-        (i for i, e in enumerate(entries, 1) if f'r:id="{rid}"' in e), len(entries)
+        (i for i, e in enumerate(entries, 1) if re.search(rf'{R}id=["\']{re.escape(rid)}["\']', e)), len(entries)
     )
     return position, len(entries)
 
