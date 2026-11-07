@@ -248,14 +248,15 @@ class BaseSchemaValidator:
 
                         attr_name, scope = self.UNIQUE_ID_REQUIREMENTS[tag]
 
+                        # Unqualified or in the element's own namespace (w:id on w:comment): r:id on
+                        # p:sldMasterId names a relationship, and rId1 repeats across parts.
+                        elem_ns = elem.tag[1:].split("}")[0] if elem.tag.startswith("{") else None
                         id_value = None
                         for attr, value in elem.attrib.items():
-                            attr_local = (
-                                attr.split("}")[-1].lower()
-                                if "}" in attr
-                                else attr.lower()
+                            attr_ns, attr_local = (
+                                attr[1:].split("}", 1) if attr.startswith("{") else (None, attr)
                             )
-                            if attr_local == attr_name:
+                            if attr_local.lower() == attr_name and attr_ns in (None, elem_ns):
                                 id_value = value
                                 break
 

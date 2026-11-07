@@ -534,6 +534,32 @@ class OfficeSkillTests(unittest.TestCase):
                     self.assertIn("media is a symlink", result.stdout)
 
     @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
+    def test_unique_ids_ignore_relationship_id_attribute(self):
+        # r:id antes de id: IDs numéricos distintos com o mesmo rId1 não são colisão; ID repetido continua sendo.
+        p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+        r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        def pres(a, b):
+            return (f'<p:presentation xmlns:p="{p}" xmlns:r="{r}"><p:sldMasterIdLst>'
+                    f'<p:sldMasterId r:id="rId1" id="{a}"/></p:sldMasterIdLst></p:presentation>',
+                    f'<p:sldLayoutIdLst xmlns:p="{p}" xmlns:r="{r}"><p:sldLayoutId r:id="rId1" id="{b}"/></p:sldLayoutIdLst>')
+        for skill in ("docx", "pptx", "xlsx"):
+            for (a, b), expected in (((2147483648, 2147483649), "True"), ((2147483648, 2147483648), "False")):
+                with self.subTest(skill=skill, ids=(a, b)), tempfile.TemporaryDirectory() as tmp:
+                    (Path(tmp) / "ppt/slideMasters").mkdir(parents=True)
+                    first, second = pres(a, b)
+                    (Path(tmp) / "ppt/presentation.xml").write_text(first)
+                    (Path(tmp) / "ppt/slideMasters/slideMaster1.xml").write_text(second)
+                    result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                        from validators.base import BaseSchemaValidator
+                        class V(BaseSchemaValidator):
+                            def validate(self):
+                                return True
+                        print(V({tmp!r}).validate_unique_ids())
+                    """)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout.strip().splitlines()[-1], expected)
+
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
     def test_pptx_slide_baseline_excuses_only_the_same_part(self):
         # O original já tinha <p:txBody> vazio em slide1; o mesmo defeito novo em slide2 tem de aparecer.
         err = "Element '{http://schemas.openxmlformats.org/presentationml/2006/main}txBody': Missing child element(s)."

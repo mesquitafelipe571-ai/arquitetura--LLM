@@ -147,6 +147,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `mcp-builder/scripts/evaluation.py` | Resposta final sem bloco `text` virava `None` e `extract_xml_content()` lançava `TypeError`, abortando o lote e o relatório | `extract_xml_content()` devolve `None` para texto ausente; a tarefa vale 0 e o lote segue |
 | `office/validators/pptx.py` (3 cópias) | As exceções do `--original` eram só mensagens; um defeito antigo em `slide1.xml` dispensava o mesmo defeito novo em `slide2.xml` | `_original_slide_defects()` guarda pares `(parte, mensagem)` e só dispensa o defeito na mesma parte |
 | `docx/scripts/merge_runs.py` + `office/validate.py` e `office/helpers` (3 cópias) (segurança) | `merge_runs` e o `--auto-repair` regravavam partes do diretório descompactado seguindo links (ex.: `word/document.xml` → fora do pacote) | Novo `refuse_links()` nos helpers recusa qualquer link no pacote antes da primeira gravação |
+| `office/validators/base.py` (3 cópias) | `validate_unique_ids()` pegava o primeiro atributo de nome local `id`; com `r:id` antes de `id` em `p:sldMasterId`/`p:sldLayoutId`, o `rId1` repetido entre partes virava colisão falsa | Só conta o atributo sem prefixo ou no namespace do próprio elemento (`w:id` em `w:comment`) |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.
