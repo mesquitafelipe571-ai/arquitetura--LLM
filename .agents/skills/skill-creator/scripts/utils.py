@@ -35,10 +35,13 @@ def parse_skill_md(skill_path: Path) -> tuple[str, str, str]:
             if value in (">", "|", ">-", "|-"):
                 continuation_lines: list[str] = []
                 i += 1
-                while i < len(frontmatter_lines) and (frontmatter_lines[i].startswith("  ") or frontmatter_lines[i].startswith("\t")):
+                # Blank lines separate paragraphs inside the block; the block ends at the next unindented key.
+                while i < len(frontmatter_lines) and (
+                    frontmatter_lines[i].startswith(("  ", "\t")) or not frontmatter_lines[i].strip()
+                ):
                     continuation_lines.append(frontmatter_lines[i].strip())
                     i += 1
-                description = " ".join(continuation_lines)
+                description = " ".join(line for line in continuation_lines if line)
                 continue
             else:
                 description = value.strip('"').strip("'")

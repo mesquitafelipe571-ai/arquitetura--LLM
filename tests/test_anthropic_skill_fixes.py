@@ -1260,6 +1260,43 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "['with_skill', 'old_skill'] +1.00")
 
+    def test_benchmark_never_mixes_output_chars_into_tokens(self):
+        # Só a baseline tem tokens reais; a outra só tem output_chars. O delta de tokens não é medido.
+        with tempfile.TemporaryDirectory() as tmp:
+            for config, grading, timing in (
+                ("with_skill", {"summary": {"pass_rate": 1.0}, "execution_metrics": {"output_chars": 4000}}, None),
+                ("without_skill", {"summary": {"pass_rate": 1.0}, "execution_metrics": {"output_chars": 4000}},
+                 {"total_tokens": 1000})):
+                d = Path(tmp) / "eval-0" / config
+                (d / "outputs").mkdir(parents=True)
+                (d / "grading.json").write_text(json.dumps(grading))
+                if timing:
+                    (d / "timing.json").write_text(json.dumps(timing))
+            result = run_in(SKILLS / "skill-creator", f"""
+                from pathlib import Path
+                from scripts.aggregate_benchmark import aggregate_results, load_run_results
+                results = load_run_results(Path({tmp!r}))
+                summary = aggregate_results(results)
+                print(summary["delta"]["tokens"], summary["with_skill"]["tokens"]["mean"],
+                      results["with_skill"][0]["output_chars"])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.split(), ["—", "0.0", "4000"])
+
+    def test_parse_skill_md_keeps_paragraphs_of_block_description(self):
+        # Uma linha vazia dentro de "description: |" cortava o resto da descrição.
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "SKILL.md").write_text(
+                "---\nname: demo\ndescription: |\n  Use for invoices.\n\n  Also use for receipts and refunds.\n"
+                "license: x\n---\nbody\n")
+            result = run_in(SKILLS / "skill-creator", f"""
+                from pathlib import Path
+                from scripts.utils import parse_skill_md
+                print(parse_skill_md(Path({tmp!r}))[1])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "Use for invoices. Also use for receipts and refunds.")
+
     def test_viewer_never_kills_the_process_on_its_port(self):
         # A porta ocupada cai no fallback para uma porta livre; o script não envia sinal a ninguém.
         source = (SKILLS / "skill-creator/eval-viewer/generate_review.py").read_text()

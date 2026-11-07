@@ -112,6 +112,8 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `pptx/scripts/add_slide.py` | Atributos com espaços em volta do `=` (`id = "256"`, XML válido) eram ignorados; o slide duplicado repetia o id 256 | Todas as buscas de atributo aceitam espaços em volta do `=` |
 | `pdf/scripts/fill_fillable_fields.py` | Um campo com widgets em várias páginas só era preenchido na última; as outras ocorrências ficavam com a aparência antiga | Atualiza o campo em todas as páginas que têm widgets dele |
 | `office/helpers` `safe_extract()`/`rezip()` em docx/pptx/xlsx + `docx`/`pptx` `SKILL.md` (segurança) | Um `unpacked/leak.txt` já existente como link sobrevivia à extração e o `zip -Xr` documentado (ou `rezip()`) empacotava o arquivo local apontado | A extração exige diretório novo ou vazio, `rezip()` recusa links e o comando documentado usa `zip -Xry`, que não segue links |
+| `skill-creator/scripts/aggregate_benchmark.py` + `agents/grader.md` | Sem `total_tokens`, usava `output_chars` como tokens; comparava caracteres de um lado com tokens do outro e mostrava um delta sem base | `output_chars` fica em campo próprio; o delta de tokens só é calculado quando todas as execuções dos dois lados têm a contagem real (senão "—") |
+| `skill-creator/scripts/utils.py` | Numa descrição YAML `|`/`>` com linha vazia entre parágrafos, a leitura parava na linha vazia e o resto da descrição se perdia em `run_eval`/`run_loop` | Linhas vazias dentro do bloco são mantidas até a próxima chave sem recuo |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

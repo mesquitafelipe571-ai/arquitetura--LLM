@@ -166,8 +166,8 @@ def load_run_results(benchmark_dir: Path) -> dict:
                 # Extract metrics if available
                 metrics = grading.get("execution_metrics", {})
                 result["tool_calls"] = metrics.get("total_tool_calls", 0)
-                if not result.get("tokens"):
-                    result["tokens"] = metrics.get("output_chars", 0)
+                # Characters are not tokens: keep them apart instead of filling a missing token count.
+                result["output_chars"] = metrics.get("output_chars", 0)
                 result["errors"] = metrics.get("errors_encountered", 0)
 
                 # Extract expectations — viewer requires fields: text, passed, evidence
@@ -200,6 +200,7 @@ def aggregate_results(results: dict) -> dict:
     """
     run_summary = {}
     configs = list(results.keys())
+    tokens_complete: dict[str, bool] = {}
 
     for config in configs:
         runs = results.get(config, [])
@@ -214,7 +215,9 @@ def aggregate_results(results: dict) -> dict:
 
         pass_rates = [r["pass_rate"] for r in runs]
         times = [r["time_seconds"] for r in runs]
-        tokens = [r.get("tokens", 0) for r in runs]
+        # Only runs with a real token count; 0/missing means "unknown", not "used none".
+        tokens = [r["tokens"] for r in runs if r.get("tokens")]
+        tokens_complete[config] = len(tokens) == len(runs)
 
         run_summary[config] = {
             "pass_rate": calculate_stats(pass_rates),
@@ -233,11 +236,13 @@ def aggregate_results(results: dict) -> dict:
     delta_pass_rate = primary.get("pass_rate", {}).get("mean", 0) - baseline.get("pass_rate", {}).get("mean", 0)
     delta_time = primary.get("time_seconds", {}).get("mean", 0) - baseline.get("time_seconds", {}).get("mean", 0)
     delta_tokens = primary.get("tokens", {}).get("mean", 0) - baseline.get("tokens", {}).get("mean", 0)
+    # A token delta needs real counts on every run of both sides; otherwise it is not measured.
+    tokens_known = len(configs) >= 2 and all(tokens_complete.get(c, False) for c in configs[:2])
 
     run_summary["delta"] = {
         "pass_rate": f"{delta_pass_rate:+.2f}",
         "time_seconds": f"{delta_time:+.1f}",
-        "tokens": f"{delta_tokens:+.0f}"
+        "tokens": f"{delta_tokens:+.0f}" if tokens_known else "—"
     }
 
     return run_summary
@@ -265,6 +270,7 @@ def generate_benchmark(benchmark_dir: Path, skill_name: str = "", skill_path: st
                     "total": result["total"],
                     "time_seconds": result["time_seconds"],
                     "tokens": result.get("tokens", 0),
+                    "output_chars": result.get("output_chars", 0),
                     "tool_calls": result.get("tool_calls", 0),
                     "errors": result.get("errors", 0)
                 },
