@@ -21,6 +21,16 @@ class SetupTests(unittest.TestCase):
         self.assertEqual(data["features"], {"shell_tool": False, "apps": False, "plugins": False,
                                             "request_permissions_tool": False})
 
+    def test_codex_decisao_skill_requires_session_without_rea(self):
+        # O agente herda os MCPs da sessão: com itens de terceiros, só numa sessão sem o REA.
+        skill = (REPO / ".agents/skills/decisao/SKILL.md").read_text(encoding="utf-8")
+        readme = (REPO / "README.md").read_text(encoding="utf-8")
+        for text in (skill, readme):
+            self.assertIn("codex -c mcp_servers.rea.enabled=false", text)
+        import tomllib
+        config = tomllib.loads((REPO / ".codex/config.toml").read_text(encoding="utf-8"))
+        self.assertIn("rea", config["mcp_servers"])  # o comando acima desliga um servidor que existe
+
     def test_decisao_agent_has_closed_tool_list(self):
         # Sem `tools` o subagente herda Bash/Write/WebFetch/MCPs; um item injetado agiria com eles.
         text = (REPO / ".claude/agents/decisao.md").read_text(encoding="utf-8")

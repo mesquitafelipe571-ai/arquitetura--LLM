@@ -345,7 +345,11 @@ Exemplo: `/decisao classifique estes tickets por equipe e urgência` no Claude C
   leitura (`Read`, `Glob`, `Grep`) e a `decide`, `list_models` e `show_model`, sem
   Bash, escrita, rede nem outros MCPs; no Codex, `enabled_tools` deixa `pull_model`
   de fora e o perfil do agente desliga shell, apps, plugins e pedidos de permissão
-  (o Codex não deixa um agente restringir MCPs nem o sandbox, que vêm da sessão). Baixe antes com
+  (o Codex não deixa um agente restringir MCPs nem o sandbox, que vêm da sessão).
+  Para decidir sobre itens de terceiros no Codex, abra a sessão com
+  `codex -c mcp_servers.rea.enabled=false`: assim o agente só tem o Ollaya deste
+  projeto, e o REA continua ativo nas outras sessões. A skill `$decisao` pede isso
+  quando encontra o MCP `rea` disponível. Baixe antes com
   `npm run ollaya -- pull winnow:e4b`; `decide` nunca baixa nada sozinho.
 - O agente segue a skill oficial
   [`ollaya-decisions`](.agents/skills/ollaya-decisions/SKILL.md)
