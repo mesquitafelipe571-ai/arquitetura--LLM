@@ -41,7 +41,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from scripts.utils import write_text_replace
+from scripts.utils import read_text_no_links, write_text_replace
 
 
 def calculate_stats(values: list[float]) -> dict:
@@ -98,9 +98,8 @@ def load_run_results(benchmark_dir: Path) -> dict:
         metadata_path = eval_dir / "eval_metadata.json"
         if metadata_path.exists():
             try:
-                with open(metadata_path) as mf:
-                    eval_id = json.load(mf).get("eval_id", eval_idx)
-            except (json.JSONDecodeError, OSError):
+                eval_id = json.loads(read_text_no_links(metadata_path)).get("eval_id", eval_idx)
+            except (ValueError, OSError):  # ValueError also covers a linked file
                 eval_id = eval_idx
         else:
             try:
@@ -132,10 +131,9 @@ def load_run_results(benchmark_dir: Path) -> dict:
                     continue
 
                 try:
-                    with open(grading_file) as f:
-                        grading = json.load(f)
-                except json.JSONDecodeError as e:
-                    print(f"Warning: Invalid JSON in {grading_file}: {e}")
+                    grading = json.loads(read_text_no_links(grading_file, "grading.json"))
+                except ValueError as e:  # invalid JSON, or a link to a file outside the workspace
+                    print(f"Warning: skipping {grading_file}: {e}")
                     continue
 
                 # Extract metrics
@@ -156,13 +154,12 @@ def load_run_results(benchmark_dir: Path) -> dict:
                 # timing.json may hold the real token count even when grading.json already has the duration.
                 if (result["time_seconds"] == 0.0 or not result["tokens"]) and timing_file.exists():
                     try:
-                        with open(timing_file) as tf:
-                            timing_data = json.load(tf)
+                        timing_data = json.loads(read_text_no_links(timing_file, "timing.json"))
                         if result["time_seconds"] == 0.0:
                             result["time_seconds"] = timing_data.get("total_duration_seconds", 0.0)
                         if not result["tokens"]:
                             result["tokens"] = timing_data.get("total_tokens", 0)
-                    except json.JSONDecodeError:
+                    except ValueError:  # invalid JSON or a linked timing.json: keep grading.json's values
                         pass
 
                 # Extract metrics if available

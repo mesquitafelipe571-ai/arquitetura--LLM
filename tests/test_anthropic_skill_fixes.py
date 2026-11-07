@@ -3379,6 +3379,40 @@ class LinkedInputRootTests(unittest.TestCase):
             self.assertIn("workspace goes through a symlink", view.stderr)
             self.assertEqual(sorted(p.name for p in Path(tmp).iterdir()), ["submitted-skill", "ws"])
 
+    def test_skill_creator_inputs_refuse_links(self):
+        # evals.json, histórico e grading.json linkados para arquivos privados não são lidos.
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:
+            secret = Path(private) / "private.json"
+            secret.write_text(json.dumps([{"query": "SEGREDO", "should_trigger": True}]))
+            (Path(tmp) / "evals.json").symlink_to(secret)
+            run = Path(tmp) / "bench/eval-1/with_skill/run-1"
+            run.mkdir(parents=True)
+            (Path(private) / "grading.json").write_text(json.dumps({"summary": {"pass_rate": 0.42}}))
+            (run / "grading.json").symlink_to(Path(private) / "grading.json")
+            result = run_in(SKILLS / "skill-creator", f"""
+                import json
+                from pathlib import Path
+                from scripts.utils import read_text_no_links
+                from scripts.aggregate_benchmark import load_run_results
+                try:
+                    print(read_text_no_links({str(Path(tmp) / "evals.json")!r}, "eval set"))
+                except ValueError as e:
+                    print("recusado:", e)
+                print(json.dumps(load_run_results(Path({str(Path(tmp) / "bench")!r}))))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("recusado: eval set goes through a symlink", result.stdout)
+            self.assertIn("skipping", result.stdout)
+            self.assertNotIn("SEGREDO", result.stdout)
+            self.assertNotIn("0.42", result.stdout)
+            for script in ("run_eval.py", "run_loop.py"):
+                cli = subprocess.run([sys.executable, "-m", f"scripts.{script[:-3]}", "--eval-set",
+                                      str(Path(tmp) / "evals.json"), "--skill-path", tmp, "--model", "m"],
+                                     cwd=SKILLS / "skill-creator", capture_output=True, text=True, timeout=60)
+                self.assertNotEqual(cli.returncode, 0, script)
+                self.assertIn("eval set goes through a symlink", cli.stderr, script)
+                self.assertNotIn("SEGREDO", cli.stdout + cli.stderr)
+
     def test_skill_creator_parser_refuses_linked_skill(self):
         # --skill-path -> skill privada, ou SKILL.md linkado: o conteúdo nunca chega ao claude -p.
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:

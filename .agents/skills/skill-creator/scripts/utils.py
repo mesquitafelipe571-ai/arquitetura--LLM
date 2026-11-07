@@ -20,6 +20,13 @@ def refuse_linked_folder(folder, what: str = "output folder") -> None:
             raise ValueError(f"{what} goes through a symlink: {p}")
 
 
+def read_text_no_links(path, what: str = "input file") -> str:
+    """Inputs from a third-party workspace: a linked file (or folder above it) would send a
+    private local file on to `claude -p` or into a report."""
+    refuse_linked_folder(path, what)
+    return Path(path).read_text()
+
+
 def write_text_replace(path: Path, text: str) -> None:
     """Write to a temp file beside path and move it into place: a link planted at path (e.g. in a
     workspace from a third party) is replaced, never followed to overwrite its target."""

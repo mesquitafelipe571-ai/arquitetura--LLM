@@ -19,7 +19,7 @@ from pathlib import Path
 from scripts.generate_report import generate_html
 from scripts.improve_description import improve_description
 from scripts.run_eval import find_project_root, run_eval
-from scripts.utils import parse_skill_md, write_text_replace
+from scripts.utils import parse_skill_md, read_text_no_links, write_text_replace
 
 
 def split_eval_set(eval_set: list[dict], holdout: float, seed: int = 42) -> tuple[list[dict], list[dict]]:
@@ -265,7 +265,7 @@ def main():
     parser.add_argument("--results-dir", default=None, help="Save all outputs (results.json, report.html, log.txt) to a timestamped subdirectory here")
     args = parser.parse_args()
 
-    eval_set = json.loads(Path(args.eval_set).read_text())
+    eval_set = json.loads(read_text_no_links(args.eval_set, "eval set"))
     skill_path = Path(args.skill_path)
 
     if not (skill_path / "SKILL.md").exists():

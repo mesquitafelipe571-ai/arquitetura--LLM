@@ -14,7 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scripts.utils import parse_skill_md, write_text_replace
+from scripts.utils import parse_skill_md, read_text_no_links, write_text_replace
 
 
 def _call_claude(prompt: str, model: str | None, timeout: int = 300) -> str:
@@ -207,10 +207,10 @@ def main():
         print(f"Error: No SKILL.md found at {skill_path}", file=sys.stderr)
         sys.exit(1)
 
-    eval_results = json.loads(Path(args.eval_results).read_text())
+    eval_results = json.loads(read_text_no_links(args.eval_results, "eval results"))
     history = []
     if args.history:
-        history = json.loads(Path(args.history).read_text())
+        history = json.loads(read_text_no_links(args.history, "history"))
 
     name, _, content = parse_skill_md(skill_path)
     current_description = eval_results["description"]

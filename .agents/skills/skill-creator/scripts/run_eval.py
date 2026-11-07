@@ -16,7 +16,7 @@ import uuid
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-from scripts.utils import parse_skill_md
+from scripts.utils import parse_skill_md, read_text_no_links
 
 
 def find_project_root() -> Path:
@@ -308,7 +308,7 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="Print progress to stderr")
     args = parser.parse_args()
 
-    eval_set = json.loads(Path(args.eval_set).read_text())
+    eval_set = json.loads(read_text_no_links(args.eval_set, "eval set"))
     skill_path = Path(args.skill_path)
 
     if not (skill_path / "SKILL.md").exists():

@@ -12,7 +12,7 @@ import json
 import sys
 from pathlib import Path
 
-from scripts.utils import write_text_replace
+from scripts.utils import read_text_no_links, write_text_replace
 
 
 def generate_html(data: dict, auto_refresh: bool = False, skill_name: str = "") -> str:
@@ -313,7 +313,7 @@ def main():
     if args.input == "-":
         data = json.load(sys.stdin)
     else:
-        data = json.loads(Path(args.input).read_text())
+        data = json.loads(read_text_no_links(args.input))
 
     html_output = generate_html(data, skill_name=args.skill_name)
 
