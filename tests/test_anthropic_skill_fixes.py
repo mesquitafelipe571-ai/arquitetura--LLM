@@ -620,6 +620,27 @@ class OfficeSkillTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertIn('dLblPos="outEnd"', result.stdout)
 
+    def test_pptx_chart_checks_accept_spaces_around_equals(self):
+        # val = "…" é XML válido: eixos resolvidos não somem e outEnd empilhado continua apontado.
+        head = '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart><c:plotArea>'
+        axes = '<c:catAx><c:axId val = "1"/></c:catAx><c:valAx><c:axId val = "2"/></c:valAx>'
+        tail = '</c:plotArea></c:chart></c:chartSpace>'
+        ok = head + '<c:barChart><c:axId val = "1"/><c:axId val = "2"/></c:barChart>' + axes + tail
+        bad = (head + '<c:barChart><c:grouping val = "stacked"/><c:dLbls><c:dLblPos val = "outEnd"/></c:dLbls>'
+               '<c:axId val = "1"/><c:axId val = "2"/></c:barChart>' + axes + tail)
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill):
+                result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                    from helpers.pptx_chart import find_chart_problems
+                    print(find_chart_problems({{"ppt/charts/chart1.xml": {ok.encode()!r}}}))
+                    print(find_chart_problems({{"ppt/charts/chart1.xml": {bad.encode()!r}}}))
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                first, second = result.stdout.strip().splitlines()
+                self.assertEqual(first, "[]")
+                self.assertIn('dLblPos="outEnd"', second)
+                self.assertNotIn("axId", second)
+
     def test_pptx_chart_3d_line_needs_three_live_axes(self):
         # line3DChart exige 3 eixos; com o 3º apontando para um eixo inexistente, o gráfico é descartado.
         chart = ('<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart>'

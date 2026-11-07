@@ -15,8 +15,8 @@ from . import part_text
 
 _CHART_PART_RE = re.compile(r"ppt/charts/chart\d+\.xml")
 
-_GROUPING_RE = re.compile(r"""<c:grouping\b[^>]*?\bval=["'](\w+)["']""")
-_DLBL_POS_RE = re.compile(r"""<c:dLblPos\b[^>]*?\bval=["'](\w+)["']""")
+_GROUPING_RE = re.compile(r"""<c:grouping\b[^>]*?\bval\s*=\s*["'](\w+)["']""")
+_DLBL_POS_RE = re.compile(r"""<c:dLblPos\b[^>]*?\bval\s*=\s*["'](\w+)["']""")
 
 def _strip_ext_lst(text: str) -> str:
     out, cursor = [], 0
@@ -57,11 +57,11 @@ def _check_stacked_label_positions(part: str, xml: str) -> list[str]:
 _ANY_CHART_GROUP_RE = re.compile(r"<c:(\w+Chart)\b[^>]*(?<!/)>.*?</c:\1\s*>", re.DOTALL)
 
 _AXID_RE = re.compile(
-    r"""\s*<c:axId\b[^>]*?\bval=["'](-?\d+)["']\s*(?:/>|>\s*</c:axId\s*>)"""
+    r"""\s*<c:axId\b[^>]*?\bval\s*=\s*["'](-?\d+)["']\s*(?:/>|>\s*</c:axId\s*>)"""
 )
 
 _AXIS_DECL_RE = re.compile(
-    r"""<c:(catAx|valAx|serAx|dateAx)\b[^>]*(?<!/)>\s*<c:axId\b[^>]*?\bval=["'](-?\d+)["']"""
+    r"""<c:(catAx|valAx|serAx|dateAx)\b[^>]*(?<!/)>\s*<c:axId\b[^>]*?\bval\s*=\s*["'](-?\d+)["']"""
 )
 
 AXID_LIMIT = {
