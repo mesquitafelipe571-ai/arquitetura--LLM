@@ -54,7 +54,7 @@ Paths are relative to this skill's directory. Everything else is plain Python, `
 Pick layouts first: `python scripts/thumbnail.py template.pptx template-thumbs` writes a labeled grid of every slide and prints the file(s) it created — `template-thumbs.jpg`, split into `template-thumbs-N.jpg` past 12 slides. **Always pass that second argument, named after the deck.** It defaults to `thumbnails`, so two decks thumbnailed in one directory silently overwrite each other's grids — the first deck's are simply gone (template analysis only — visual QA needs the full-resolution renders from [Converting to Images](#converting-to-images); it only accepts `.pptx`, so copy a `.potx` to a `.pptx` name first). Use it with `markitdown` to map each content section onto a template slide, and vary the layouts — don't put every section on the same title-and-bullets slide.
 
 ```bash
-python3 -c "import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall('unpacked')" deck.pptx
+python3 -c "import sys,zipfile; sys.path.insert(0,'scripts'); from pathlib import Path; from office.helpers import safe_extract; safe_extract(zipfile.ZipFile(sys.argv[1]), Path(sys.argv[2]))" deck.pptx unpacked   # refuses symlinks, path traversal and zip bombs
 python scripts/add_slide.py unpacked/ slide2.xml --after slide2.xml   # duplicate a slide (or slideLayoutN.xml); prints the new slide's path
 # reorder / delete slides = edit <p:sldIdLst> in ppt/presentation.xml
 python scripts/clean.py unpacked/                                     # after deletions: removes orphaned slides, media, rels

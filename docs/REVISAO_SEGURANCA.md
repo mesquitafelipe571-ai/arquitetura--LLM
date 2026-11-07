@@ -101,6 +101,8 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   descompactado. Agora a extração é recusada antes de começar quando o total
   declarado passa de 2 GiB ou uma entrada acima de 1 MiB tem taxa de compressão
   acima de 200x.
+  Depois, os comandos de extração dos fluxos de edição (`pptx/SKILL.md` e
+  `docx/SKILL.md`), que usavam `extractall()`/`unzip`, passaram a chamar `safe_extract()`.
 - **Visualizador seguia links simbólicos** (`skill-creator/eval-viewer/generate_review.py`,
   apontado pela revisão de segurança do Codex): um run de terceiro podia criar em
   `outputs/` um link para `secret.env` e o conteúdo ia para o HTML mostrado ao

@@ -331,6 +331,26 @@ class OfficeSkillTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout.strip().splitlines()[-1], "True", result.stdout)
 
+    def test_office_skill_md_unpack_command_rejects_zip_bomb(self):
+        for skill, name in (("pptx", "deck.pptx"), ("docx", "doc.docx")):
+            with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:
+                md = (SKILLS / skill / "SKILL.md").read_text()
+                line = next(l for l in md.splitlines() if "safe_extract" in l and name in l)
+                command = line.split("   #")[0].replace(name, str(Path(tmp) / name)).replace(
+                    " unpacked", " " + str(Path(tmp) / "unpacked"))
+                with zipfile.ZipFile(Path(tmp) / name, "w", zipfile.ZIP_DEFLATED) as zf:
+                    zf.writestr("media/zeros.bin", b"\0" * (16 * 1024 * 1024))
+                result = subprocess.run(command, shell=True, cwd=SKILLS / skill, capture_output=True, text=True, timeout=60)
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                self.assertIn("suspicious compression ratio", result.stderr)
+                self.assertFalse((Path(tmp) / "unpacked/media/zeros.bin").exists())
+                # Um pacote comum continua sendo extraído pelo mesmo comando.
+                with zipfile.ZipFile(Path(tmp) / name, "w", zipfile.ZIP_DEFLATED) as zf:
+                    zf.writestr("word/document.xml", "<x/>")
+                result = subprocess.run(command, shell=True, cwd=SKILLS / skill, capture_output=True, text=True, timeout=60)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertTrue((Path(tmp) / "unpacked/word/document.xml").exists())
+
     def test_docx_accept_changes_timeout_is_an_error(self):
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "in.docx"
@@ -969,6 +989,35 @@ class SkillCreatorTests(unittest.TestCase):
             """)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertNotIn("PRIVATE_SENTINEL_7c36", result.stdout)
+
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_viewer_benchmark_values_cannot_inject_html(self):
+        html = (SKILLS / "skill-creator/eval-viewer/viewer.html").read_text()
+        body = re.search(r"function renderBenchmark\(\) \{.*?\n    \}", html, re.S).group(0)
+        esc = re.search(r"function escapeHtml\(text\) \{.*?\n    \}", html, re.S).group(0)
+        bad = '<img src=x onerror="globalThis.injected=1">'
+        benchmark = {
+            "metadata": {"timestamp": bad, "evals_run": [bad], "runs_per_configuration": bad},
+            "run_summary": {bad: {}, "without_skill": {}, "delta": {"pass_rate": bad, "time_seconds": bad, "tokens": bad}},
+            "runs": [{"eval_id": 1, "configuration": bad, "run_number": bad,
+                      "result": {"pass_rate": 1, "passed": bad, "total": bad, "errors": bad}, "expectations": []}],
+            "notes": [],
+        }
+        script = textwrap.dedent("""
+            const els = {};
+            const document = {
+              getElementById(id) { return els[id] || (els[id] = {style: {}, classList: {add() {}, remove() {}}}); },
+              createElement() { return { set textContent(t) { this.t = String(t); },
+                get innerHTML() { return this.t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); } }; },
+            };
+        """) + f"const EMBEDDED_DATA = {{benchmark: {json.dumps(benchmark)}}};\n" + esc + "\n" + body + textwrap.dedent("""
+            renderBenchmark();
+            process.stdout.write(els["benchmark-content"].innerHTML);
+        """)
+        result = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("&lt;img", result.stdout)  # o valor aparece, mas como texto
+        self.assertNotIn("<img", result.stdout)
 
     def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
         with tempfile.TemporaryDirectory() as tmp:
