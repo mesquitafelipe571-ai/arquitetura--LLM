@@ -926,6 +926,24 @@ class McpEvaluationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), "42 s")
 
+    def test_evaluation_report_never_follows_links(self):
+        # -o evaluation_report.md -> vítima: o relatório substitui o link, o alvo fica intacto.
+        with tempfile.TemporaryDirectory() as tmp:
+            victim, out = Path(tmp) / "victim.conf", Path(tmp) / "evaluation_report.md"
+            victim.write_text("da vítima")
+            out.symlink_to(victim)
+            result = run_in(SKILLS / "mcp-builder/scripts", f"""
+                import sys, types
+                sys.modules["anthropic"] = types.SimpleNamespace(Anthropic=object)
+                sys.modules["connections"] = types.SimpleNamespace(create_connection=None)
+                import evaluation
+                evaluation.write_report({str(out)!r}, "# relatório")
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(victim.read_text(), "da vítima")
+            self.assertFalse(out.is_symlink())
+            self.assertEqual(out.read_text(), "# relatório")
+
     def test_agent_loop_serializes_mcp_content_models(self):
         result = run_in(SKILLS / "mcp-builder/scripts", """
             import asyncio, json, sys, types

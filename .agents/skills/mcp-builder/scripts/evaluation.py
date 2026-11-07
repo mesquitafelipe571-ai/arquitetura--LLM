@@ -6,8 +6,10 @@ This script evaluates MCP servers by running test questions against them using C
 import argparse
 import asyncio
 import json
+import os
 import re
 import sys
+import tempfile
 import time
 import traceback
 import xml.etree.ElementTree as ET
@@ -307,6 +309,19 @@ def parse_env_vars(env_list: list[str]) -> dict[str, str]:
     return env
 
 
+def write_report(path: Path, report: str) -> None:
+    """Write beside the target and replace it: a link planted at the output path is never followed."""
+    path = Path(path)
+    fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w") as fh:
+            fh.write(report)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
 async def main():
     parser = argparse.ArgumentParser(
         description="Evaluate MCP servers using test questions",
@@ -368,7 +383,7 @@ Examples:
         report = await run_evaluation(args.eval_file, connection, args.model)
 
         if args.output:
-            args.output.write_text(report)
+            write_report(args.output, report)
             print(f"\n✅ Report saved to {args.output}")
         else:
             print("\n" + report)
