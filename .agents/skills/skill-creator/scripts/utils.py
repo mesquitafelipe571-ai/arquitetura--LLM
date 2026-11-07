@@ -1,6 +1,22 @@
 """Shared utilities for skill-creator scripts."""
 
+import os
+import tempfile
 from pathlib import Path
+
+
+def write_text_replace(path: Path, text: str) -> None:
+    """Write to a temp file beside path and move it into place: a link planted at path (e.g. in a
+    workspace from a third party) is replaced, never followed to overwrite its target."""
+    path = Path(path)
+    fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w") as fh:
+            fh.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 

@@ -12,6 +12,8 @@ import json
 import sys
 from pathlib import Path
 
+from scripts.utils import write_text_replace
+
 
 def generate_html(data: dict, auto_refresh: bool = False, skill_name: str = "") -> str:
     """Generate HTML report from loop output data. If auto_refresh is True, adds a meta refresh tag."""
@@ -316,7 +318,7 @@ def main():
     html_output = generate_html(data, skill_name=args.skill_name)
 
     if args.output:
-        Path(args.output).write_text(html_output)
+        write_text_replace(Path(args.output), html_output)
         print(f"Report written to {args.output}", file=sys.stderr)
     else:
         print(html_output)

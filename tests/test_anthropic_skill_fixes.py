@@ -1391,6 +1391,24 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "Use for invoices. Also use for receipts and refunds.")
 
+    def test_benchmark_outputs_never_follow_links(self):
+        # benchmark.json -> victim.json: o relatório substitui o link, não o alvo.
+        with tempfile.TemporaryDirectory() as tmp:
+            bench = Path(tmp) / "iteration-1"
+            d = bench / "eval-0" / "with_skill"
+            (d / "outputs").mkdir(parents=True)
+            (d / "grading.json").write_text(json.dumps({"summary": {"pass_rate": 1.0}}))
+            victim = Path(tmp) / "victim.json"
+            victim.write_text("da vítima")
+            (bench / "benchmark.json").symlink_to(victim)
+            (bench / "benchmark.md").symlink_to(victim)
+            result = subprocess.run([sys.executable, "-m", "scripts.aggregate_benchmark", str(bench)],
+                                    capture_output=True, text=True, timeout=60, cwd=SKILLS / "skill-creator")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(victim.read_text(), "da vítima")
+            self.assertFalse((bench / "benchmark.json").is_symlink())
+            self.assertIn("run_summary", (bench / "benchmark.json").read_text())
+
     def test_viewer_never_kills_the_process_on_its_port(self):
         # A porta ocupada cai no fallback para uma porta livre; o script não envia sinal a ninguém.
         source = (SKILLS / "skill-creator/eval-viewer/generate_review.py").read_text()

@@ -19,7 +19,7 @@ from pathlib import Path
 from scripts.generate_report import generate_html
 from scripts.improve_description import improve_description
 from scripts.run_eval import find_project_root, run_eval
-from scripts.utils import parse_skill_md
+from scripts.utils import parse_skill_md, write_text_replace
 
 
 def split_eval_set(eval_set: list[dict], holdout: float, seed: int = 42) -> tuple[list[dict], list[dict]]:
@@ -322,7 +322,7 @@ def main():
     json_output = json.dumps(output, indent=2)
     print(json_output)
     if results_dir:
-        (results_dir / "results.json").write_text(json_output)
+        write_text_replace(results_dir / "results.json", json_output)
 
     # Write final HTML report (without auto-refresh)
     if live_report_path:
@@ -330,7 +330,7 @@ def main():
         print(f"\nReport: {live_report_path}", file=sys.stderr)
 
     if results_dir and live_report_path:
-        (results_dir / "report.html").write_text(generate_html(output, auto_refresh=False, skill_name=name))
+        write_text_replace(results_dir / "report.html", generate_html(output, auto_refresh=False, skill_name=name))
 
     if results_dir:
         print(f"Results saved to: {results_dir}", file=sys.stderr)

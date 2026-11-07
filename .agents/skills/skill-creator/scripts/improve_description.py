@@ -14,7 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scripts.utils import parse_skill_md
+from scripts.utils import parse_skill_md, write_text_replace
 
 
 def _call_claude(prompt: str, model: str | None, timeout: int = 300) -> str:
@@ -186,7 +186,7 @@ Please respond with only the new description text in <new_description> tags, not
     if log_dir:
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / f"improve_iter_{iteration or 'unknown'}.json"
-        log_file.write_text(json.dumps(transcript, indent=2))
+        write_text_replace(log_file, json.dumps(transcript, indent=2))
 
     return description
 

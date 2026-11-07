@@ -41,6 +41,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from scripts.utils import write_text_replace
+
 
 def calculate_stats(values: list[float]) -> dict:
     """Calculate mean, stddev, min, max for a list of values."""
@@ -399,14 +401,12 @@ def main():
     output_md = output_json.with_suffix(".md")
 
     # Write benchmark.json
-    with open(output_json, "w") as f:
-        json.dump(benchmark, f, indent=2)
+    write_text_replace(output_json, json.dumps(benchmark, indent=2))
     print(f"Generated: {output_json}")
 
     # Write benchmark.md
     markdown = generate_markdown(benchmark)
-    with open(output_md, "w") as f:
-        f.write(markdown)
+    write_text_replace(output_md, markdown)
     print(f"Generated: {output_md}")
 
     # Print summary
