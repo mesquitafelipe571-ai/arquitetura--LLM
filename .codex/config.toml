@@ -11,5 +11,8 @@ tool_timeout_sec = 450
 [mcp_servers.ollaya]
 command = "sh"
 args = ["scripts/ollaya.sh", "mcp"]
+# Sem pull_model: um download de ~8 GB não sai de uma decisão do modelo; o usuário roda
+# `npm run ollaya -- pull winnow:e4b`. decide nunca baixa modelos (sem pull implícito na API).
+enabled_tools = ["decide", "list_models", "show_model"]
 startup_timeout_sec = 30
 tool_timeout_sec = 300

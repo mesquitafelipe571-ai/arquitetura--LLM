@@ -99,7 +99,8 @@ def _encode_smart_quotes(text: str) -> str:
 
 def _append_xml(xml_path: Path, root_tag: str, content: str) -> None:
     dom = defusedxml.minidom.parseString(xml_path.read_text(encoding="utf-8"))
-    root = dom.getElementsByTagName(root_tag)[0]
+    prefix, local = root_tag.split(":")
+    root = dom.getElementsByTagNameNS(NS[prefix], local)[0]  # by namespace: any prefix in the file
     # The imported nodes use these prefixes; declare any the existing part lacks.
     for prefix, uri in NS.items():
         if not root.hasAttribute(f"xmlns:{prefix}"):
@@ -115,10 +116,10 @@ def _append_xml(xml_path: Path, root_tag: str, content: str) -> None:
 
 def _find_para_id(comments_path: Path, comment_id: int) -> str | None:
     dom = defusedxml.minidom.parseString(comments_path.read_text(encoding="utf-8"))
-    for c in dom.getElementsByTagName("w:comment"):
-        if c.getAttribute("w:id") == str(comment_id):
-            for p in c.getElementsByTagName("w:p"):
-                if pid := p.getAttribute("w14:paraId"):
+    for c in dom.getElementsByTagNameNS(NS["w"], "comment"):
+        if c.getAttributeNS(NS["w"], "id") == str(comment_id):
+            for p in c.getElementsByTagNameNS(NS["w"], "p"):
+                if pid := p.getAttributeNS(NS["w14"], "paraId"):
                     return pid
     return None
 
@@ -128,9 +129,9 @@ def _next_comment_id(comments_path: Path) -> int:
         return 0
     dom = defusedxml.minidom.parseString(comments_path.read_text(encoding="utf-8"))
     ids = []
-    for c in dom.getElementsByTagName("w:comment"):
+    for c in dom.getElementsByTagNameNS(NS["w"], "comment"):
         try:
-            ids.append(int(c.getAttribute("w:id")))
+            ids.append(int(c.getAttributeNS(NS["w"], "id")))
         except ValueError:
             pass
     return (max(ids) + 1) if ids else 0
@@ -139,7 +140,7 @@ def _next_comment_id(comments_path: Path) -> int:
 def _get_next_rid(rels_path: Path) -> int:
     dom = defusedxml.minidom.parseString(rels_path.read_text(encoding="utf-8"))
     max_rid = 0
-    for rel in dom.getElementsByTagName("Relationship"):
+    for rel in dom.getElementsByTagNameNS("*", "Relationship"):
         rid = rel.getAttribute("Id")
         if rid and rid.startswith("rId"):
             try:
@@ -153,15 +154,22 @@ def _has_relationship(rels_path: Path, target: str) -> bool:
     dom = defusedxml.minidom.parseString(rels_path.read_text(encoding="utf-8"))
     return any(
         rel.getAttribute("Target") == target
-        for rel in dom.getElementsByTagName("Relationship")
+        for rel in dom.getElementsByTagNameNS("*", "Relationship")
     )
+
+
+def _child_like_root(dom, local_name: str):
+    """New child element in the root's namespace and with its prefix (e.g. `pkg:Relationship`)."""
+    root = dom.documentElement
+    name = f"{root.prefix}:{local_name}" if root.prefix else local_name
+    return dom.createElementNS(root.namespaceURI, name)
 
 
 def _has_content_type(ct_path: Path, part_name: str) -> bool:
     dom = defusedxml.minidom.parseString(ct_path.read_text(encoding="utf-8"))
     return any(
         o.getAttribute("PartName") == part_name
-        for o in dom.getElementsByTagName("Override")
+        for o in dom.getElementsByTagNameNS("*", "Override")
     )
 
 
@@ -193,7 +201,7 @@ def _ensure_comment_relationships(unpacked_dir: Path) -> None:
     root = dom.documentElement
     comment_types = {rel_type for rel_type, _ in _COMMENT_RELS}
     existing = set()
-    for rel in dom.getElementsByTagName("Relationship"):
+    for rel in dom.getElementsByTagNameNS("*", "Relationship"):
         if rel.getAttribute("Type") not in comment_types:
             continue
         part = opc_target(
@@ -208,7 +216,7 @@ def _ensure_comment_relationships(unpacked_dir: Path) -> None:
     for rel_type, target in _COMMENT_RELS:
         if opc_target(target, "word/document.xml") in existing:
             continue
-        rel = dom.createElement("Relationship")
+        rel = _child_like_root(dom, "Relationship")
         rel.setAttribute("Id", f"rId{next_rid}")
         rel.setAttribute("Type", rel_type)
         rel.setAttribute("Target", target)
@@ -227,13 +235,13 @@ def _ensure_comment_content_types(unpacked_dir: Path) -> None:
     root = dom.documentElement
     existing = {
         o.getAttribute("PartName")
-        for o in dom.getElementsByTagName("Override")
+        for o in dom.getElementsByTagNameNS("*", "Override")
     }
     changed = False
     for part_name, content_type in _COMMENT_OVERRIDES:
         if part_name in existing:
             continue
-        override = dom.createElement("Override")
+        override = _child_like_root(dom, "Override")
         override.setAttribute("PartName", part_name)
         override.setAttribute("ContentType", content_type)
         root.appendChild(override)  

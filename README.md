@@ -338,6 +338,9 @@ Exemplo: `/decisao classifique estes tickets por equipe e urgência` no Claude C
 - O `winnow:e4b` tem cerca de 8 GB e pede GPU NVIDIA com 10 GB ou mais. Na CPU,
   cada chamada leva alguns segundos; o `laya` é a alternativa rápida.
 - O download usa `github.com`, `ollaya.dev` (registro) e `huggingface.co` (pesos).
+- O agente não baixa modelos: `pull_model` fica bloqueada (`disallowedTools` no
+  Claude Code, `enabled_tools` no Codex). Baixe antes com
+  `npm run ollaya -- pull winnow:e4b`; `decide` nunca baixa nada sozinho.
 - O agente segue a skill oficial
   [`ollaya-decisions`](.agents/skills/ollaya-decisions/SKILL.md)
   ([origem e licença](.agents/ollaya/SOURCE.md)) e só decide: o que fica abaixo

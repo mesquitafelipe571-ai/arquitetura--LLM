@@ -146,6 +146,40 @@ class OfficeSkillTests(unittest.TestCase):
             w14 = "{http://schemas.microsoft.com/office/word/2010/wordml}paraId"
             self.assertEqual([p.get(w14) for p in root.iter() if p.get(w14)], ["0000ABCD"])
 
+    def test_docx_comment_parts_keep_prefixed_namespaces(self):
+        pkg = "http://schemas.openxmlformats.org/package/2006/relationships"
+        ct = "http://schemas.openxmlformats.org/package/2006/content-types"
+        img = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "word/_rels").mkdir(parents=True)
+            (root / "word/_rels/document.xml.rels").write_text(
+                f'<pkg:Relationships xmlns:pkg="{pkg}"><pkg:Relationship Id="rId1" Type="{img}"'
+                ' Target="media/image1.png"/></pkg:Relationships>')
+            (root / "[Content_Types].xml").write_text(
+                f'<ct:Types xmlns:ct="{ct}"><ct:Override PartName="/word/comments.xml" ContentType="x"/></ct:Types>')
+            (root / "word/comments.xml").write_text(
+                '<x:comments xmlns:x="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                '<x:comment x:id="4"/></x:comments>')
+            result = run_in(SKILLS / "docx/scripts", f"""
+                from pathlib import Path
+                from comment import _ensure_comment_content_types, _ensure_comment_relationships, _next_comment_id
+                _ensure_comment_relationships(Path({tmp!r}))
+                _ensure_comment_content_types(Path({tmp!r}))
+                print(_next_comment_id(Path({tmp!r}) / "word/comments.xml"))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "5")
+            rels = ET.parse(root / "word/_rels/document.xml.rels").getroot()
+            ids = [r.get("Id") for r in rels.findall(f"{{{pkg}}}Relationship")]
+            self.assertEqual(len(ids), 5)
+            self.assertEqual(len(set(ids)), 5)  # nenhum rId reutilizado
+            self.assertEqual(len(rels), 5)  # todos os filhos no namespace OPC
+            types = ET.parse(root / "[Content_Types].xml").getroot()
+            parts = [o.get("PartName") for o in types.findall(f"{{{ct}}}Override")]
+            self.assertEqual(len(types), 4)
+            self.assertEqual(parts.count("/word/comments.xml"), 1)
+
     def test_docx_accept_changes_timeout_is_an_error(self):
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "in.docx"
