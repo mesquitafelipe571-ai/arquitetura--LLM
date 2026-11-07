@@ -133,6 +133,7 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   O `docx/scripts/comment.py` faz a mesma conferência nas partes de comentários antes de alterá-las.
   Os modos `.docx` de `accept_changes.py`, `comment.py` e `merge_runs.py` recusam um arquivo de entrada que seja link (ou esteja sob uma pasta que seja), para não copiar um documento privado para a saída.
   Os scripts da skill `pdf` aplicam a mesma regra aos PDFs, JSONs e imagens de entrada (`refuse_linked_input()` em `_replace_write.py`).
+  Fora do diretório de trabalho, essas verificações também recusam qualquer pasta-link acima do caminho (um `workspace/docs` que aponte para uma pasta privada); só as pastas de primeiro nível, como `/tmp` e `/var` no macOS, ficam de fora.
   O `docx/scripts/merge_runs.py` e o `--auto-repair` do `office/validate.py` recusam, com `refuse_links()`, qualquer link no diretório descompactado antes de regravar partes.
   O `pptx/scripts/add_slide.py` grava no diretório descompactado: antes da primeira gravação, recusa qualquer parte de destino (ou pasta até a raiz do pacote) que seja link.
 - **Fórmulas de rede no recálculo** (`xlsx/scripts/recalc.py`, apontado pela revisão de

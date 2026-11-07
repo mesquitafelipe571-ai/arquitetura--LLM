@@ -517,6 +517,21 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertIn("input file goes through a symlink", merge.stderr + merge.stdout)
             self.assertFalse(out.exists())
 
+    def test_docx_refuses_linked_folder_outside_cwd(self):
+        # workspace/docs -> pasta privada, com o script rodando fora do workspace: a pasta-link também conta.
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:
+            with zipfile.ZipFile(Path(private) / "payroll.docx", "w") as z:
+                z.writestr("word/document.xml", "<w:document/>")
+            (Path(tmp) / "docs").symlink_to(private)
+            src, out = Path(tmp) / "docs/payroll.docx", Path(tmp) / "out.docx"
+            accept = run_in(SKILLS / "docx/scripts", f"""
+                from accept_changes import accept_changes
+                print(accept_changes({str(src)!r}, {str(out)!r}))
+            """)
+            self.assertEqual(accept.returncode, 0, accept.stderr)
+            self.assertIn("input file goes through a symlink: " + str(Path(tmp) / "docs"), accept.stdout)
+            self.assertFalse(out.exists())
+
     def test_docx_merge_runs_refuses_linked_document(self):
         # word/document.xml como link para fora: nada é regravado.
         w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -2705,6 +2720,24 @@ class XlsxPdfTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.count("recusado: input goes through a symlink"), 3, result.stdout)
             self.assertFalse(out.exists() or info.exists())
+
+    def test_pdf_inputs_refuse_linked_folder_outside_cwd(self):
+        # workspace/docs -> pasta privada, com cwd na pasta da skill: a pasta-link também é recusada.
+        from pypdf import PdfWriter
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:
+            w = PdfWriter()
+            w.add_blank_page(600, 800)
+            with open(Path(private) / "payroll.pdf", "wb") as f:
+                w.write(f)
+            (Path(tmp) / "docs").symlink_to(private)
+            fields, out = Path(tmp) / "fields.json", Path(tmp) / "out.pdf"
+            fields.write_text(json.dumps({"pages": [], "form_fields": []}))
+            result = subprocess.run([sys.executable, "fill_pdf_form_with_annotations.py",
+                                     str(Path(tmp) / "docs/payroll.pdf"), str(fields), str(out)],
+                                    cwd=SKILLS / "pdf/scripts", capture_output=True, text=True, timeout=60)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("input goes through a symlink: " + str(Path(tmp) / "docs"), result.stderr)
+            self.assertFalse(out.exists())
 
     def test_pdf_annotations_follow_mediabox_origin(self):
         # MediaBox [100 200 700 1000]: a caixa [10 10 110 30] da imagem 600x800 vai para (110, 970, 210, 990).
