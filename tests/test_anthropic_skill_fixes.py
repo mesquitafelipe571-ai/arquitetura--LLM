@@ -1129,6 +1129,21 @@ class OfficeSkillTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertIn('dLblPos="outEnd"', result.stdout)
 
+    def test_pptx_chart_axis_ids_compare_as_numbers(self):
+        # axId "01"/"02" e eixos "1"/"2" são os mesmos unsignedInt; o gráfico não perde os eixos.
+        chart = ('<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart>'
+                 '<c:plotArea><c:barChart><c:axId val="01"/><c:axId val="02"/></c:barChart>'
+                 '<c:catAx><c:axId val="1"/></c:catAx><c:valAx><c:axId val="2"/></c:valAx>'
+                 '</c:plotArea></c:chart></c:chartSpace>')
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill):
+                result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                    from helpers.pptx_chart import find_chart_problems
+                    print(find_chart_problems({{"ppt/charts/chart1.xml": {chart.encode()!r}}}))
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), "[]")
+
     def test_pptx_chart_checks_accept_spaces_around_equals(self):
         # val = "…" é XML válido: eixos resolvidos não somem e outEnd empilhado continua apontado.
         head = '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart><c:plotArea>'

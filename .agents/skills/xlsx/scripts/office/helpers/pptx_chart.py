@@ -82,7 +82,7 @@ AXID_MINIMUM = {
 def _declared_axes(xml: str) -> dict[str, list[str]]:
     axes: dict[str, list[str]] = {}
     for kind, axid in _AXIS_DECL_RE.findall(xml):
-        axes.setdefault(kind, []).append(axid)
+        axes.setdefault(kind, []).append(str(int(axid)))  # xsd:unsignedInt: "01" and "1" are one id
     return axes
 
 
@@ -101,7 +101,7 @@ def _canonical_ids(axes: dict[str, list[str]], limit: int) -> list[str] | None:
 def _undeclared_axes(kind: str, block: str, axes: dict[str, list[str]]) -> list[str] | None:
     if kind not in AXID_LIMIT:
         return None
-    ids = _AXID_RE.findall(block)
+    ids = [str(int(i)) for i in _AXID_RE.findall(block)]  # same number as the declarations
     declared = {i for group in axes.values() for i in group}
     if len([i for i in ids if i in declared]) >= AXID_MINIMUM[kind]:
         return None
