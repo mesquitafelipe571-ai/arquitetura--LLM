@@ -37,5 +37,13 @@ class GenerateTokensTailwindTests(unittest.TestCase):
                 self.assertFalse(output.exists())
 
 
+    def test_dtcg_metadata_keys_are_not_token_names(self):
+        # $extensions (e outros metadados $) num grupo não são tokens e não podem barrar a geração.
+        tokens = {"semantic": {"color": {"$extensions": {"org.example": {"source": "brand"}},
+                                         "$description": "cores", "primary": {"$value": "#fff"}}}}
+        result, output = self.generate(tokens)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(output.exists())
+
 if __name__ == "__main__":
     unittest.main()

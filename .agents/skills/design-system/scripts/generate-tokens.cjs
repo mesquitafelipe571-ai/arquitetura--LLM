@@ -82,6 +82,8 @@ const TOKEN_NAME = /^[A-Za-z0-9_.-]+$/;
 
 function flattenTokens(obj, tokens, prefix = [], result = {}) {
   for (const [key, value] of Object.entries(obj)) {
+    // $-keys ($extensions, $description, $type, ...) are DTCG metadata, never token names.
+    if (key.startsWith('$')) continue;
     const currentPath = [...prefix, key];
 
     if (value && typeof value === 'object') {

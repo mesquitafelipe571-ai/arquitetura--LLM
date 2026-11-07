@@ -60,6 +60,8 @@ de origem.
   cada nome de token precisa seguir `^[A-Za-z0-9_.-]+$`; nomes fora disso
   interrompem a geração com erro. O template da própria skill continua gerando um
   módulo válido. Teste em `tests/test_generate_tokens.py`, que falha sem a correção.
+  Depois, as chaves de metadados do DTCG (`$extensions`, `$description` etc.)
+  deixaram de ser tratadas como nomes de token, que interrompiam a geração.
 - **Pendente:** reportar ao projeto de origem.
 
 ## Execução de código local pelas skills de Office (skills de terceiros)

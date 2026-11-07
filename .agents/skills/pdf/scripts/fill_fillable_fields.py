@@ -3,7 +3,7 @@ import sys
 
 from pypdf import PdfReader, PdfWriter
 
-from extract_form_field_info import get_field_info
+from extract_form_field_info import get_field_info, get_full_annotation_field_id
 
 
 
@@ -11,15 +11,6 @@ from extract_form_field_info import get_field_info
 def fill_pdf_fields(input_pdf_path: str, fields_json_path: str, output_pdf_path: str):
     with open(fields_json_path) as f:
         fields = json.load(f)
-    fields_by_page = {}
-    for field in fields:
-        if "value" in field:
-            field_id = field["field_id"]
-            page = field["page"]
-            if page not in fields_by_page:
-                fields_by_page[page] = {}
-            fields_by_page[page][field_id] = field["value"]
-    
     reader = PdfReader(input_pdf_path)
 
     has_error = False
@@ -43,8 +34,18 @@ def fill_pdf_fields(input_pdf_path: str, fields_json_path: str, output_pdf_path:
         sys.exit(1)
 
     writer = PdfWriter(clone_from=reader)
-    for page, field_values in fields_by_page.items():
-        writer.update_page_form_field_values(writer.pages[page - 1], field_values, auto_regenerate=False)
+    # A field can have widgets on several pages (e.g. a name repeated in each header); fill them all.
+    widget_pages = {}
+    for index, page in enumerate(writer.pages):
+        for ann in page.get("/Annots") or []:
+            widget_pages.setdefault(get_full_annotation_field_id(ann.get_object()), set()).add(index)
+    values_by_page = {}
+    for field in fields:
+        if "value" in field:
+            for index in widget_pages.get(field["field_id"], {field["page"] - 1}):
+                values_by_page.setdefault(index, {})[field["field_id"]] = field["value"]
+    for index, field_values in sorted(values_by_page.items()):
+        writer.update_page_form_field_values(writer.pages[index], field_values, auto_regenerate=False)
 
     writer.set_need_appearances_writer(True)
     

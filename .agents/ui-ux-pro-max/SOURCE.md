@@ -19,7 +19,8 @@ Segunda alteração, de segurança: em `design-system/scripts/generate-tokens.cj
 a saída `--format tailwind` trocava `"` por `'` no resultado do `JSON.stringify`,
 e um nome de token com aspa simples injetava código no módulo gerado. A troca foi
 removida e os nomes de token passam a aceitar só letras, dígitos, `_`, `.` e `-`
-(teste em `tests/test_generate_tokens.py`). A falha existe no commit de origem
+(teste em `tests/test_generate_tokens.py`). As chaves de metadados do DTCG (que começam com `$`, como `$extensions`)
+são ignoradas antes da validação, como no original. A falha existe no commit de origem
 acima; reporte-a ao projeto original e, ao atualizar a skill, confira se a
 correção foi incorporada antes de sobrescrever este arquivo.
 

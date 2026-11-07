@@ -283,6 +283,22 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual([(e.get("id"), e.get(f"{{{rel_ns}}}id")) for e in ids],
                              [("256", "rId1"), ("257", "rId2")])
 
+    def test_pptx_next_slide_id_reads_spaced_attributes(self):
+        # id = "256" (espaços em volta do =) é XML válido; ignorá-lo repetia o id 256.
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "ppt").mkdir()
+            (Path(tmp) / "ppt/presentation.xml").write_text(
+                '<p:presentation xmlns:p = "http://schemas.openxmlformats.org/presentationml/2006/main"'
+                ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+                '<p:sldIdLst><p:sldId id = "256" r:id = "rId1"/></p:sldIdLst></p:presentation>')
+            result = run_in(SKILLS / "pptx/scripts", f"""
+                from pathlib import Path
+                from add_slide import _get_next_slide_id
+                print(_get_next_slide_id(Path({tmp!r})))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "257")
+
     def test_docx_comment_declares_namespaces_used_by_new_comment(self):
         with tempfile.TemporaryDirectory() as tmp:
             comments = Path(tmp) / "comments.xml"
@@ -1811,6 +1827,41 @@ class XlsxPdfTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             rect = [float(v) for v in PdfReader(out).pages[0]["/Annots"][0].get_object()["/Rect"]]
             self.assertEqual(rect, [110.0, 970.0, 210.0, 990.0])
+
+    def test_pdf_fill_updates_widgets_on_every_page(self):
+        # customer_name tem widgets nas páginas 1 e 2; os dois precisam receber a aparência do valor.
+        from pypdf import PdfReader, PdfWriter
+        from pypdf.generic import ArrayObject, DictionaryObject, FloatObject, NameObject, TextStringObject
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, fields = (Path(tmp) / n for n in ("form.pdf", "out.pdf", "fields.json"))
+            w = PdfWriter()
+            pages = [w.add_blank_page(300, 300), w.add_blank_page(300, 300)]
+            field = DictionaryObject({NameObject("/FT"): NameObject("/Tx"),
+                                      NameObject("/T"): TextStringObject("customer_name")})
+            field_ref = w._add_object(field)
+            kids = ArrayObject()
+            for page in pages:
+                widget = DictionaryObject({
+                    NameObject("/Type"): NameObject("/Annot"), NameObject("/Subtype"): NameObject("/Widget"),
+                    NameObject("/Rect"): ArrayObject([FloatObject(v) for v in (10, 10, 200, 30)]),
+                    NameObject("/Parent"): field_ref, NameObject("/P"): page.indirect_reference,
+                    NameObject("/DA"): TextStringObject("/Helv 10 Tf 0 g")})
+                ref = w._add_object(widget)
+                kids.append(ref)
+                page[NameObject("/Annots")] = ArrayObject([ref])
+            field[NameObject("/Kids")] = kids
+            w._root_object[NameObject("/AcroForm")] = DictionaryObject({
+                NameObject("/Fields"): ArrayObject([field_ref]), NameObject("/DA"): TextStringObject("/Helv 10 Tf 0 g")})
+            with open(src, "wb") as f:
+                w.write(f)
+            fields.write_text(json.dumps([{"field_id": "customer_name", "page": 2, "value": "Ana"}]))
+            result = run_in(SKILLS / "pdf/scripts", f"""
+                from fill_fillable_fields import fill_pdf_fields
+                fill_pdf_fields({str(src)!r}, {str(fields)!r}, {str(out)!r})
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+            widgets = [p["/Annots"][0].get_object() for p in PdfReader(out).pages]
+            self.assertEqual([("/AP" in wd) for wd in widgets], [True, True])
 
     def test_pdf_choice_options_accept_plain_strings(self):
         result = run_in(SKILLS / "pdf/scripts", """
