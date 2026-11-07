@@ -132,6 +132,8 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   fazia o LibreOffice consultar endpoints locais ao recalcular e gravar a resposta no
   arquivo devolvido. Agora o recálculo é recusado quando fórmulas chamam `WEBSERVICE` ou `DDE`.
   A busca é feita no XML já interpretado, para que `WEBSERV&#73;CE` não escape da checagem.
+  Também vale para qualquer entrada XML do pacote, pelo conteúdo e não pelo nome (`sheet1.XML`),
+  para fórmulas ODF em atributos, e um arquivo que não é ZIP é recusado.
   O `feedback.json` também deixou de ser seguido: um link nele fazia o salvamento
   sobrescrever o arquivo de destino; agora a gravação substitui o link.
   Planilhas também deixaram de entrar como HTML: `sheet_to_html()` levava um

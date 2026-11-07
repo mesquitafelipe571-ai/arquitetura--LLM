@@ -129,17 +129,26 @@ def external_links_at_risk(filename):
 
 
 def network_formula_parts(filename):
-    """Workbook parts whose formulas call WEBSERVICE or DDE; cell text that only mentions them is ignored."""
-    try:
-        archive = zipfile.ZipFile(filename)
-    except (zipfile.BadZipFile, OSError):
-        return []
-    with archive:
+    """Package parts whose formulas call WEBSERVICE or DDE; cell text that only mentions them is ignored.
+
+    Every XML entry is inspected, whatever its name or folder (sheet1.XML, a part outside xl/):
+    LibreOffice follows relationships and content, not file names. A file that is not a ZIP raises,
+    so recalc() refuses it instead of letting LibreOffice open an uninspected format.
+    """
+    # shortcut: binary parts (an .xlsb renamed to .xlsx) are not inspected; refuse binary
+    # worksheet content types here if such files start reaching recalc.
+    with zipfile.ZipFile(filename) as archive:
         check_archive_limits(archive)
-        return [
-            name for name in archive.namelist()
-            if name.startswith("xl/") and name.endswith(".xml") and _calls_network(archive.read(name))
-        ]
+        names = []
+        for name in archive.namelist():
+            data = archive.read(name)
+            if _looks_like_xml(data) and _calls_network(data):
+                names.append(name)
+        return names
+
+
+def _looks_like_xml(data: bytes) -> bool:
+    return data.lstrip(b" \t\r\n").startswith((b"<", b"\xef\xbb\xbf", b"\xff\xfe", b"\xfe\xff"))
 
 
 def _calls_network(xml: bytes) -> bool:
@@ -148,11 +157,16 @@ def _calls_network(xml: bytes) -> bool:
         root = defusedxml.ElementTree.fromstring(xml)
     except Exception:  # malformed, or entities/DTD that defusedxml refuses: cannot vouch for it
         return True
-    return any(
-        FORMULA_TAG_RE.fullmatch(el.tag.rsplit("}", 1)[-1]) and NETWORK_FUNCTION_RE.search("".join(el.itertext()))
-        for el in root.iter()
-        if isinstance(el.tag, str)
-    )
+    for el in root.iter():
+        if not isinstance(el.tag, str):
+            continue
+        if FORMULA_TAG_RE.fullmatch(el.tag.rsplit("}", 1)[-1]) and NETWORK_FUNCTION_RE.search("".join(el.itertext())):
+            return True
+        # ODF keeps formulas in attributes (table:formula="of:=WEBSERVICE(...)").
+        if any("formula" in key.rsplit("}", 1)[-1].lower() and NETWORK_FUNCTION_RE.search(value)
+               for key, value in el.attrib.items()):
+            return True
+    return False
 
 
 def recalc(filename, timeout=30, force=False):

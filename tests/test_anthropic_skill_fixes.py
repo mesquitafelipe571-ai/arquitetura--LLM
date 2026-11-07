@@ -551,6 +551,26 @@ class OfficeSkillTests(unittest.TestCase):
                 self.assertIn("Broken reference to ../../outside.png", result.stdout)
                 self.assertEqual(result.stdout.strip().splitlines()[-1], "False", result.stdout)
 
+    def test_pptx_chart_checks_ignore_namespace_prefix(self):
+        # chart: em vez de c: (mesmo URI) não pode esconder um dLblPos="outEnd" em barras empilhadas.
+        ns = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+        body = ('<{p}chartSpace {decl}><{p}chart><{p}plotArea><{p}barChart><{p}grouping val="stacked"/>'
+                '<{p}dLbls><{p}dLblPos val="outEnd"/></{p}dLbls>'
+                '<{p}axId val="1"/><{p}axId val="2"/></{p}barChart>'
+                '<{p}catAx><{p}axId val="1"/></{p}catAx><{p}valAx><{p}axId val="2"/></{p}valAx>'
+                '</{p}plotArea></{p}chart></{p}chartSpace>')
+        variants = {"chart": body.format(p="chart:", decl=f'xmlns:chart="{ns}"'),
+                    "default": body.format(p="", decl=f'xmlns="{ns}"')}
+        for skill in ("docx", "pptx", "xlsx"):
+            for name, chart in variants.items():
+                with self.subTest(skill=skill, prefix=name):
+                    result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                        from helpers.pptx_chart import find_chart_problems
+                        print(find_chart_problems({{"ppt/charts/chart1.xml": {chart.encode()!r}}}))
+                    """)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn('dLblPos="outEnd"', result.stdout)
+
     def test_pptx_chart_3d_line_needs_three_live_axes(self):
         # line3DChart exige 3 eixos; com o 3º apontando para um eixo inexistente, o gráfico é descartado.
         chart = ('<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart>'
@@ -1810,6 +1830,38 @@ class XlsxPdfTests(unittest.TestCase):
             self.assertEqual(result.stdout.strip().splitlines(),
                              ["['xl/worksheets/sheet1.xml'] []", "codificada: ['xl/worksheets/sheet1.xml']",
                               "True True True False"])
+
+    def test_xlsx_network_scan_ignores_part_names(self):
+        # sheet1.XML (maiúsculas), parte fora de xl/, fórmula ODF em atributo e arquivo que não é ZIP.
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / "base.xlsx"
+            result = run_in(SKILLS / "xlsx/scripts", f"""
+                import zipfile
+                from openpyxl import Workbook
+                import recalc
+                wb = Workbook(); wb.active["A1"] = '=WEBSERVICE("http://127.0.0.1/")'; wb.save({str(base)!r})
+                def rewrite(target, rename=None, extra=None):
+                    with zipfile.ZipFile({str(base)!r}) as src, zipfile.ZipFile(target, "w") as dst:
+                        for item in src.infolist():
+                            name = rename.get(item.filename, item.filename) if rename else item.filename
+                            dst.writestr(name, src.read(item))
+                        if extra:
+                            dst.writestr(*extra)
+                upper = {str(Path(tmp) / "upper.xlsx")!r}
+                rewrite(upper, rename={{"xl/worksheets/sheet1.xml": "xl/worksheets/sheet1.XML"}})
+                odf = {str(Path(tmp) / "odf.xlsx")!r}
+                rewrite(odf, rename={{"xl/worksheets/sheet1.xml": "xl/worksheets/old.bin"}},
+                        extra=("content.xml", '<t xmlns:table="urn:t"><c table:formula="of:=WEBSERVICE(&quot;x&quot;)"/></t>'))
+                flat = {str(Path(tmp) / "flat.xlsx")!r}
+                open(flat, "w").write("<office:document/>")
+                print(recalc.network_formula_parts(upper), recalc.network_formula_parts(odf))
+                print(recalc.recalc(flat)["error"].startswith("Could not inspect"))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            lines = result.stdout.strip().splitlines()
+            # old.bin continua sendo XML: o nome não importa, o conteúdo é inspecionado.
+            self.assertEqual(lines[0], "['xl/worksheets/sheet1.XML'] ['xl/worksheets/old.bin', 'content.xml']")
+            self.assertEqual(lines[1], "True")
 
     def test_xlsx_recalc_counts_only_real_error_cells(self):
         with tempfile.TemporaryDirectory() as tmp:

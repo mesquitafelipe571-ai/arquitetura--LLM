@@ -161,10 +161,25 @@ def _ext_lst_spans(text: str) -> list[tuple[int, int]]:
 CHART_CHECKS = (_check_stacked_label_positions, _check_chart_axis_references)
 
 
+_CHART_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+
+
+def _with_c_prefix(xml: str) -> str:
+    """Rewrite the chart namespace's prefix (chart:, or none when it is the default) to c:,
+    which the checks below are written against; other namespaces are left alone."""
+    prefix = re.search(rf"""xmlns:([\w.-]+)\s*=\s*["']{re.escape(_CHART_NS)}["']""", xml)
+    if prefix and prefix.group(1) != "c":
+        p = re.escape(prefix.group(1))
+        return re.sub(rf"<(/?){p}:", r"<\1c:", xml)
+    if not prefix and re.search(rf"""xmlns\s*=\s*["']{re.escape(_CHART_NS)}["']""", xml):
+        return re.sub(r"<(/?)(?=[A-Za-z_][\w.-]*[\s/>])", r"<\1c:", xml)
+    return xml
+
+
 def find_chart_problems(files: Mapping[str, bytes]) -> list[str]:
     problems: list[str] = []
     for part in sorted(n for n in files if _CHART_PART_RE.fullmatch(n)):
-        xml = part_text(files[part])
+        xml = _with_c_prefix(part_text(files[part]))
         for check in CHART_CHECKS:
             problems.extend(check(part, xml))
     return problems
