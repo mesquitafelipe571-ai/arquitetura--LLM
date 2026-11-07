@@ -1263,6 +1263,32 @@ class SkillCreatorTests(unittest.TestCase):
         self.assertNotIn('"', result.stdout)
         self.assertEqual(result.stdout, "x&quot; onmouseover=&quot;alert(1)")
 
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_viewer_xlsx_never_renders_spreadsheet_html(self):
+        # O SheetJS transforma um hyperlink javascript: em <a href>; a célula deve virar só texto.
+        html = (SKILLS / "skill-creator/eval-viewer/viewer.html").read_text()
+        body = re.search(r"function renderXlsx\(container, b64Data\) \{.*?\n    \}", html, re.S).group(0)
+        script = textwrap.dedent("""
+            const atob = (s) => s;
+            const link = '<a href="javascript:alert(1)">x</a>';
+            const XLSX = {read: () => ({SheetNames: ["S"], Sheets: {S: {}}}),
+                          utils: {sheet_to_html: () => "<table><tr><td>" + link + "</td></tr></table>",
+                                  sheet_to_json: () => [["x", 1]]}};
+            let rawHtml = "";
+            const el = () => ({children: [], text: "",
+              set innerHTML(h) { rawHtml += h; }, set textContent(t) { this.text = t; },
+              appendChild(c) { this.children.push(c); }, style: {}});
+            const document = {createElement: el};
+            const container = el();
+        """) + body + textwrap.dedent("""
+            renderXlsx(container, "");
+            const cells = container.children[0].children[0].children[0].children.map(c => c.text);
+            process.stdout.write(JSON.stringify([rawHtml, cells, container.text]));
+        """)
+        result = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), ["", ["x", "1"], ""])
+
     def test_viewer_loads_current_feedback_with_previous_iteration(self):
         html = (SKILLS / "skill-creator/eval-viewer/viewer.html").read_text()
         body = re.search(r"async function init\(\) \{.*?\n    \}", html, re.S).group(0)

@@ -90,6 +90,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `pptx/scripts/thumbnail.py` + `office/helpers` | Procurava `p:sldId`, `r:id` e `Relationship` pelo prefixo; com outro prefixo não achava slides e as miniaturas falhavam | Usa o mesmo leitor por namespace de `clean.py`, movido para `office.helpers.listed_slide_rids` |
 | `skill-creator/eval-viewer/viewer.html` (segurança) | `escapeHtml()` não escapava aspas; uma evidência com `"` saía do atributo `title` e injetava JavaScript no visualizador | `escapeHtml()` escapa `"` e `'`; `run_number` também passa por ela |
 | `skill-creator/eval-viewer/generate_review.py` + `viewer.html` (segurança) | O servidor local (porta 3117) entregava saídas e aceitava feedback sem autenticação; outro usuário da máquina podia ler e adulterar | Token aleatório por execução exigido em todas as rotas; a URL aberta no navegador já o contém |
+| `skill-creator/eval-viewer/viewer.html` (segurança) | Planilhas eram mostradas com `sheet_to_html()` via `innerHTML`; um hyperlink `javascript:` numa célula virava `<a href>` e executava no visualizador | A tabela é montada pelo DOM com `textContent` (`sheet_to_json`), sem links |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

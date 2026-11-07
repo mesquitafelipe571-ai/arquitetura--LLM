@@ -118,6 +118,9 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   a ser lidos só quando são arquivos regulares dentro do workspace.
   O `feedback.json` também deixou de ser seguido: um link nele fazia o salvamento
   sobrescrever o arquivo de destino; agora a gravação substitui o link.
+  Planilhas também deixaram de entrar como HTML: `sheet_to_html()` levava um
+  hyperlink `javascript:` de uma célula para `<a href>`; agora a tabela é
+  montada pelo DOM, só com texto.
 - Testes em `tests/test_anthropic_skill_fixes.py`, que falham com os arquivos
   originais. Pendente: reportar à origem.
 

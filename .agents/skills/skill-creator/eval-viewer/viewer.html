@@ -840,9 +840,20 @@
             container.appendChild(sheetLabel);
           }
 
-          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          // Monta a tabela pelo DOM, só com texto: sheet_to_html leva hyperlinks (javascript:) para <a href>.
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: "" });
+          const table = document.createElement("table");
+          for (const row of rows) {
+            const tr = document.createElement("tr");
+            for (const value of row) {
+              const td = document.createElement("td");
+              td.textContent = String(value);
+              tr.appendChild(td);
+            }
+            table.appendChild(tr);
+          }
           const wrapper = document.createElement("div");
-          wrapper.innerHTML = htmlStr;
+          wrapper.appendChild(table);
           container.appendChild(wrapper);
         }
       } catch (err) {
