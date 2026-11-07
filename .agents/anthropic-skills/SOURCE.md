@@ -96,6 +96,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `skill-creator/eval-viewer/generate_review.py` (segurança) | `--benchmark` passava por `resolve()` e seguia um `benchmark.json` que fosse link, embutindo qualquer JSON legível no HTML | O benchmark só é lido como arquivo regular dentro do workspace (`_workspace_file`); um link é recusado com erro |
 | `claude-api/shared/evals/report/runner-scaffold.mjs` | IDs como `invoice` e `invoice.txt` passavam na checagem de unicidade, mas dividiam `baseline/ref/invoice.txt`; um caso era avaliado contra a saída do outro | O runner recusa, antes de rodar, um ID igual a outro mais uma extensão de `REF_EXTS` |
 | `skill-creator/eval-viewer/generate_review.py` (segurança) | Com `--previous-workspace`, o `feedback.json` da iteração anterior era lido mesmo sendo link; o feedback de outro lugar ia para o HTML | Só é lido como arquivo regular dentro do workspace anterior (`_workspace_file`) |
+| `pdf/scripts/check_bounding_boxes.py` | Em páginas com `/Rotate` 90 ou 270, convertia pixels em pontos pela altura do MediaBox, não pela altura exibida; aprovava caixas baixas demais para a fonte | Usa a largura do MediaBox como altura nessas rotações |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

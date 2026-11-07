@@ -1496,6 +1496,27 @@ class XlsxPdfTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.split(), ["FAILURE", "WARNING"])
 
+    @unittest.skipUnless(importlib.util.find_spec("pypdf"), "pypdf não instalado")
+    def test_pdf_bounding_box_height_follows_page_rotation(self):
+        # Página 600x800 com /Rotate 90 aparece como imagem 800x600: 10 px = 10 pt, menos que a fonte de 12.
+        with tempfile.TemporaryDirectory() as tmp:
+            from pypdf import PdfWriter
+            writer = PdfWriter()
+            writer.add_blank_page(600, 800).rotate(90)
+            pdf = Path(tmp) / "rot.pdf"
+            with open(pdf, "wb") as fh:
+                writer.write(fh)
+            fields = Path(tmp) / "fields.json"
+            fields.write_text(json.dumps({
+                "pages": [{"page_number": 1, "image_width": 800, "image_height": 600}],
+                "form_fields": [{"page_number": 1, "description": "nome",
+                                 "label_bounding_box": [0, 0, 50, 10], "entry_bounding_box": [60, 0, 300, 10],
+                                 "entry_text": {"text": "x", "font_size": 12}}]}))
+            result = subprocess.run([sys.executable, str(SKILLS / "pdf/scripts/check_bounding_boxes.py"),
+                                     str(fields), str(pdf)], capture_output=True, text=True, timeout=60)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("FAILURE: entry bounding box height (10.0)", result.stdout)
+
     def test_pdf_convert_creates_missing_output_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "novo/images_dir"

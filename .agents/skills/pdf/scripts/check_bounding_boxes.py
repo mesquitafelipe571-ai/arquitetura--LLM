@@ -81,7 +81,9 @@ if __name__ == "__main__":
     pdf_heights = None
     if len(sys.argv) == 3:
         from pypdf import PdfReader
-        pdf_heights = {i + 1: float(p.mediabox.height) for i, p in enumerate(PdfReader(sys.argv[2]).pages)}
+        # Displayed height: a page rotated 90/270 is rendered with the MediaBox width as its height.
+        pdf_heights = {i + 1: float(p.mediabox.width if p.rotation % 180 == 90 else p.mediabox.height)
+                       for i, p in enumerate(PdfReader(sys.argv[2]).pages)}
     with open(sys.argv[1]) as f:
         messages = get_bounding_box_messages(f, pdf_heights)
     for msg in messages:
