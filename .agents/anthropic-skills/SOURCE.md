@@ -36,6 +36,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `xlsx/scripts/recalc.py` | Texto que só mencionava `#VALUE!` era contado como erro e bloqueava a entrega | Conta só células de erro (`data_type == "e"`) com o código exato |
 | `skill-creator/eval-viewer/generate_review.py` | Execução sem `eval_id` (`None`) quebrava a ordenação com `TypeError` | `None` vai para o fim da ordenação |
 | `pdf/scripts/extract_form_field_info.py` | Opções simples (`"Red"`) viravam `R`/`e`; opções de 1 caractere davam `IndexError` | String vale como valor e texto; pares continuam indexados |
+| `skill-creator/eval-viewer/viewer.html` (segurança) | `escapeHtml()` não escapava aspas; uma evidência com `"` saía do atributo `title` e injetava JavaScript no visualizador | `escapeHtml()` escapa `"` e `'`; `run_number` também passa por ela |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

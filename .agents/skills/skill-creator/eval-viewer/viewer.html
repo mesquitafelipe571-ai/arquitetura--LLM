@@ -1099,7 +1099,8 @@
     function escapeHtml(text) {
       const div = document.createElement("div");
       div.textContent = text;
-      return div.innerHTML;
+      // innerHTML leaves quotes as-is; escape them so the result is safe inside attributes too.
+      return div.innerHTML.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     }
 
     // ---- View switching ----
@@ -1289,7 +1290,7 @@
                   if (exp) {
                     const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
                     const icon = exp.passed ? "\u2713" : "\u2717";
-                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                    html += '<span class="' + cls + '" title="Run ' + escapeHtml(String(run.run_number)) + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
                   } else {
                     html += "— ";
                   }

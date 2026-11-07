@@ -76,6 +76,12 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   encontrado durante a correção acima): se `/tmp/lo_socket_shim.so` existisse, era
   carregado no LibreOffice sem verificação. Só ocorre onde o shim é necessário
   (ambientes sem sockets Unix). Agora o shim é compilado em diretório privado.
+- **XSS no visualizador de avaliações** (`skill-creator/eval-viewer/viewer.html`,
+  apontado pela revisão de segurança do Codex): `escapeHtml()` não escapava aspas
+  e o resultado ia para um atributo `title`; uma evidência com `"` criava um
+  handler como `onmouseover` que podia ler os dados embutidos. Agora a função
+  escapa aspas, protegendo todos os usos em atributos. Junto, o JSON embutido
+  passou a escapar `<` (saídas com `</script>`).
 - Testes em `tests/test_anthropic_skill_fixes.py`, que falham com os arquivos
   originais. Pendente: reportar à origem.
 

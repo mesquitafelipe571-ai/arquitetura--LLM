@@ -1,5 +1,7 @@
 """Regressões das correções locais nas skills de anthropics/skills (ver .agents/anthropic-skills/SOURCE.md)."""
 import importlib.util
+import shutil
+import re
 import json
 from pathlib import Path
 import socket
@@ -262,6 +264,23 @@ class SkillCreatorTests(unittest.TestCase):
             """)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "[1, None]")
+
+
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_viewer_escape_html_is_safe_in_attributes(self):
+        html = (SKILLS / "skill-creator/eval-viewer/viewer.html").read_text()
+        body = re.search(r"function escapeHtml\(text\) \{.*?\n    \}", html, re.S).group(0)
+        # Stub com a serialização de innerHTML do navegador para texto: escapa só &, < e >.
+        script = textwrap.dedent("""
+            const document = {createElement() { return {
+              set textContent(t) { this.t = String(t); },
+              get innerHTML() { return this.t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+            }; }};
+        """) + body + '\nprocess.stdout.write(escapeHtml(\'x" onmouseover="alert(1)\'));'
+        result = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('"', result.stdout)
+        self.assertEqual(result.stdout, "x&quot; onmouseover=&quot;alert(1)")
 
 
 @unittest.skipUnless(importlib.util.find_spec("openpyxl") and importlib.util.find_spec("pypdf"),
