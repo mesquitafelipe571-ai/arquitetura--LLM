@@ -1531,6 +1531,55 @@ class McpEvaluationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.split(), ["['a',", "'b']", "['a',", "'b']"])
 
+    def test_mcp_evaluation_offers_only_read_only_tools(self):
+        # Sem readOnlyHint: true a ferramenta não é oferecida, e um tool_use para ela não é executado.
+        result = run_in(SKILLS / "mcp-builder/scripts", """
+            import asyncio, sys, types
+            mcp = types.ModuleType("mcp")
+            mcp.ClientSession = mcp.StdioServerParameters = object
+            mcp.types = types.SimpleNamespace()
+            sys.modules["mcp"] = mcp
+            for name in ("mcp.client", "mcp.client.sse", "mcp.client.stdio", "mcp.client.streamable_http"):
+                sys.modules[name] = types.SimpleNamespace(sse_client=None, stdio_client=None, streamablehttp_client=None)
+            sys.modules["anthropic"] = types.SimpleNamespace(Anthropic=lambda: None)
+            import connections, evaluation
+            Tool = lambda n, ann: types.SimpleNamespace(name=n, description="", inputSchema={}, annotations=ann)
+            class Session:
+                async def list_tools(self):
+                    return types.SimpleNamespace(nextCursor=None, tools=[
+                        Tool("read", types.SimpleNamespace(readOnlyHint=True)),
+                        Tool("delete", types.SimpleNamespace(readOnlyHint=False)), Tool("bare", None)])
+            conn = object.__new__(connections.MCPConnectionStdio)
+            conn.session = Session()
+            seen = {}
+            async def fake_task(client, model, qa, tools, connection, i):
+                seen[i] = [t["name"] for t in tools]
+                assert all("read_only" not in t for t in tools)
+                return {"score": 1, "total_duration": 0, "num_tool_calls": 0, "tool_metrics": {}}
+            evaluation.evaluate_single_task = fake_task
+            evaluation.parse_evaluation_file = lambda p: [{"question": "q", "answer": "a"}]
+            evaluation.REPORT_HEADER = evaluation.TASK_TEMPLATE = ""
+            for allow in (False, True):
+                try:
+                    asyncio.run(evaluation.run_evaluation("e.xml", conn, "m", allow))
+                except Exception:
+                    pass
+                print(seen.get(0))
+            Block = lambda **kw: types.SimpleNamespace(**kw)
+            replies = iter([Block(stop_reason="tool_use", content=[Block(type="tool_use", id="t1", name="delete", input={})]),
+                            Block(stop_reason="end_turn", content=[Block(type="text", text="<response>x</response>")])])
+            client = types.SimpleNamespace(messages=types.SimpleNamespace(create=lambda **kw: next(replies)))
+            called = []
+            class Conn:
+                async def call_tool(self, name, args):
+                    called.append(name)
+            asyncio.run(evaluation.agent_loop(client, "m", "q", [{"name": "read"}], Conn()))
+            print(called)
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([l for l in result.stdout.splitlines() if l.startswith("[")],
+                         ["['read']", "['read', 'delete', 'bare']", "[]"])
+
     def test_mcp_call_tool_keeps_structured_content(self):
         # Ferramenta que responde só em structuredContent (content: []): os dados precisam chegar ao modelo.
         result = run_in(SKILLS / "mcp-builder/scripts", """

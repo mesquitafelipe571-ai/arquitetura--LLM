@@ -150,6 +150,9 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
 - **Helpers de migração seguiam links** (`claude-api/shared/preserved-thinking-migration/`): `--json` num link
   sobrescrevia o alvo e o `--scan` imprimia linhas de arquivos-link. Agora a saída usa temporário com
   `os.replace`, e links nas leituras são recusados ou pulados.
+- **Avaliador MCP executava qualquer ferramenta** (`mcp-builder/scripts/evaluation.py`): um resultado com
+  prompt injection podia levar a uma ferramenta que grava ou apaga. Agora só ferramentas `readOnlyHint: true`
+  são oferecidas por padrão (`--allow-write-tools` libera as demais) e chamadas fora da lista são recusadas.
 - **Nome do projeto virava código `sed`** (`web-artifacts-builder/scripts/init-artifact.sh`, apontado pela
   revisão de segurança do Codex): `x;touch marker/e` executava um comando pela flag GNU `e`. Agora o nome
   precisa ser um slug, validado antes de qualquer outro passo.

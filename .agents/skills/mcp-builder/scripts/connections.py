@@ -72,6 +72,8 @@ class MCPConnection(ABC):
                 "name": tool.name,
                 "description": tool.description,
                 "input_schema": tool.inputSchema,
+                # Only an explicit readOnlyHint counts: an unannotated tool may write or delete.
+                "read_only": getattr(getattr(tool, "annotations", None), "readOnlyHint", None) is True,
             }
             for tool in tools
         ]

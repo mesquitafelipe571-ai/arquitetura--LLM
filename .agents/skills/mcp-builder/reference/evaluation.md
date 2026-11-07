@@ -476,7 +476,7 @@ python scripts/evaluation.py \
 ```
 usage: evaluation.py [-h] [-t {stdio,sse,http}] [-m MODEL] [-c COMMAND]
                      [-a ARGS] [-e ENV] [-u URL] [-H HEADERS] [-o OUTPUT]
-                     eval_file
+                     [--allow-write-tools] eval_file
 
 positional arguments:
   eval_file             Path to evaluation XML file
@@ -486,6 +486,10 @@ optional arguments:
   -t, --transport       Transport type: stdio, sse, or http (default: stdio)
   -m, --model           Claude model to use (default: claude-3-7-sonnet-20250219)
   -o, --output          Output file for report (default: print to stdout)
+  --allow-write-tools   Also offer tools without readOnlyHint: true. By default
+                        only read-only tools are offered, because a tool result
+                        can carry injected instructions; a tool the model calls
+                        that was not offered is refused.
 
 stdio options:
   -c, --command         Command to run MCP server (e.g., python, node)

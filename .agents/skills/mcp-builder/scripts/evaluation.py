@@ -109,6 +109,7 @@ async def agent_loop(
     messages.append({"role": "assistant", "content": response.content})
 
     tool_metrics = {}
+    offered = {tool["name"] for tool in tools}
 
     while response.stop_reason == "tool_use":
         # Every tool_use in the turn needs its tool_result in the next user message.
@@ -119,6 +120,8 @@ async def agent_loop(
 
             tool_start_ts = time.time()
             try:
+                if tool_name not in offered:  # never run a tool the evaluation did not expose
+                    raise ValueError(f"tool {tool_name!r} is not available in this evaluation")
                 tool_result = await connection.call_tool(tool_name, tool_input)
                 # MCP SDK content blocks are pydantic models, not plain JSON.
                 tool_response = (
@@ -230,6 +233,7 @@ async def run_evaluation(
     eval_path: Path,
     connection: Any,
     model: str = "claude-3-7-sonnet-20250219",
+    allow_write_tools: bool = False,
 ) -> str:
     """Run evaluation with MCP server tools."""
     print("🚀 Starting Evaluation")
@@ -238,6 +242,15 @@ async def run_evaluation(
 
     tools = await connection.list_tools()
     print(f"📋 Loaded {len(tools)} tools from MCP server")
+    # Evaluations are read-only: a tool result can carry injected instructions, so a tool that
+    # writes or deletes with the operator's credentials is only offered on explicit opt-in.
+    if not allow_write_tools:
+        hidden = [t["name"] for t in tools if not t.get("read_only")]
+        tools = [t for t in tools if t.get("read_only")]
+        if hidden:
+            print(f"⚠️  Hid {len(hidden)} tool(s) without readOnlyHint: {', '.join(hidden)} "
+                  "(pass --allow-write-tools to offer them)")
+    tools = [{k: v for k, v in t.items() if k != "read_only"} for t in tools]
 
     qa_pairs = parse_evaluation_file(eval_path)
     print(f"📋 Loaded {len(qa_pairs)} evaluation tasks")
@@ -371,6 +384,8 @@ Examples:
     remote_group.add_argument("-H", "--header", action="append", dest="headers", help="HTTP header in 'Key: Value' format; repeatable (sse/http only)")
 
     parser.add_argument("-o", "--output", type=Path, help="Output file for evaluation report (default: stdout)")
+    parser.add_argument("--allow-write-tools", action="store_true",
+                        help="Also offer tools not annotated readOnlyHint (they may write or delete with your credentials)")
 
     args = parser.parse_args()
 
@@ -398,7 +413,7 @@ Examples:
 
     async with connection:
         print("✅ Connected successfully")
-        report = await run_evaluation(args.eval_file, connection, args.model)
+        report = await run_evaluation(args.eval_file, connection, args.model, args.allow_write_tools)
 
         if args.output:
             write_report(args.output, report)
