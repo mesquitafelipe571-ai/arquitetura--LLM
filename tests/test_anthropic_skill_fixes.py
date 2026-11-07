@@ -1496,6 +1496,49 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertFalse((bench / "benchmark.json").is_symlink())
             self.assertIn("run_summary", (bench / "benchmark.json").read_text())
 
+    def test_run_loop_report_never_follows_links(self):
+        # --report report.html -> victim: a página inicial e o relatório final substituem o link.
+        with tempfile.TemporaryDirectory() as tmp:
+            skill = Path(tmp) / "s"
+            skill.mkdir()
+            (skill / "SKILL.md").write_text("---\nname: s\ndescription: d\n---\n")
+            (Path(tmp) / "evals.json").write_text("[]")
+            victim = Path(tmp) / "victim.txt"
+            victim.write_text("da vítima")
+            report = Path(tmp) / "report.html"
+            report.symlink_to(victim)
+            result = run_in(SKILLS / "skill-creator", f"""
+                import sys
+                from unittest import mock
+                import scripts.run_loop as rl
+                sys.argv = ["run_loop", "--eval-set", {str(Path(tmp) / "evals.json")!r}, "--skill-path",
+                            {str(skill)!r}, "--model", "m", "--report", {str(report)!r}]
+                with mock.patch.object(rl.webbrowser, "open"), \\
+                     mock.patch.object(rl, "run_loop", return_value={{"history": []}}), \\
+                     mock.patch.object(rl, "generate_html", return_value="final"):
+                    rl.main()
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(victim.read_text(), "da vítima")
+            self.assertFalse(report.is_symlink())
+            self.assertEqual(report.read_text(), "final")
+
+    def test_benchmark_unknown_duration_has_no_time_delta(self):
+        # with_skill sem duração em lugar nenhum; without_skill com 10 s: não há delta de tempo medido.
+        with tempfile.TemporaryDirectory() as tmp:
+            for config, timing in (("with_skill", {}), ("without_skill", {"total_duration_seconds": 10.0})):
+                d = Path(tmp) / "eval-0" / config / "run-1"
+                (d / "outputs").mkdir(parents=True)
+                (d / "grading.json").write_text(json.dumps({"summary": {"pass_rate": 1.0}, "timing": timing}))
+            result = run_in(SKILLS / "skill-creator", f"""
+                from pathlib import Path
+                from scripts.aggregate_benchmark import aggregate_results, load_run_results
+                delta = aggregate_results(load_run_results(Path({tmp!r})))["delta"]
+                print(delta["pass_rate"], delta["time_seconds"])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines()[-1], "+0.00 —")
+
     def test_viewer_never_kills_the_process_on_its_port(self):
         # A porta ocupada cai no fallback para uma porta livre; o script não envia sinal a ninguém.
         source = (SKILLS / "skill-creator/eval-viewer/generate_review.py").read_text()

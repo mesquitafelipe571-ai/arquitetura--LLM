@@ -203,6 +203,7 @@ def aggregate_results(results: dict) -> dict:
     run_summary = {}
     configs = list(results.keys())
     tokens_complete: dict[str, bool] = {}
+    times_complete: dict[str, bool] = {}
 
     for config in configs:
         runs = results.get(config, [])
@@ -216,7 +217,9 @@ def aggregate_results(results: dict) -> dict:
             continue
 
         pass_rates = [r["pass_rate"] for r in runs]
-        times = [r["time_seconds"] for r in runs]
+        # Like tokens: a 0/missing duration is "not measured", not an instant run.
+        times = [r["time_seconds"] for r in runs if r.get("time_seconds")]
+        times_complete[config] = len(times) == len(runs)
         # Only runs with a real token count; 0/missing means "unknown", not "used none".
         tokens = [r["tokens"] for r in runs if r.get("tokens")]
         tokens_complete[config] = len(tokens) == len(runs)
@@ -247,7 +250,7 @@ def aggregate_results(results: dict) -> dict:
 
     run_summary["delta"] = {
         "pass_rate": f"{delta_pass_rate:+.2f}" if measured else "—",
-        "time_seconds": f"{delta_time:+.1f}" if measured else "—",
+        "time_seconds": f"{delta_time:+.1f}" if measured and all(times_complete.get(c, False) for c in configs[:2]) else "—",
         "tokens": f"{delta_tokens:+.0f}" if tokens_known and measured else "—"
     }
 

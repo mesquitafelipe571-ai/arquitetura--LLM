@@ -155,7 +155,7 @@ def run_loop(
                 "test_size": len(test_set),
                 "history": history,
             }
-            live_report_path.write_text(generate_html(partial_output, auto_refresh=True, skill_name=name))
+            write_text_replace(live_report_path, generate_html(partial_output, auto_refresh=True, skill_name=name))
 
         if verbose:
             def print_eval_stats(label, results, elapsed):
@@ -287,7 +287,7 @@ def main():
         else:
             live_report_path = Path(args.report)
         # Open the report immediately so the user can watch
-        live_report_path.write_text("<html><body><h1>Starting optimization loop...</h1><meta http-equiv='refresh' content='5'></body></html>")
+        write_text_replace(live_report_path, "<html><body><h1>Starting optimization loop...</h1><meta http-equiv='refresh' content='5'></body></html>")
         webbrowser.open(str(live_report_path))
     else:
         live_report_path = None
@@ -326,7 +326,7 @@ def main():
 
     # Write final HTML report (without auto-refresh)
     if live_report_path:
-        live_report_path.write_text(generate_html(output, auto_refresh=False, skill_name=name))
+        write_text_replace(live_report_path, generate_html(output, auto_refresh=False, skill_name=name))
         print(f"\nReport: {live_report_path}", file=sys.stderr)
 
     if results_dir and live_report_path:
