@@ -1486,9 +1486,24 @@ class XlsxPdfTests(unittest.TestCase):
                 with mock.patch.object(recalc, "_recalc_with_profile", side_effect=AssertionError("rodou")):
                     out = recalc.recalc({str(bad)!r}, force=True)
                 print(out.get("network_formula_parts"), recalc.network_formula_parts({str(ok)!r}))
+                import zipfile
+                with zipfile.ZipFile({str(bad)!r}) as src, zipfile.ZipFile({str(bad)!r} + ".enc.xlsx", "w") as dst:
+                    for item in src.infolist():
+                        data = src.read(item)
+                        if item.filename == "xl/worksheets/sheet1.xml":
+                            data = data.replace(b"<f>WEBSERVICE", b"<f>WEBSERV&#73;CE")
+                        dst.writestr(item, data)
+                print("codificada:", recalc.network_formula_parts({str(bad)!r} + ".enc.xlsx"))
+                # Referência numérica: WEBSERV&#73;CE vira WEBSERVICE depois de interpretar o XML.
+                print(recalc._calls_network(b'<f>WEBSERV&#73;CE("http://127.0.0.1/")</f>'),
+                      recalc._calls_network(b'<f><![CDATA[_xlfn.DDE("x")]]></f>'),
+                      recalc._calls_network(b'<!DOCTYPE f [<!ENTITY e "WEBSERVICE">]><f>&e;(1)</f>'),
+                      recalc._calls_network(b'<c><v>WEBSERVICE(1)</v></c>'))
             """)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(result.stdout.strip(), "['xl/worksheets/sheet1.xml'] []")
+            self.assertEqual(result.stdout.strip().splitlines(),
+                             ["['xl/worksheets/sheet1.xml'] []", "codificada: ['xl/worksheets/sheet1.xml']",
+                              "True True True False"])
 
     def test_xlsx_recalc_counts_only_real_error_cells(self):
         with tempfile.TemporaryDirectory() as tmp:

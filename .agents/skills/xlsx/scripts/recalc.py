@@ -16,6 +16,7 @@ import time
 import zipfile
 from pathlib import Path
 
+import defusedxml.ElementTree
 from office.helpers import check_archive_limits
 from office.soffice import get_soffice_env, run_soffice
 
@@ -29,9 +30,9 @@ MAX_LOCATIONS = 100
 EXTERNAL_REF_RE = re.compile(r"""(?<![\w"\[])'?\[\d+\][^!"\[\]]*'?!""")
 # LibreOffice fetches these while recalculating, so a third-party workbook could reach
 # local/internal URLs and have the response saved into the file.
-NETWORK_FUNCTION_RE = re.compile(rb"\b(?:_xlfn\.)?(?:WEBSERVICE|DDE)\s*\(", re.IGNORECASE)
+NETWORK_FUNCTION_RE = re.compile(r"\b(?:_xlfn\.)?(?:WEBSERVICE|DDE)\s*\(", re.IGNORECASE)
 # Formula text: cell <f>, defined names, and conditional-format/validation <formula>, <formula1>, ...
-FORMULA_TEXT_RE = re.compile(rb"<(?:\w+:)?(f|definedName|formula\d?)\b[^>]*>(.*?)</(?:\w+:)?\1\s*>", re.DOTALL)
+FORMULA_TAG_RE = re.compile(r"(?:f|definedName|formula\d?)")
 
 RECALCULATE_MACRO = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
@@ -137,9 +138,21 @@ def network_formula_parts(filename):
         check_archive_limits(archive)
         return [
             name for name in archive.namelist()
-            if name.startswith("xl/") and name.endswith(".xml")
-            and any(NETWORK_FUNCTION_RE.search(m.group(2)) for m in FORMULA_TEXT_RE.finditer(archive.read(name)))
+            if name.startswith("xl/") and name.endswith(".xml") and _calls_network(archive.read(name))
         ]
+
+
+def _calls_network(xml: bytes) -> bool:
+    # Parsed, not grepped: WEBSERV&#73;CE only becomes WEBSERVICE once the XML is decoded.
+    try:
+        root = defusedxml.ElementTree.fromstring(xml)
+    except Exception:  # malformed, or entities/DTD that defusedxml refuses: cannot vouch for it
+        return True
+    return any(
+        FORMULA_TAG_RE.fullmatch(el.tag.rsplit("}", 1)[-1]) and NETWORK_FUNCTION_RE.search("".join(el.itertext()))
+        for el in root.iter()
+        if isinstance(el.tag, str)
+    )
 
 
 def recalc(filename, timeout=30, force=False):
