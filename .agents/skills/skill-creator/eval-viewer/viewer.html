@@ -655,21 +655,16 @@
 
     // ---- Init ----
     async function init() {
-      // Load saved feedback from server — but only if this isn't a fresh
-      // iteration (indicated by previous_feedback being present). When
-      // previous feedback exists, the feedback.json on disk is stale from
-      // the prior iteration and should not pre-fill the textareas.
-      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
-        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
-      if (!hasPrevious) {
-        try {
-          const resp = await fetch("/api/feedback" + location.search);
-          const data = await resp.json();
-          if (data.reviews) {
-            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
-          }
-        } catch { /* first run, no feedback yet */ }
-      }
+      // Load this workspace's saved feedback. The previous iteration's feedback is
+      // embedded separately, so loading it here never mixes the two; skipping it
+      // made the next save overwrite feedback.json with only the new reviews.
+      try {
+        const resp = await fetch("/api/feedback" + location.search);
+        const data = await resp.json();
+        if (data.reviews) {
+          for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+        }
+      } catch { /* first run, no feedback yet */ }
 
       document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
       showRun(0);

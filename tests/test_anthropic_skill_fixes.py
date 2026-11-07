@@ -130,6 +130,27 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual([o.get("PartName") for o in types.findall("ct:Override", ns)],
                              ["/ppt/slides/slide2.xml"])
 
+    def test_pptx_add_slide_reads_single_quoted_ids(self):
+        rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "ppt/_rels").mkdir(parents=True)
+            (root / "ppt/presentation.xml").write_text(
+                "<p:presentation xmlns:p='http://schemas.openxmlformats.org/presentationml/2006/main'"
+                f" xmlns:r='{rel_ns}'><p:sldIdLst><p:sldId id='300' r:id='rId1'/></p:sldIdLst></p:presentation>")
+            (root / "ppt/_rels/presentation.xml.rels").write_text(
+                "<Relationships xmlns='http://schemas.openxmlformats.org/package/2006/relationships'>"
+                f"<Relationship Id='rId1' Type='{rel_ns}/slide' Target='slides/slide1.xml'/></Relationships>")
+            result = run_in(SKILLS / "pptx/scripts", f"""
+                from pathlib import Path
+                from add_slide import _add_to_presentation_rels, _get_next_slide_id
+                print(_add_to_presentation_rels(Path({tmp!r}), "slide1.xml"))
+                print(_add_to_presentation_rels(Path({tmp!r}), "slide2.xml"))
+                print(_get_next_slide_id(Path({tmp!r})))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.split(), ["rId1", "rId2", "301"])
+
     def test_docx_comment_declares_namespaces_used_by_new_comment(self):
         with tempfile.TemporaryDirectory() as tmp:
             comments = Path(tmp) / "comments.xml"
@@ -562,6 +583,22 @@ class SkillCreatorTests(unittest.TestCase):
         self.assertNotIn('"', result.stdout)
         self.assertEqual(result.stdout, "x&quot; onmouseover=&quot;alert(1)")
 
+    def test_viewer_loads_current_feedback_with_previous_iteration(self):
+        html = (SKILLS / "skill-creator/eval-viewer/viewer.html").read_text()
+        body = re.search(r"async function init\(\) \{.*?\n    \}", html, re.S).group(0)
+        script = textwrap.dedent("""
+            let feedbackMap = {};
+            const EMBEDDED_DATA = {skill_name: "s", previous_outputs: {"r1": [{}]}, previous_feedback: {"r1": "velho"}};
+            const location = {search: "?token=t"};
+            let fetched = null;
+            async function fetch(url) { fetched = url; return {json: async () => ({reviews: [{run_id: "r1", feedback: "atual"}]})}; }
+            const el = {addEventListener() {}, set textContent(t) {}};
+            const document = {getElementById() { return el; }};
+            function showRun() {}
+        """) + body + "\ninit().then(() => process.stdout.write(JSON.stringify([fetched, feedbackMap])));"
+        result = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), ["/api/feedback?token=t", {"r1": "atual"}])
 
 @unittest.skipUnless(importlib.util.find_spec("openpyxl") and importlib.util.find_spec("pypdf"),
                      "openpyxl/pypdf não instalados")

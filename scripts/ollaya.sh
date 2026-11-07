@@ -12,8 +12,11 @@ export OLLAYA_HOST=127.0.0.1:11435 OLLAYA_MODELS="$DIR/models"
 
 if [ "${1:-}" = install ]; then
     # O instalador confere os binários da release pelo sha256sum.txt; sem serviço e sem sudo.
-    curl -fsSL "https://raw.githubusercontent.com/ollaya-dev/ollaya/$SOURCE_SHA/scripts/install.sh" |
-        OLLAYA_VERSION=$VERSION OLLAYA_INSTALL_DIR="$DIR" OLLAYA_NO_SERVICE=1 sh
+    # Baixa para um arquivo antes de executar: num pipe, uma falha do curl terminaria com sucesso.
+    installer=$(mktemp)
+    trap 'rm -f "$installer"' EXIT
+    curl -fsSL -o "$installer" "https://raw.githubusercontent.com/ollaya-dev/ollaya/$SOURCE_SHA/scripts/install.sh"
+    OLLAYA_VERSION=$VERSION OLLAYA_INSTALL_DIR="$DIR" OLLAYA_NO_SERVICE=1 sh "$installer"
     exit
 fi
 

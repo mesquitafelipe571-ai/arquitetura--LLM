@@ -138,7 +138,7 @@ def duplicate_slide(unpacked_dir: Path, source: str, after: str | None = None) -
         )
         dest_rels.write_text(rels_content, encoding="utf-8")
         shared_parts = sorted({
-            t for t in re.findall(r'Type="[^"]*/relationships/(\w+)"', rels_content)
+            t for t in re.findall(r'Type=["\'][^"\']*/relationships/(\w+)["\']', rels_content)
             if t in SHARED_PART_TYPES
         })
 
@@ -183,7 +183,7 @@ def _precheck_registration(unpacked_dir: Path, after: str | None, dest: str) -> 
     if not after:
         return None
     after_rid = _rid_for_slide(unpacked_dir, after)
-    if not re.search(rf'<p:sldId\b[^>]*r:id="{re.escape(after_rid)}"[^>]*>', xml):
+    if not re.search(rf'<p:sldId\b[^>]*r:id=["\']{re.escape(after_rid)}["\'][^>]*>', xml):
         _die(f"{after} ({after_rid}) is not listed in <p:sldIdLst>")
     return after_rid
 
@@ -231,8 +231,9 @@ def _add_to_presentation_rels(unpacked_dir: Path, dest: str) -> str:
         return existing
 
     pres_xml = (unpacked_dir / "ppt" / "presentation.xml").read_text(encoding="utf-8")
-    used = {int(n) for n in re.findall(r'\bId="rId(\d+)"', pres_rels)}
-    used |= {int(n) for n in re.findall(r'\br:id="rId(\d+)"', pres_xml)}
+    # XML allows either quote around attribute values.
+    used = {int(n) for n in re.findall(r'\bId=["\']rId(\d+)["\']', pres_rels)}
+    used |= {int(n) for n in re.findall(r'\br:id=["\']rId(\d+)["\']', pres_xml)}
     rid = f"rId{max(used) + 1 if used else 1}"
 
     new_rel = f'<Relationship Id="{rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/{dest}"/>'
@@ -245,8 +246,8 @@ def _add_to_presentation_rels(unpacked_dir: Path, dest: str) -> str:
 def _find_slide_relationship(pres_rels: str, slide_name: str) -> str | None:
     for m in re.finditer(r"<(?:[\w.-]+:)?Relationship\b[^>]*>", pres_rels):
         element = m.group(0)
-        if re.search(rf'Target="(?:/ppt/)?slides/{re.escape(slide_name)}"', element):
-            id_match = re.search(r'\bId="([^"]+)"', element)
+        if re.search(rf'Target=["\'](?:/ppt/)?slides/{re.escape(slide_name)}["\']', element):
+            id_match = re.search(r'\bId=["\']([^"\']+)["\']', element)
             if id_match:
                 return id_match.group(1)
     return None
@@ -254,7 +255,7 @@ def _find_slide_relationship(pres_rels: str, slide_name: str) -> str | None:
 
 def _get_next_slide_id(unpacked_dir: Path) -> int:
     pres_content = (unpacked_dir / "ppt" / "presentation.xml").read_text(encoding="utf-8")
-    used = {int(m) for m in re.findall(r'<p:sldId[^>]*\bid="(\d+)"', pres_content)}
+    used = {int(m) for m in re.findall(r'<p:sldId\b[^>]*\bid=["\'](\d+)["\']', pres_content)}
 
     candidate = max((i for i in used if i >= SLIDE_ID_MIN), default=SLIDE_ID_MIN - 1) + 1
     if candidate <= SLIDE_ID_MAX and candidate not in used:
@@ -272,11 +273,11 @@ def _insert_into_sld_id_lst(
     xml = pres_path.read_text(encoding="utf-8")
     entry = f'<p:sldId id="{slide_id}" r:id="{rid}"/>'
 
-    if f'r:id="{rid}"' in xml:
+    if re.search(rf'r:id=["\']{re.escape(rid)}["\']', xml):
         _die(f"presentation.xml already references {rid}; refusing to add a duplicate")
 
     if after_rid:
-        open_tag = re.search(rf'<p:sldId\b[^>]*r:id="{re.escape(after_rid)}"[^>]*>', xml)
+        open_tag = re.search(rf'<p:sldId\b[^>]*r:id=["\']{re.escape(after_rid)}["\'][^>]*>', xml)
         if not open_tag:
             _die(f"{after_rid} is not listed in <p:sldIdLst>")
         end = open_tag.end()
