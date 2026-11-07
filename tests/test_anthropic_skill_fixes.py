@@ -576,6 +576,29 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue(result.stdout.startswith("Error:"), result.stdout)
 
+    def test_docx_accept_changes_never_writes_through_output_link(self):
+        # out.docx -> victim.txt: o alvo não pode receber os bytes, nem em falha nem em sucesso.
+        for code in (1, 0):
+            with self.subTest(soffice_exit=code), tempfile.TemporaryDirectory() as tmp:
+                src, out, victim = Path(tmp) / "in.docx", Path(tmp) / "out.docx", Path(tmp) / "victim.txt"
+                src.write_bytes(b"conteudo arbitrario")
+                victim.write_text("da vítima")
+                out.symlink_to(victim)
+                result = run_in(SKILLS / "docx/scripts", f"""
+                    import subprocess
+                    from unittest import mock
+                    import accept_changes
+                    with mock.patch.object(accept_changes, "_setup_libreoffice_macro", return_value=True), \\
+                         mock.patch.object(accept_changes.subprocess, "run",
+                                           return_value=subprocess.CompletedProcess([], {code}, "", "falhou")):
+                        print(accept_changes.accept_changes({str(src)!r}, {str(out)!r})[1])
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(victim.read_text(), "da vítima")
+                self.assertEqual(out.is_symlink(), code != 0)  # em sucesso o link é substituído pelo resultado
+                self.assertEqual(sorted(p.name for p in Path(tmp).iterdir()),
+                                 ["in.docx", "out.docx", "victim.txt"])  # nenhum temporário sobra
+
     def test_docx_comment_uses_linked_comments_part(self):
         # O documento aponta os comentários para word/comments1.xml; IDs e respostas devem usar essa parte.
         pkg = "http://schemas.openxmlformats.org/package/2006/relationships"

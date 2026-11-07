@@ -5,6 +5,7 @@ Requires LibreOffice (soffice) to be installed.
 
 import argparse
 import logging
+import os
 import shutil
 import subprocess
 import tempfile
@@ -44,44 +45,57 @@ def accept_changes(
     if not input_path.suffix.lower() == ".docx":
         return None, f"Error: Input file is not a DOCX file: {input_file}"
 
+    work_path = None
     try:
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(input_path, output_path)
+        # Work on a temp copy beside the output and move it into place at the end: copying straight
+        # to output_file would follow a planted link there and overwrite its target.
+        fd, tmp_name = tempfile.mkstemp(prefix=f".{output_path.stem}.", suffix=".docx", dir=output_path.parent)
+        os.close(fd)
+        work_path = Path(tmp_name)
+        shutil.copy2(input_path, work_path)
     except Exception as e:
+        if work_path:
+            work_path.unlink(missing_ok=True)
         return None, f"Error: Failed to copy input file to output location: {e}"
 
-    # A private profile per run: a shared /tmp profile would let another local user plant the macro.
-    with tempfile.TemporaryDirectory(prefix="libreoffice_docx_profile_") as profile:
-        profile_dir = Path(profile)
-        if not _setup_libreoffice_macro(profile_dir):
-            return None, "Error: Failed to setup LibreOffice macro"
+    try:
+        # A private profile per run: a shared /tmp profile would let another local user plant the macro.
+        with tempfile.TemporaryDirectory(prefix="libreoffice_docx_profile_") as profile:
+            profile_dir = Path(profile)
+            if not _setup_libreoffice_macro(profile_dir):
+                return None, "Error: Failed to setup LibreOffice macro"
 
-        cmd = [
-            "soffice",
-            "--headless",
-            f"-env:UserInstallation={profile_dir.as_uri()}",
-            "--norestore",
-            "vnd.sun.star.script:Standard.Module1.AcceptAllTrackedChanges?language=Basic&location=application",
-            str(output_path.absolute()),
-        ]
+            cmd = [
+                "soffice",
+                "--headless",
+                f"-env:UserInstallation={profile_dir.as_uri()}",
+                "--norestore",
+                "vnd.sun.star.script:Standard.Module1.AcceptAllTrackedChanges?language=Basic&location=application",
+                str(work_path.absolute()),
+            ]
 
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=30,
-                check=False,
-                env=get_soffice_env(),
-            )
-        except subprocess.TimeoutExpired:
-            return (
-                None,
-                f"Error: LibreOffice did not finish within 30s; {output_file} may still contain tracked changes",
-            )
+            try:
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                    env=get_soffice_env(),
+                )
+            except subprocess.TimeoutExpired:
+                return (
+                    None,
+                    f"Error: LibreOffice did not finish within 30s; {output_file} was not written",
+                )
 
-    if result.returncode != 0:
-        return None, f"Error: LibreOffice failed: {result.stderr}"
+        if result.returncode != 0:
+            return None, f"Error: LibreOffice failed: {result.stderr}"
+
+        os.replace(work_path, output_path)
+    finally:
+        work_path.unlink(missing_ok=True)
 
     return (
         None,
