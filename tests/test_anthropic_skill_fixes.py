@@ -208,10 +208,10 @@ class OfficeSkillTests(unittest.TestCase):
         # Entidade interna e externa (file://) num XML de terceiro: nenhuma vira texto no parse dos validadores.
         for skill in ("docx", "pptx", "xlsx"):
             with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:
-                secret = Path(tmp) / "secret.txt"
-                secret.write_text("SEGREDO_LOCAL")
+                local_file = Path(tmp) / "local.txt"
+                local_file.write_text("SEGREDO_LOCAL")
                 xml = Path(tmp) / "doc.xml"
-                xml.write_text(f'<!DOCTYPE x [<!ENTITY i "SEGREDO_INTERNO"><!ENTITY e SYSTEM "{secret.as_uri()}">]>'
+                xml.write_text(f'<!DOCTYPE x [<!ENTITY i "SEGREDO_INTERNO"><!ENTITY e SYSTEM "{local_file.as_uri()}">]>'
                                "<x>&i;&e;</x>")
                 result = run_in(SKILLS / f"{skill}/scripts/office", f"""
                     import validators, lxml.etree
