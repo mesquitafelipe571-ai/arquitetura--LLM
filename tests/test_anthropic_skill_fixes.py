@@ -793,6 +793,28 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertIn((parent_pid, None), entries)
             self.assertEqual([p for _, p in entries if p], [parent_pid])
 
+    def test_docx_comment_registers_parent_with_para_id_but_no_comment_ex(self):
+        # O pai já tem paraId, mas não há commentsExtended: a resposta precisa do commentEx do pai.
+        w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        w14 = "http://schemas.microsoft.com/office/word/2010/wordml"
+        w15 = "http://schemas.microsoft.com/office/word/2012/wordml"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "word").mkdir()
+            (root / "word/comments.xml").write_text(
+                f'<w:comments xmlns:w="{w}" xmlns:w14="{w14}"><w:comment w:id="0" w:author="A">'
+                '<w:p w14:paraId="12345678"/></w:comment></w:comments>')
+            result = run_in(SKILLS / "docx/scripts", f"""
+                from comment import add_comment
+                add_comment({tmp!r}, "resposta", parent_id=0)
+                add_comment({tmp!r}, "outra", parent_id=0)
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            ex = ET.parse(root / "word/commentsExtended.xml").getroot()
+            entries = [(e.get(f"{{{w15}}}paraId"), e.get(f"{{{w15}}}paraIdParent")) for e in ex]
+            self.assertEqual([p for p, parent in entries if p == "12345678"], ["12345678"])  # uma vez só
+            self.assertEqual([parent for _, parent in entries if parent], ["12345678", "12345678"])
+
     def test_docx_comment_creates_missing_document_rels(self):
         with tempfile.TemporaryDirectory() as tmp:
             (Path(tmp) / "word").mkdir()
@@ -2051,6 +2073,36 @@ class SkillCreatorTests(unittest.TestCase):
         result = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), ["", ["x", "1"], ""])
+
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_viewer_feedback_saves_land_in_order(self):
+        # A 1ª gravação demora mais que a 2ª; nenhuma pode chegar ao servidor fora de ordem.
+        html = (SKILLS / "skill-creator/eval-viewer/viewer.html").read_text()
+        body = re.search(r"function saveCurrentFeedback\(\) \{.*?\n    \}", html, re.S).group(0)
+        script = textwrap.dedent("""
+            let lastSave = Promise.resolve();
+            let currentIndex = 0;
+            const feedbackMap = {};
+            const EMBEDDED_DATA = {runs: [{id: "r1"}]};
+            const location = {search: ""};
+            const box = {value: ""};
+            const document = {getElementById: (id) => id === "feedback" ? box : {set textContent(t) {}}};
+            const landed = [];
+            let delay = 50;
+            function fetch(url, opts) {
+              const d = delay; delay = 0;
+              return new Promise((ok) => setTimeout(() => {
+                landed.push(JSON.parse(opts.body).reviews[0].feedback); ok({ok: true});
+              }, d));
+            }
+        """) + body + textwrap.dedent("""
+            box.value = "velho"; saveCurrentFeedback();
+            box.value = "novo"; saveCurrentFeedback();
+            lastSave.then(() => process.stdout.write(JSON.stringify(landed)));
+        """)
+        result = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), ["velho", "novo"])
 
     def test_viewer_loads_current_feedback_with_previous_iteration(self):
         html = (SKILLS / "skill-creator/eval-viewer/viewer.html").read_text()

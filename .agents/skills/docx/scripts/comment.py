@@ -138,6 +138,12 @@ def _find_para_id(comments_path: Path, comment_id: int) -> tuple[str | None, boo
     return None, False
 
 
+def _has_comment_ex(ext_path: Path, para_id: str) -> bool:
+    dom = defusedxml.minidom.parseString(ext_path.read_text(encoding="utf-8"))
+    return any(e.getAttributeNS(NS["w15"], "paraId") == para_id
+               for e in dom.getElementsByTagNameNS(NS["w15"], "commentEx"))
+
+
 def _next_comment_id(comments_path: Path) -> int:
     if not comments_path.exists():
         return 0
@@ -306,10 +312,10 @@ def add_comment(
     if comment_id is None:
         comment_id = _next_comment_id(comments)
 
-    parent_para, parent_needs_ex = None, False
+    parent_para = None
     if parent_id is not None:
         if comments.exists():
-            parent_para, parent_needs_ex = _find_para_id(comments, parent_id)
+            parent_para, _ = _find_para_id(comments, parent_id)
         if not parent_para:
             raise ValueError(f"parent comment {parent_id} not found")
 
@@ -331,8 +337,8 @@ def add_comment(
 
     if not ext.exists():
         shutil.copy(TEMPLATE_DIR / "commentsExtended.xml", ext)
-    if parent_needs_ex:
-        # The parent just got its paraId; register it before the reply that points at it.
+    if parent_para is not None and not _has_comment_ex(ext, parent_para):
+        # The reply points at the parent's commentEx: register it when missing (new paraId or not).
         _append_xml(ext, "w15:commentsEx", f'<w15:commentEx w15:paraId="{parent_para}" w15:done="0"/>')
     if parent_para is not None:
         _append_xml(

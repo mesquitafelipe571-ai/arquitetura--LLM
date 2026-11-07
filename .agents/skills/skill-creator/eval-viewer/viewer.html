@@ -653,7 +653,7 @@
     let currentIndex = 0;
     let visitedRuns = new Set();
     let saveTimeout = null;               // pending debounced auto-save
-    let lastSave = Promise.resolve();     // the most recent auto-save request
+    let lastSave = Promise.resolve();     // chain of auto-save requests, in order
 
     // ---- Init ----
     async function init() {
@@ -1018,11 +1018,14 @@
         }
       }
 
-      lastSave = fetch("/api/feedback" + location.search, {
+      // Each POST replaces feedback.json: chain them so an older save never lands after a newer
+      // one, and the final submit (which waits on lastSave) comes after all of them.
+      const body = JSON.stringify({ reviews, status: "in_progress" });
+      lastSave = lastSave.then(() => fetch("/api/feedback" + location.search, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reviews, status: "in_progress" }),
-      }).then((resp) => {
+        body,
+      })).then((resp) => {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         document.getElementById("feedback-status").textContent = "Saved";
       }).catch(() => {
