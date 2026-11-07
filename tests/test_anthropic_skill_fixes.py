@@ -3026,6 +3026,17 @@ class XlsxPdfTests(unittest.TestCase):
             self.assertTrue(line.endswith("True True"), line)
         self.assertEqual(lines[-1], "False")
 
+    def test_xlsx_network_scan_reads_declared_latin1_xml(self):
+        # encoding="ISO-8859-1" com "é" nos primeiros 256 bytes: o UTF-8 estrito falhava e o scanner pulava a parte.
+        result = run_in(SKILLS / "xlsx/scripts", """
+            import recalc
+            data = ('<?xml version="1.0" encoding="ISO-8859-1"?><worksheet><c><is><t>café</t></is></c>'
+                    '<c><f>WEBSERVICE("http://127.0.0.1/")</f></c></worksheet>').encode("latin-1")
+            print(recalc._looks_like_xml(data), recalc._calls_network(data))
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "True True")
+
     def test_xlsx_recalc_counts_only_real_error_cells(self):
         with tempfile.TemporaryDirectory() as tmp:
             book = Path(tmp) / "book.xlsx"

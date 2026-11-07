@@ -155,7 +155,8 @@ def _looks_like_xml(data: bytes) -> bool:
     """XML in any encoding a parser autodetects (XML 1.0, appendix F), with or without a BOM:
     UTF-16BE without BOM starts with 00 3c, so a byte-prefix check would let it through."""
     for encoding in _XML_ENCODINGS:
-        decoder = codecs.getincrementaldecoder(encoding)()
+        # errors="replace": a declared ISO-8859-1 é must not hide the leading < (the parser honours the declaration).
+        decoder = codecs.getincrementaldecoder(encoding)(errors="replace")
         try:
             # Chunk by chunk up to the first non-blank character: any amount of leading whitespace
             # is valid XML; incremental, so a multi-byte character cut between chunks is fine.
