@@ -1069,6 +1069,35 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.split(), ["403", "403", "403", "False", "403", "200", "True"])
 
+    def test_viewer_feedback_never_follows_links(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp) / "ws"
+            ws.mkdir()
+            outside = Path(tmp) / "settings.json"
+            outside.write_text('{"keep": true}')
+            (ws / "feedback.json").symlink_to(outside)
+            result = run_in(SKILLS / "skill-creator/eval-viewer", f"""
+                import json, threading, urllib.request
+                from functools import partial
+                from http.server import HTTPServer
+                from pathlib import Path
+                from generate_review import ReviewHandler
+                fb = Path({str(ws)!r}) / "feedback.json"
+                handler = partial(ReviewHandler, Path({str(ws)!r}), "s", fb, {{}}, None, "t")
+                server = HTTPServer(("127.0.0.1", 0), handler)
+                threading.Thread(target=server.serve_forever, daemon=True).start()
+                base = "http://127.0.0.1:%d/api/feedback?token=t" % server.server_address[1]
+                got = urllib.request.urlopen(base).read().decode()
+                body = json.dumps({{"reviews": [{{"run_id": "r1", "feedback": "ok"}}]}}).encode()
+                code = urllib.request.urlopen(urllib.request.Request(base, data=body)).status
+                print(got, code, fb.is_symlink())
+                server.shutdown()
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.split(), ["{}", "200", "False"])
+            self.assertEqual(outside.read_text(), '{"keep": true}')
+            self.assertEqual(json.loads((ws / "feedback.json").read_text())["reviews"][0]["feedback"], "ok")
+
     @unittest.skipUnless(shutil.which("node"), "node não disponível")
     def test_viewer_escape_html_is_safe_in_attributes(self):
         html = (SKILLS / "skill-creator/eval-viewer/viewer.html").read_text()

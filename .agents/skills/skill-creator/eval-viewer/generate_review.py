@@ -21,6 +21,7 @@ import os
 import re
 import secrets
 import sys
+import tempfile
 import webbrowser
 from functools import partial
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -371,7 +372,8 @@ class ReviewHandler(BaseHTTPRequestHandler):
             self.wfile.write(content)
         elif path == "/api/feedback":
             data = b"{}"
-            if self.feedback_path.exists():
+            # A planted link would serve an outside file to the page; only a regular file counts.
+            if self.feedback_path.is_file() and not self.feedback_path.is_symlink():
                 data = self.feedback_path.read_bytes()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -392,7 +394,15 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 data = json.loads(body)
                 if not isinstance(data, dict) or "reviews" not in data:
                     raise ValueError("Expected JSON object with 'reviews' key")
-                self.feedback_path.write_text(json.dumps(data, indent=2) + "\n")
+                # Write a temp file and move it into place: replaces a link at feedback.json, never its target.
+                fd, tmp = tempfile.mkstemp(prefix=".feedback.", suffix=".tmp", dir=self.feedback_path.parent)
+                try:
+                    with os.fdopen(fd, "w") as fh:
+                        fh.write(json.dumps(data, indent=2) + "\n")
+                    os.replace(tmp, self.feedback_path)
+                except BaseException:
+                    Path(tmp).unlink(missing_ok=True)
+                    raise
                 resp = b'{"ok":true}'
                 self.send_response(200)
             except (json.JSONDecodeError, OSError, ValueError) as e:
