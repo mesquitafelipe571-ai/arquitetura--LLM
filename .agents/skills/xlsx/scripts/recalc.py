@@ -18,7 +18,7 @@ import zipfile
 from pathlib import Path
 
 import defusedxml.ElementTree
-from office.helpers import check_archive_limits
+from office.helpers import check_archive_limits, refuse_linked_path
 from office.soffice import get_soffice_env, run_soffice
 
 from openpyxl import load_workbook
@@ -193,6 +193,11 @@ def recalc(filename, timeout=30, force=False):
         return {"error": f"File {filename} does not exist"}
 
     abs_path = str(Path(filename).absolute())
+    # Rewritten in place: through a link it would edit (and report on) a local file outside the workspace.
+    try:
+        refuse_linked_path(Path(filename), "input file")
+    except ValueError as e:
+        return {"error": str(e)}
 
     if not os.access(abs_path, os.W_OK):
         return {"error": f"{filename} is not writable; recalculation rewrites the file in place"}

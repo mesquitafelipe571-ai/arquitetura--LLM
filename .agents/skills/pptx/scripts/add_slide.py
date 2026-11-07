@@ -34,7 +34,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-from office.helpers import rezip, safe_extract
+from office.helpers import refuse_linked_path, rezip, safe_extract
 
 MINIMAL_SLIDE_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
@@ -366,6 +366,7 @@ def add_slide(unpacked_dir: Path, source: str, after: str | None = None) -> str:
 def add_slide_to_package(
     package: Path, source: str, after: str | None = None, output: Path | None = None
 ) -> str:
+    refuse_linked_path(package, "input file")  # a linked deck would copy a private local file into out
     out = output or package
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)

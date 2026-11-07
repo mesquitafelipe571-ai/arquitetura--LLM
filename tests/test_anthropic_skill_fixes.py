@@ -517,6 +517,36 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertIn("input file goes through a symlink", merge.stderr + merge.stdout)
             self.assertFalse(out.exists())
 
+    def test_pptx_xlsx_scripts_refuse_linked_input_package(self):
+        # deck.pptx/book.xlsx -> arquivo privado: nada é copiado, renderizado ou reescrito pelo link.
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:
+            secret = Path(private) / "secret.pptx"
+            with zipfile.ZipFile(secret, "w") as z:
+                z.writestr("ppt/presentation.xml", "<p:presentation/>")
+            before = secret.read_bytes()
+            deck, out = Path(tmp) / "deck.pptx", Path(tmp) / "out.pptx"
+            deck.symlink_to(secret)
+            add = subprocess.run([sys.executable, "add_slide.py", str(deck), "slide1.xml", "-o", str(out)],
+                                 cwd=SKILLS / "pptx/scripts", capture_output=True, text=True, timeout=60)
+            self.assertNotEqual(add.returncode, 0)
+            self.assertIn("input file goes through a symlink", add.stderr + add.stdout)
+            self.assertFalse(out.exists())
+            if importlib.util.find_spec("PIL"):
+                thumb = subprocess.run([sys.executable, "thumbnail.py", str(deck), str(Path(tmp) / "t")],
+                                       cwd=SKILLS / "pptx/scripts", capture_output=True, text=True, timeout=60)
+                self.assertNotEqual(thumb.returncode, 0)
+                self.assertIn("input file goes through a symlink", thumb.stderr)
+            if importlib.util.find_spec("openpyxl"):
+                book = Path(tmp) / "book.xlsx"
+                book.symlink_to(secret)
+                result = run_in(SKILLS / "xlsx/scripts", f"""
+                    import recalc
+                    print(recalc.recalc({str(book)!r})["error"])
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("input file goes through a symlink", result.stdout)
+            self.assertEqual(secret.read_bytes(), before)
+
     def test_docx_refuses_linked_folder_outside_cwd(self):
         # workspace/docs -> pasta privada, com o script rodando fora do workspace: a pasta-link também conta.
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:

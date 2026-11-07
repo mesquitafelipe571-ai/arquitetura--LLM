@@ -26,7 +26,7 @@ from pathlib import Path
 
 import defusedxml.minidom
 from defusedxml import ElementTree
-from office.helpers import SLIDE_REL_TYPE, check_archive_limits, listed_slide_rids, opc_target
+from office.helpers import SLIDE_REL_TYPE, check_archive_limits, listed_slide_rids, opc_target, refuse_linked_path
 from office.soffice import run_soffice
 from PIL import Image, ImageDraw, ImageFont
 
@@ -74,6 +74,7 @@ def main():
     output_path = Path(f"{args.output_prefix}.jpg")
 
     try:
+        refuse_linked_path(input_path, "input file")  # a linked deck would render a private local file
         slide_info = get_slide_info(input_path)
 
         with tempfile.TemporaryDirectory() as temp_dir:
