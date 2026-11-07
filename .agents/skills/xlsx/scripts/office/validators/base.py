@@ -37,7 +37,6 @@ class BaseSchemaValidator:
         "sldid": ("id", "file"),  
         "sldmasterid": ("id", "global"),  
         "sldlayoutid": ("id", "global"),  
-        "cm": ("authorid", "file"),  
         "sheet": ("sheetid", "file"),  
         "definedname": ("id", "file"),  
         "cxnsp": ("id", "file"),  
@@ -417,16 +416,15 @@ class BaseSchemaValidator:
             rels_dir = xml_file.parent / "_rels"
             rels_file = rels_dir / f"{xml_file.name}.rels"
 
-            if not rels_file.exists():
-                continue
-
             try:
-                rels_root = lxml.etree.parse(str(rels_file)).getroot()
+                # No .rels means an empty map: r:id/r:embed/r:link in the part are still checked.
+                rels_root = lxml.etree.parse(str(rels_file)).getroot() if rels_file.exists() else None
                 rid_to_type = {}
 
-                for rel in rels_root.findall(
+                rels = [] if rels_root is None else rels_root.findall(
                     f".//{{{self.PACKAGE_RELATIONSHIPS_NAMESPACE}}}Relationship"
-                ):
+                )
+                for rel in rels:
                     rid = rel.get("Id")
                     rel_type = rel.get("Type", "")
                     if rid:

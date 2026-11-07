@@ -277,6 +277,38 @@ class OfficeSkillTests(unittest.TestCase):
                 self.assertTrue(result.stdout.startswith("recusado: suspicious compression ratio"), result.stdout)
                 self.assertFalse((out / "word/media/zeros.bin").exists())
 
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
+    def test_office_validator_checks_references_without_rels_file(self):
+        r_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:
+                (Path(tmp) / "word").mkdir()
+                (Path(tmp) / "word/document.xml").write_text(
+                    f'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+                    f' xmlns:r="{r_ns}"><w:hyperlink r:id="rId404"/></w:document>')
+                result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                    from validators.base import BaseSchemaValidator
+                    print(BaseSchemaValidator({tmp!r}).validate_all_relationship_ids())
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip().splitlines()[-1], "False")
+                self.assertIn("rId404", result.stdout)
+
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
+    def test_office_validator_allows_comments_by_the_same_author(self):
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:
+                (Path(tmp) / "ppt/comments").mkdir(parents=True)
+                (Path(tmp) / "ppt/comments/comment1.xml").write_text(
+                    '<p:cmLst xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">'
+                    '<p:cm authorId="0" idx="1"/><p:cm authorId="0" idx="2"/></p:cmLst>')
+                result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                    from validators.base import BaseSchemaValidator
+                    print(BaseSchemaValidator({tmp!r}).validate_unique_ids())
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip().splitlines()[-1], "True", result.stdout)
+
     def test_docx_accept_changes_timeout_is_an_error(self):
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "in.docx"
@@ -895,6 +927,26 @@ class SkillCreatorTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("<img", result.stdout)
         self.assertIn("0 passed, 0 failed of 1", result.stdout)
+
+    def test_viewer_metadata_files_behind_links_are_not_embedded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            private = Path(tmp) / "private.json"
+            private.write_text(json.dumps({"api_key": "PRIVATE_SENTINEL_7c36", "prompt": "PRIVATE_SENTINEL_7c36"}))
+            run = Path(tmp) / "ws/eval-0/with_skill"
+            (run / "outputs").mkdir(parents=True)
+            for name in ("grading.json", "eval_metadata.json"):
+                (run / name).symlink_to(private)
+            transcript = Path(tmp) / "transcript.md"
+            transcript.write_text("## Eval Prompt\n\nPRIVATE_SENTINEL_7c36\n")
+            (run / "transcript.md").symlink_to(transcript)
+            result = run_in(SKILLS / "skill-creator/eval-viewer", f"""
+                import json
+                from pathlib import Path
+                from generate_review import find_runs
+                print(json.dumps(find_runs(Path({str(Path(tmp) / "ws")!r}))))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotIn("PRIVATE_SENTINEL_7c36", result.stdout)
 
     def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -83,6 +83,16 @@ def _find_runs_recursive(root: Path, current: Path, runs: list[dict]) -> None:
             _find_runs_recursive(root, child, runs)
 
 
+def _workspace_file(root: Path, path: Path) -> bool:
+    """True for a regular file really inside the workspace; a link (or linked folder) could
+    otherwise pull an outside file, e.g. credentials, into the embedded page data."""
+    try:
+        expected = root.resolve() / path.relative_to(root)
+    except ValueError:
+        return False
+    return path.is_file() and not path.is_symlink() and path.resolve() == expected
+
+
 def build_run(root: Path, run_dir: Path) -> dict | None:
     """Build a run dict with prompt, outputs, and grading data."""
     prompt = ""
@@ -92,7 +102,7 @@ def build_run(root: Path, run_dir: Path) -> dict | None:
     # Nearest first: the run, its config, then the eval dir (eval-N/<config>/run-K/).
     for candidate in [run_dir / "eval_metadata.json", run_dir.parent / "eval_metadata.json",
                       run_dir.parent.parent / "eval_metadata.json"]:
-        if candidate.exists():
+        if _workspace_file(root, candidate):
             try:
                 metadata = json.loads(candidate.read_text())
                 prompt = metadata.get("prompt", "")
@@ -105,7 +115,7 @@ def build_run(root: Path, run_dir: Path) -> dict | None:
     # Fall back to transcript.md
     if not prompt:
         for candidate in [run_dir / "transcript.md", run_dir / "outputs" / "transcript.md"]:
-            if candidate.exists():
+            if _workspace_file(root, candidate):
                 try:
                     text = candidate.read_text()
                     match = re.search(r"## Eval Prompt\n\n([\s\S]*?)(?=\n##|$)", text)
@@ -144,7 +154,7 @@ def build_run(root: Path, run_dir: Path) -> dict | None:
     # Load grading if present
     grading = None
     for candidate in [run_dir / "grading.json", run_dir.parent / "grading.json"]:
-        if candidate.exists():
+        if _workspace_file(root, candidate):
             try:
                 grading = json.loads(candidate.read_text())
             except (json.JSONDecodeError, OSError):

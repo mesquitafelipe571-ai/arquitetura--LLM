@@ -109,6 +109,8 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
   apontado pela revisão do Codex): `passed`/`failed`/`total` iam sem escape para o
   HTML; agora só números finitos são exibidos. Na mesma rodada, um `outputs/` que
   fosse link deixou de servir de raiz confiável para o visualizador.
+  Depois, `grading.json`, `eval_metadata.json` e `transcript.md` também passaram
+  a ser lidos só quando são arquivos regulares dentro do workspace.
 - Testes em `tests/test_anthropic_skill_fixes.py`, que falham com os arquivos
   originais. Pendente: reportar à origem.
 
