@@ -41,7 +41,7 @@ verificados:
 
 | Item | Antes | Depois |
 | --- | --- | --- |
-| Actions de terceiros | Fixadas por tag (`@v4`, `@v5`), que pode ser movida | Fixadas por SHA completo; `check-repo.py` falha se alguma voltar a usar tag |
+| Actions de terceiros | Fixadas por tag (`@v4`, `@v5`), que pode ser movida | Fixadas por SHA completo; `check-repo.py` falha se alguma voltar a usar tag (coberto por `tests/test_check_repo.py`) |
 | Token do checkout | Gravado em `.git/config` durante o job (`persist-credentials` padrão) | `persist-credentials: false` |
 | Análise estática | Nenhuma | CodeQL para Python e para os workflows (Actions). Sem JavaScript: o projeto não tem JS próprio; o JS das skills de terceiros fica em `.agents/`, que o CodeQL ignora |
 | Dependências | Sem Dependabot | Dependabot para npm, pip, Actions, Docker, dev container e submódulos |
