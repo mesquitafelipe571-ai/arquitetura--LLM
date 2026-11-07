@@ -78,8 +78,10 @@ def parse_evaluation_file(file_path: Path) -> list[dict[str, Any]]:
         return []
 
 
-def extract_xml_content(text: str, tag: str) -> str | None:
+def extract_xml_content(text: str | None, tag: str) -> str | None:
     """Extract content from XML tags."""
+    if not text:  # a final message with no text block: an unanswered task, not a crash of the batch
+        return None
     pattern = rf"<{tag}>(.*?)</{tag}>"
     matches = re.findall(pattern, text, re.DOTALL)
     return matches[-1].strip() if matches else None

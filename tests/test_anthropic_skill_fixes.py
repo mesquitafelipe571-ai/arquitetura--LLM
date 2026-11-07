@@ -1054,6 +1054,21 @@ class McpEvaluationTests(unittest.TestCase):
             self.assertFalse(out.is_symlink())
             self.assertEqual(out.read_text(), "# relatório")
 
+    def test_task_without_text_scores_zero_instead_of_crashing(self):
+        # Resposta final sem blocos text: a tarefa vale 0 e o lote segue, sem TypeError.
+        result = run_in(SKILLS / "mcp-builder/scripts", """
+            import asyncio, sys, types
+            sys.modules["anthropic"] = types.SimpleNamespace(Anthropic=object)
+            sys.modules["connections"] = types.SimpleNamespace(create_connection=None)
+            import evaluation
+            reply = types.SimpleNamespace(stop_reason="end_turn", content=[])
+            client = types.SimpleNamespace(messages=types.SimpleNamespace(create=lambda **kw: reply))
+            r = asyncio.run(evaluation.evaluate_single_task(client, "m", {"question": "q", "answer": "42"}, [], None, 0))
+            print(r["actual"], r["score"], r["summary"])
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip().splitlines()[-1], "None 0 None")
+
     def test_agent_loop_serializes_mcp_content_models(self):
         result = run_in(SKILLS / "mcp-builder/scripts", """
             import asyncio, json, sys, types

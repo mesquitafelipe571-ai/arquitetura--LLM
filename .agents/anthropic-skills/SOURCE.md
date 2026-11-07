@@ -144,6 +144,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `slack-gif-creator/core/gif_builder.py` | `add_frame()` só convertia imagens PIL para RGB; um array NumPy RGBA quebrava `optimize_colors()` no `save()` | Arrays também passam por `Image.fromarray(...).convert("RGB")` |
 | `slack-gif-creator/core/validators.py` | A duração era o atraso do último quadro vezes o número de quadros; com atrasos diferentes, duração e FPS saíam errados | Soma o atraso de cada quadro durante a iteração |
 | `docx/scripts/comment.py` (segurança) | Um `word/comments.xml` (ou outra parte, ou pasta) que fosse link era lido e sobrescrito fora do pacote | `_refuse_linked_writes()` confere as partes de comentários, `document.xml.rels` e `[Content_Types].xml`, e as pastas até a raiz, antes da primeira gravação |
+| `mcp-builder/scripts/evaluation.py` | Resposta final sem bloco `text` virava `None` e `extract_xml_content()` lançava `TypeError`, abortando o lote e o relatório | `extract_xml_content()` devolve `None` para texto ausente; a tarefa vale 0 e o lote segue |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.
