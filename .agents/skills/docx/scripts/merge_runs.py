@@ -32,7 +32,7 @@ from pathlib import Path
 
 import defusedxml.minidom
 
-from office.helpers import XML_SPACE, refuse_links, rendered_text, rezip, safe_extract
+from office.helpers import XML_SPACE, refuse_linked_path, refuse_links, rendered_text, rezip, safe_extract
 
 WORDML_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
@@ -301,6 +301,7 @@ def main() -> None:
             out = Path(args.output) if args.output else src
             with tempfile.TemporaryDirectory() as tmp:
                 tmp_path = Path(tmp)
+                refuse_linked_path(src, "input file")  # a planted link would copy a private file out
                 with zipfile.ZipFile(src) as zf:
                     safe_extract(zf, tmp_path)
                 msg = _merge_or_die(tmp_path)

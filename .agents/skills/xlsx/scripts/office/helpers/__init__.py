@@ -93,9 +93,10 @@ def check_archive_limits(zf: zipfile.ZipFile) -> None:
         raise ValueError("suspicious compression ratio for the archive as a whole")
 
 
-def _refuse_linked_destination(dest: Path) -> None:
-    """A linked dest (or folder above it) would make resolve() trust a directory outside the workspace."""
-    path = Path(os.path.abspath(dest))
+def refuse_linked_path(target: Path, what: str = "extraction destination") -> None:
+    """A linked path (or folder above it) points outside the workspace: as a destination it makes
+    resolve() trust a directory there; as an input it copies a private file into the output."""
+    path = Path(os.path.abspath(target))
     cwd = Path(os.getcwd())
     # shortcut: ancestors outside the working directory are not checked (system temp dirs such as
     # macOS /tmp are links); move the check to an explicit root if callers extract elsewhere.
@@ -103,7 +104,7 @@ def _refuse_linked_destination(dest: Path) -> None:
         if p is not path and (p == cwd or not p.is_relative_to(cwd)):
             break
         if p.is_symlink():
-            raise ValueError(f"extraction destination goes through a symlink: {p}")
+            raise ValueError(f"{what} goes through a symlink: {p}")
 
 
 def refuse_links(root: Path) -> None:
@@ -116,7 +117,7 @@ def refuse_links(root: Path) -> None:
 
 
 def safe_extract(zf: zipfile.ZipFile, dest: Path) -> None:
-    _refuse_linked_destination(dest)
+    refuse_linked_path(dest)
     # Only what comes from the archive may end up in dest: a pre-existing unpacked/leak.txt
     # link would be dereferenced by a later `zip -Xr` and ship a local file inside the document.
     if dest.exists() and (not dest.is_dir() or any(dest.iterdir())):

@@ -148,6 +148,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `office/validators/pptx.py` (3 cópias) | As exceções do `--original` eram só mensagens; um defeito antigo em `slide1.xml` dispensava o mesmo defeito novo em `slide2.xml` | `_original_slide_defects()` guarda pares `(parte, mensagem)` e só dispensa o defeito na mesma parte |
 | `docx/scripts/merge_runs.py` + `office/validate.py` e `office/helpers` (3 cópias) (segurança) | `merge_runs` e o `--auto-repair` regravavam partes do diretório descompactado seguindo links (ex.: `word/document.xml` → fora do pacote) | Novo `refuse_links()` nos helpers recusa qualquer link no pacote antes da primeira gravação |
 | `office/validators/base.py` (3 cópias) | `validate_unique_ids()` pegava o primeiro atributo de nome local `id`; com `r:id` antes de `id` em `p:sldMasterId`/`p:sldLayoutId`, o `rId1` repetido entre partes virava colisão falsa | Só conta o atributo sem prefixo ou no namespace do próprio elemento (`w:id` em `w:comment`) |
+| `docx/scripts/accept_changes.py`, `comment.py`, `merge_runs.py` + `office/helpers` (3 cópias) (segurança) | Um `in.docx` que fosse link para um documento local privado era copiado para a saída (`out.docx`) | `refuse_linked_path()` (antes `_refuse_linked_destination`, agora também para entradas) recusa o `.docx` de entrada se ele ou uma pasta acima dele for link |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

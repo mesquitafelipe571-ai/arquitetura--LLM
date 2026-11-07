@@ -36,7 +36,7 @@ import defusedxml.minidom
 from xml.parsers.expat import ExpatError
 from xml.sax.saxutils import escape as xml_escape
 
-from office.helpers import opc_target, rezip as _rezip, safe_extract as _safe_extract
+from office.helpers import opc_target, refuse_linked_path, rezip as _rezip, safe_extract as _safe_extract
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 NS = {
@@ -417,6 +417,7 @@ def main() -> None:
             out = Path(args.output) if args.output else src
             with tempfile.TemporaryDirectory() as tmp:
                 tmp_path = Path(tmp)
+                refuse_linked_path(src, "input file")  # a planted link would copy a private file out
                 with zipfile.ZipFile(src) as zf:
                     _safe_extract(zf, tmp_path)
                 cid, _, msg = add_comment(

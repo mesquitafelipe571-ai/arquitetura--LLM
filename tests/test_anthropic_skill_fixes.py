@@ -497,6 +497,26 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual(len(types), 4)
             self.assertEqual(parts.count("/word/comments.xml"), 1)
 
+    def test_docx_scripts_refuse_linked_input_docx(self):
+        # in.docx -> documento privado: nada é copiado para a saída.
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:
+            secret = Path(private) / "payroll.docx"
+            with zipfile.ZipFile(secret, "w") as z:
+                z.writestr("word/document.xml", "<w:document/>")
+            src, out = Path(tmp) / "in.docx", Path(tmp) / "out.docx"
+            src.symlink_to(secret)
+            accept = run_in(SKILLS / "docx/scripts", f"""
+                from accept_changes import accept_changes
+                print(accept_changes({str(src)!r}, {str(out)!r}))
+            """)
+            self.assertEqual(accept.returncode, 0, accept.stderr)
+            self.assertIn("input file goes through a symlink", accept.stdout)
+            merge = subprocess.run([sys.executable, "merge_runs.py", str(src), "--output", str(out)],
+                                   cwd=SKILLS / "docx/scripts", capture_output=True, text=True, timeout=60)
+            self.assertNotEqual(merge.returncode, 0)
+            self.assertIn("input file goes through a symlink", merge.stderr + merge.stdout)
+            self.assertFalse(out.exists())
+
     def test_docx_merge_runs_refuses_linked_document(self):
         # word/document.xml como link para fora: nada é regravado.
         w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"

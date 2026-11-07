@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from office.helpers import refuse_linked_path
 from office.soffice import get_soffice_env
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,11 @@ def accept_changes(
 
     if not input_path.suffix.lower() == ".docx":
         return None, f"Error: Input file is not a DOCX file: {input_file}"
+
+    try:
+        refuse_linked_path(input_path, "input file")  # a planted link would copy a private file out
+    except ValueError as e:
+        return None, f"Error: {e}"
 
     work_path = None
     try:
