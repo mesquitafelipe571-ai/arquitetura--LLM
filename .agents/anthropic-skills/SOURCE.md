@@ -131,6 +131,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `office/helpers/pptx_chart.py` (3 cópias) | As expressões de agrupamento, `dLblPos` e eixos exigiam `val=` colado; `val = "…"` (XML válido) sumia com eixos e escondia `outEnd` empilhado | Todas aceitam `\s*=\s*` |
 | `office/validators/redlining.py` (3 cópias) | Parágrafos vazios eram descartados da comparação; incluir ou remover um sem rastrear passava | Cada parágrafo conta com sua marca; uma marca inserida por revisão nova une o parágrafo ao seguinte, como ao rejeitá-la |
 | `skill-creator/eval-viewer/generate_review.py` | `find_runs()` descia em links de diretório; um link para o próprio workspace gerava dezenas de execuções falsas | Diretórios que são links não são percorridos |
+| `pdf/scripts/*` + novo `_replace_write.py` (segurança) | PDFs preenchidos, JSON de campos/estrutura e imagens eram gravados com `open(..., "w")`/`.save()` seguindo um link plantado no caminho de saída | `replacing()` grava num temporário ao lado e substitui com `os.replace()`, nos 6 pontos de gravação |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

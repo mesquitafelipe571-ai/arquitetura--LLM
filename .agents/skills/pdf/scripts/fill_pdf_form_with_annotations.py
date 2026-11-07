@@ -2,6 +2,7 @@ import json
 import sys
 
 from pypdf import PdfReader, PdfWriter
+from _replace_write import replacing
 from pypdf.annotations import FreeText
 
 
@@ -100,7 +101,7 @@ def fill_pdf_form(input_pdf_path, fields_json_path, output_pdf_path):
         annotations.append(annotation)
         writer.add_annotation(page_number=page_num - 1, annotation=annotation)
         
-    with open(output_pdf_path, "wb") as output:
+    with replacing(output_pdf_path) as tmp, open(tmp, "wb") as output:
         writer.write(output)
     
     print(f"Successfully filled PDF form and saved to {output_pdf_path}")

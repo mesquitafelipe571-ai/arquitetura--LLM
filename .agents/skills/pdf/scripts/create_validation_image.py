@@ -2,6 +2,7 @@ import json
 import sys
 
 from PIL import Image, ImageDraw
+from _replace_write import replacing
 
 
 
@@ -22,7 +23,8 @@ def create_validation_image(page_number, fields_json_path, input_path, output_pa
                 draw.rectangle(label_box, outline='blue', width=2)
                 num_boxes += 2
         
-        img.save(output_path)
+        with replacing(output_path) as tmp:
+            img.save(tmp)
         print(f"Created validation image at {output_path} with {num_boxes} bounding boxes")
 
 

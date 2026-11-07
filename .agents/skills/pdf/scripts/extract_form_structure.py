@@ -15,6 +15,7 @@ Usage: python extract_form_structure.py <input.pdf> <output.json>
 import json
 import sys
 import pdfplumber
+from _replace_write import replacing
 
 
 def extract_form_structure(pdf_path):
@@ -99,7 +100,7 @@ def main():
     print(f"Extracting structure from {pdf_path}...")
     structure = extract_form_structure(pdf_path)
 
-    with open(output_path, "w") as f:
+    with replacing(output_path) as tmp, open(tmp, "w") as f:
         json.dump(structure, f, indent=2)
 
     print(f"Found:")

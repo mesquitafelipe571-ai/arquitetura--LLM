@@ -4,6 +4,7 @@ import sys
 from pypdf import PdfReader, PdfWriter
 
 from extract_form_field_info import get_field_info, get_full_annotation_field_id
+from _replace_write import replacing
 
 
 
@@ -49,7 +50,7 @@ def fill_pdf_fields(input_pdf_path: str, fields_json_path: str, output_pdf_path:
 
     writer.set_need_appearances_writer(True)
     
-    with open(output_pdf_path, "wb") as f:
+    with replacing(output_pdf_path) as tmp, open(tmp, "wb") as f:
         writer.write(f)
 
 

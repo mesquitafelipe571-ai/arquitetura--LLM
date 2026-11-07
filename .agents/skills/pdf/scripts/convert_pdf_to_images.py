@@ -2,6 +2,7 @@ import os
 import sys
 
 from pdf2image import convert_from_path
+from _replace_write import replacing
 
 
 
@@ -19,7 +20,8 @@ def convert(pdf_path, output_dir, max_dim=1000):
             image = image.resize((new_width, new_height))
         
         image_path = os.path.join(output_dir, f"page_{i+1}.png")
-        image.save(image_path)
+        with replacing(image_path) as tmp:
+            image.save(tmp)
         print(f"Saved page {i+1} as {image_path} (size: {image.size})")
 
     print(f"Converted {len(images)} pages to PNG images")

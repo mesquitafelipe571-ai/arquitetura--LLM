@@ -2272,6 +2272,37 @@ class XlsxPdfTests(unittest.TestCase):
             # Na página exibida (800x600): x 100-200, y 100-120 a partir do topo -> 480-500 a partir da base.
             self.assertEqual(rect, [100.0, 480.0, 200.0, 500.0])
 
+    def test_pdf_outputs_never_follow_links(self):
+        # out.pdf e fields.json como links para a vítima: o resultado substitui o link, o alvo fica intacto.
+        from pypdf import PdfWriter
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, fields, info = (Path(tmp) / n for n in ("in.pdf", "out.pdf", "fields.json", "info.json"))
+            w = PdfWriter()
+            w.add_blank_page(600, 800)
+            with open(src, "wb") as f:
+                w.write(f)
+            fields.write_text(json.dumps({
+                "pages": [{"page_number": 1, "image_width": 600, "image_height": 800}],
+                "form_fields": [{"page_number": 1, "entry_bounding_box": [10, 10, 110, 30],
+                                 "entry_text": {"text": "x", "font_size": 10}}]}))
+            victim = Path(tmp) / "victim.conf"
+            victim.write_text("da vítima")
+            out.symlink_to(victim)
+            info.symlink_to(victim)
+            result = run_in(SKILLS / "pdf/scripts", f"""
+                from fill_pdf_form_with_annotations import fill_pdf_form
+                import extract_form_field_info as e
+                fill_pdf_form({str(src)!r}, {str(fields)!r}, {str(out)!r})
+                e.get_field_info = lambda reader: []  # o PDF de teste não tem formulário
+                e.write_field_info({str(src)!r}, {str(info)!r})
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(victim.read_text(), "da vítima")
+            self.assertFalse(out.is_symlink() or info.is_symlink())
+            self.assertEqual(out.read_bytes()[:5], b"%PDF-")
+            self.assertEqual(json.loads(info.read_text()), [])
+            self.assertEqual([p.name for p in Path(tmp).iterdir() if p.name.startswith(".")], [])
+
     def test_pdf_annotations_follow_mediabox_origin(self):
         # MediaBox [100 200 700 1000]: a caixa [10 10 110 30] da imagem 600x800 vai para (110, 970, 210, 990).
         from pypdf import PdfReader, PdfWriter
