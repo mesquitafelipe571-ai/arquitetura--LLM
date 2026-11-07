@@ -376,6 +376,7 @@ class OfficeSkillTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout.strip().splitlines()[-1], "True", result.stdout)
 
+    @unittest.skipUnless(importlib.util.find_spec("lxml"), "lxml não instalado")
     def test_office_validator_rejects_reference_outside_package(self):
         # Target="../../outside.png" sai da extração; a imagem não vai no ZIP, então a referência está quebrada.
         rel = "http://schemas.openxmlformats.org/package/2006/relationships"
