@@ -361,7 +361,9 @@ class BaseSchemaValidator:
 
                         try:
                             target_path = target_path.resolve()
-                            if target_path.exists() and target_path.is_file():
+                            # A target outside the package (../../x.png) is not shipped in the ZIP.
+                            inside = target_path.is_relative_to(self.unpacked_dir.resolve())
+                            if inside and target_path.exists() and target_path.is_file():
                                 referenced_files.add(target_path)
                                 all_referenced_files.add(target_path)
                             else:

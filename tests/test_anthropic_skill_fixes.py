@@ -376,6 +376,42 @@ class OfficeSkillTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout.strip().splitlines()[-1], "True", result.stdout)
 
+    def test_office_validator_rejects_reference_outside_package(self):
+        # Target="../../outside.png" sai da extração; a imagem não vai no ZIP, então a referência está quebrada.
+        rel = "http://schemas.openxmlformats.org/package/2006/relationships"
+        img = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:
+                pkg = Path(tmp) / "pkg"
+                (pkg / "word/_rels").mkdir(parents=True)
+                (pkg / "word/document.xml").write_text("<doc/>")
+                (pkg / "word/_rels/document.xml.rels").write_text(
+                    f'<Relationships xmlns="{rel}"><Relationship Id="rId1" Type="{img}"'
+                    ' Target="../../outside.png"/></Relationships>')
+                (Path(tmp) / "outside.png").write_bytes(b"png")
+                result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                    from validators.base import BaseSchemaValidator
+                    print(BaseSchemaValidator({str(pkg)!r}).validate_file_references())
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("Broken reference to ../../outside.png", result.stdout)
+                self.assertEqual(result.stdout.strip().splitlines()[-1], "False", result.stdout)
+
+    def test_pptx_chart_3d_line_needs_three_live_axes(self):
+        # line3DChart exige 3 eixos; com o 3º apontando para um eixo inexistente, o gráfico é descartado.
+        chart = ('<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart>'
+                 '<c:plotArea><c:line3DChart><c:axId val="1"/><c:axId val="2"/><c:axId val="999"/></c:line3DChart>'
+                 '<c:catAx><c:axId val="1"/></c:catAx><c:valAx><c:axId val="2"/></c:valAx>'
+                 '<c:serAx><c:axId val="3"/></c:serAx></c:plotArea></c:chart></c:chartSpace>')
+        for skill in ("docx", "pptx", "xlsx"):
+            with self.subTest(skill):
+                result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                    from helpers.pptx_chart import find_chart_problems
+                    print(find_chart_problems({{"ppt/charts/chart1.xml": {chart.encode()!r}}}))
+                """)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("999 name no declared axis", result.stdout)
+
     def test_office_skill_md_unpack_command_rejects_zip_bomb(self):
         for skill, name in (("pptx", "deck.pptx"), ("docx", "doc.docx")):
             with self.subTest(skill), tempfile.TemporaryDirectory() as tmp:
