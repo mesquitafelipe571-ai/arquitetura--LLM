@@ -126,6 +126,8 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `skill-creator/scripts/run_loop.py` (segurança) | Com `--report <caminho>`, a página inicial e as atualizações do relatório seguiam um link plantado no caminho | Todas as gravações do relatório usam `write_text_replace()` |
 | `skill-creator/scripts/aggregate_benchmark.py` | Uma duração ausente virava 0 s e gerava delta de tempo inventado (ex.: `-10.0s`) | Só durações reais entram na média; sem duração em todas as execuções dos dois lados, o delta de tempo fica `—` |
 | `pptx/scripts/thumbnail.py` (segurança) | `grid.save()` gravava a grade direto em `thumbnails.jpg`, seguindo um link plantado no caminho | Grava num temporário ao lado e substitui com `os.replace()` |
+| `mcp-builder/scripts/evaluation.py` | Só o primeiro bloco de texto da resposta final era lido; a `<response>` num bloco seguinte virava `None` e nota 0 | `agent_loop()` junta todos os blocos `text` antes de extrair as tags |
+| `skill-creator/scripts/aggregate_benchmark.py` | `runs_per_configuration` era fixo em 3, mesmo com uma execução só | Contado a partir dos resultados carregados; vira faixa (ex.: `"1-3"`) quando as contagens diferem |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

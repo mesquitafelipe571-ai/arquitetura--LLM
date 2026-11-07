@@ -257,6 +257,18 @@ def aggregate_results(results: dict) -> dict:
     return run_summary
 
 
+def _runs_per_configuration(results: dict) -> int | str:
+    """Graded runs per eval and configuration, as loaded; a range like "1-3" when they differ."""
+    counts = [
+        sum(1 for r in runs if r["eval_id"] == eval_id)
+        for runs in results.values()
+        for eval_id in {r["eval_id"] for config_runs in results.values() for r in config_runs}
+    ]
+    if not counts:
+        return 0
+    return counts[0] if min(counts) == max(counts) else f"{min(counts)}-{max(counts)}"
+
+
 def generate_benchmark(benchmark_dir: Path, skill_name: str = "", skill_path: str = "") -> dict:
     """
     Generate complete benchmark.json from run results.
@@ -302,7 +314,7 @@ def generate_benchmark(benchmark_dir: Path, skill_name: str = "", skill_path: st
             "analyzer_model": "<model-name>",
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "evals_run": eval_ids,
-            "runs_per_configuration": 3
+            "runs_per_configuration": _runs_per_configuration(results)
         },
         "runs": runs,
         "run_summary": run_summary,

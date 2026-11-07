@@ -836,6 +836,25 @@ class McpEvaluationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), "['one', 'two']")
 
+    def test_agent_loop_joins_every_text_block(self):
+        # <summary> num bloco e <response> noutro: a resposta 42 não pode se perder.
+        result = run_in(SKILLS / "mcp-builder/scripts", """
+            import asyncio, sys, types
+            sys.modules["anthropic"] = types.SimpleNamespace(Anthropic=object)
+            sys.modules["connections"] = types.SimpleNamespace(create_connection=None)
+            import evaluation
+
+            Block = lambda **kw: types.SimpleNamespace(**kw)
+            reply = Block(stop_reason="end_turn", content=[
+                Block(type="text", text="<summary>s</summary>"),
+                Block(type="text", text="<feedback>f</feedback><response>42</response>")])
+            client = types.SimpleNamespace(messages=types.SimpleNamespace(create=lambda **kw: reply))
+            text, _ = asyncio.run(evaluation.agent_loop(client, "m", "q", [], None))
+            print(evaluation.extract_xml_content(text, "response"), evaluation.extract_xml_content(text, "summary"))
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "42 s")
+
     def test_agent_loop_serializes_mcp_content_models(self):
         result = run_in(SKILLS / "mcp-builder/scripts", """
             import asyncio, json, sys, types
@@ -1462,6 +1481,27 @@ class SkillCreatorTests(unittest.TestCase):
             """)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip().splitlines()[-1], "— —")
+
+    def test_benchmark_counts_real_runs_per_configuration(self):
+        # Layout sem run-*: uma execução por configuração, não 3; contagens desiguais viram faixa.
+        with tempfile.TemporaryDirectory() as tmp:
+            for config in ("with_skill", "without_skill"):
+                d = Path(tmp) / "eval-0" / config
+                (d / "outputs").mkdir(parents=True)
+                (d / "grading.json").write_text(json.dumps({"summary": {"pass_rate": 1.0}}))
+            result = run_in(SKILLS / "skill-creator", f"""
+                import json
+                from pathlib import Path
+                from scripts.aggregate_benchmark import generate_benchmark
+                print(generate_benchmark(Path({tmp!r}))["metadata"]["runs_per_configuration"])
+                for n in (1, 2):
+                    d = Path({tmp!r}) / "eval-1" / "with_skill" / f"run-{{n}}"
+                    d.mkdir(parents=True)
+                    (d / "grading.json").write_text(json.dumps({{"summary": {{"pass_rate": 1.0}}}}))
+                print(generate_benchmark(Path({tmp!r}))["metadata"]["runs_per_configuration"])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines()[-2:], ["1", "0-2"])
 
     def test_benchmark_never_mixes_output_chars_into_tokens(self):
         # Só a baseline tem tokens reais; a outra só tem output_chars. O delta de tokens não é medido.

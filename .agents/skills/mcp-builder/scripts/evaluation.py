@@ -150,10 +150,9 @@ async def agent_loop(
         )
         messages.append({"role": "assistant", "content": response.content})
 
-    response_text = next(
-        (block.text for block in response.content if hasattr(block, "text")),
-        None,
-    )
+    # The final message can hold several text blocks; the tags may be in any of them.
+    texts = [block.text for block in response.content if getattr(block, "type", None) == "text"]
+    response_text = "\n".join(texts) if texts else None
     return response_text, tool_metrics
 
 
