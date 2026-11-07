@@ -76,8 +76,15 @@ def remove_orphaned_slides(unpacked_dir: Path) -> list[str]:
     if not slides_dir.exists():
         return []
 
-    referenced_slides = get_slides_in_sldidlst(unpacked_dir)
     on_disk = sorted(slides_dir.glob("slide*.xml"))
+    # Without the slide index every slide would look orphaned: an incomplete extraction, not an empty deck.
+    for index in (unpacked_dir / "ppt" / "presentation.xml", pres_rels_path):
+        if on_disk and not index.exists():
+            raise RefusedToClean(
+                f"{index.relative_to(unpacked_dir)} is missing but {len(on_disk)} slide(s) are on disk. "
+                f"Refusing to delete them — restore the file or re-extract the package."
+            )
+    referenced_slides = get_slides_in_sldidlst(unpacked_dir)
 
     if on_disk and not any(s.name in referenced_slides for s in on_disk):
         listed = _listed_slide_rids(unpacked_dir / "ppt" / "presentation.xml")

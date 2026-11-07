@@ -74,6 +74,28 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "[{'name': 'slide1.xml', 'hidden': False}]")
 
+    def test_pptx_clean_refuses_when_presentation_index_is_missing(self):
+        rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "ppt/_rels").mkdir(parents=True)
+            (root / "ppt/slides").mkdir()
+            (root / "ppt/_rels/presentation.xml.rels").write_text(
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                f'<Relationship Id="rId2" Type="{rel_ns}/slide" Target="slides/slide1.xml"/></Relationships>')
+            (root / "ppt/slides/slide1.xml").write_text("<p:sld/>")  # presentation.xml ausente
+            result = run_in(SKILLS / "pptx/scripts", f"""
+                from pathlib import Path
+                from clean import RefusedToClean, clean_unused_files
+                try:
+                    print(clean_unused_files(Path({tmp!r})))
+                except RefusedToClean as e:
+                    print("recusado:", e)
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue(result.stdout.startswith("recusado:"), result.stdout)
+            self.assertTrue((root / "ppt/slides/slide1.xml").exists())
+
     def test_pptx_clean_keeps_media_referenced_with_prefixed_rels(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
