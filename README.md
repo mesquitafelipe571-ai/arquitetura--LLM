@@ -311,6 +311,11 @@ Ghidra, Hopper, IDA ou Kuna já instalados; JavaScript e Electron não precisam 
   catálogo de mods do Claude Code, fixado no commit `febe9d6`, licença CC0.
   São cerca de 300 MB. No Claude Code, o buscador do catálogo é instalado com
   `/plugin install mod-finder --marketplace karanb192/awesome-claude-code-mods`.
+- [`claude-code/`](https://github.com/anthropics/claude-code/tree/0ed94698aa0aeee471465fc9c867c2e8434c4d68):
+  repositório público do Claude Code (changelog, exemplos, scripts e
+  documentação de plugins e mods), fixado no commit `0ed9469`. Não contém o
+  código do CLI. O conteúdo é © Anthropic PBC, sob os Commercial Terms of
+  Service; o submódulo só aponta para o repositório e nada dele foi copiado.
 
 ## Perfil opcional para VM Ubuntu
 

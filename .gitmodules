@@ -18,3 +18,7 @@
 	path = awesome-claude-code-mods
 	url = https://github.com/karanb192/awesome-claude-code-mods.git
 	shallow = true
+[submodule "claude-code"]
+	path = claude-code
+	url = https://github.com/anthropics/claude-code.git
+	shallow = true

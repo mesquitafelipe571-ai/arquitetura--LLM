@@ -9,7 +9,7 @@
   "scripts": {
     "check": "python3 scripts/check-repo.py",
     "setup": "npm run catalog:setup && npm run orca:setup && npm run paperclip:setup",
-    "catalog:setup": "git submodule update --init --depth 1 -- awesome-linux-dev claude-melhores-skills awesome-claude-code-mods",
+    "catalog:setup": "git submodule update --init --depth 1 -- awesome-linux-dev claude-melhores-skills awesome-claude-code-mods claude-code",
     "orca:setup": "git submodule update --init --depth 1 -- orca && npm run orca:install",
     "orca:install": "npm exec --yes --package=pnpm@12.14.0 -- pnpm --dir orca install --frozen-lockfile && npm exec --yes --package=pnpm@12.14.0 -- pnpm --dir orca/mobile install --frozen-lockfile && npm run orca:runtime",
     "orca:runtime": "npm exec --yes --package=pnpm@12.14.0 -- pnpm --dir orca run ensure:electron-runtime",
