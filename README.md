@@ -38,6 +38,9 @@ configurados nas próprias aplicações, conforme o uso.
 
 Consulte o [resultado da revisão das integrações](docs/INTEGRACOES.md).
 
+O desenho completo da arquitetura, com diagramas de cada perfil, dos agentes e da
+esteira de segurança, está em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+
 Paperclip integrado em [`paperclip/`](https://github.com/paperclipai/paperclip/tree/7351a9d74ff8e413a1ea1bfd47a1e3c26a81cc06), como submódulo Git fixado no commit `7351a9d74ff8e413a1ea1bfd47a1e3c26a81cc06`.
 
 ## Verificação automática
