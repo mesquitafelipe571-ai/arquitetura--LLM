@@ -10,6 +10,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+import zipfile
 
 SKILLS = Path(__file__).resolve().parents[1] / ".agents/skills"
 HAS_DEFUSEDXML = importlib.util.find_spec("defusedxml") is not None
@@ -46,6 +47,28 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "[]")
             self.assertTrue((root / "ppt/slides/slide1.xml").exists())
+
+    def test_pptx_thumbnail_reads_slides_listed_with_other_prefix(self):
+        rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        with tempfile.TemporaryDirectory() as tmp:
+            pptx = Path(tmp) / "deck.pptx"
+            with zipfile.ZipFile(pptx, "w") as zf:
+                zf.writestr("ppt/presentation.xml",
+                            '<x:presentation xmlns:x="http://schemas.openxmlformats.org/presentationml/2006/main"'
+                            f' xmlns:rel="{rel_ns}"><x:sldIdLst><x:sldId id="256" rel:id="rId2"/>'
+                            '</x:sldIdLst></x:presentation>')
+                zf.writestr("ppt/_rels/presentation.xml.rels",
+                            '<pr:Relationships xmlns:pr="http://schemas.openxmlformats.org/package/2006/relationships">'
+                            f'<pr:Relationship Id="rId2" Type="{rel_ns}/slide" Target="slides/slide1.xml"/>'
+                            '</pr:Relationships>')
+                zf.writestr("ppt/slides/slide1.xml", "<x/>")
+            result = run_in(SKILLS / "pptx/scripts", f"""
+                from pathlib import Path
+                from thumbnail import get_slide_info
+                print(get_slide_info(Path({str(pptx)!r})))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "[{'name': 'slide1.xml', 'hidden': False}]")
 
     def test_pptx_clean_keeps_media_referenced_with_prefixed_rels(self):
         with tempfile.TemporaryDirectory() as tmp:

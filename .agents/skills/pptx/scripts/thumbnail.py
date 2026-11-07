@@ -25,7 +25,7 @@ from pathlib import Path
 
 import defusedxml.minidom
 from defusedxml import ElementTree
-from office.helpers import SLIDE_REL_TYPE, opc_target
+from office.helpers import SLIDE_REL_TYPE, listed_slide_rids, opc_target
 from office.soffice import run_soffice
 from PIL import Image, ImageDraw, ImageFont
 
@@ -112,7 +112,7 @@ def get_slide_info(pptx_path: Path) -> list[dict]:
         rels_dom = defusedxml.minidom.parseString(rels_content)
 
         rid_to_part = {}
-        for rel in rels_dom.getElementsByTagName("Relationship"):
+        for rel in rels_dom.getElementsByTagNameNS("*", "Relationship"):
             if rel.getAttribute("Type") != SLIDE_REL_TYPE:
                 continue
             part = opc_target(
@@ -129,8 +129,8 @@ def get_slide_info(pptx_path: Path) -> list[dict]:
         present = set(zf.namelist())
 
         slides = []
-        for sld_id in pres_dom.getElementsByTagName("p:sldId"):
-            part = rid_to_part.get(sld_id.getAttribute("r:id"))
+        for rid in listed_slide_rids(pres_dom):
+            part = rid_to_part.get(rid)
             if part is not None and part in present:
                 slides.append(
                     {"name": posixpath.basename(part), "hidden": _is_hidden(zf, part)}

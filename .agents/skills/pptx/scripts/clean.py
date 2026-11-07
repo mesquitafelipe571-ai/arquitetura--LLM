@@ -21,7 +21,7 @@ from pathlib import Path
 
 import defusedxml.minidom
 
-from office.helpers import SLIDE_REL_TYPE, opc_target, rels_source_part
+from office.helpers import SLIDE_REL_TYPE, listed_slide_rids, opc_target, rels_source_part
 
 
 def _slide_rids(pres_rels_path: Path, unpacked_dir: Path) -> dict[str, str]:
@@ -40,24 +40,10 @@ def _slide_rids(pres_rels_path: Path, unpacked_dir: Path) -> dict[str, str]:
     return rids
 
 
-_REL_NAMESPACES = {
-    "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
-    "http://purl.oclc.org/ooxml/officeDocument/relationships",
-}
-
-
 def _listed_slide_rids(pres_path: Path) -> list[str]:
-    """r:id of every <sldId>, matched by namespace URI rather than by prefix."""
     if not pres_path.exists():
         return []
-    dom = defusedxml.minidom.parse(str(pres_path))
-    rids = []
-    for el in dom.getElementsByTagNameNS("*", "sldId"):
-        for i in range(el.attributes.length):
-            attr = el.attributes.item(i)
-            if attr.localName == "id" and attr.namespaceURI in _REL_NAMESPACES:
-                rids.append(attr.value)
-    return rids
+    return listed_slide_rids(defusedxml.minidom.parse(str(pres_path)))
 
 
 def get_slides_in_sldidlst(unpacked_dir: Path) -> set[str]:

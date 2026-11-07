@@ -20,6 +20,22 @@ _SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*:")
 
 SLIDE_REL_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
 
+REL_NAMESPACES = {
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    "http://purl.oclc.org/ooxml/officeDocument/relationships",
+}
+
+
+def listed_slide_rids(pres_dom) -> list[str]:
+    """r:id of every <sldId>, matched by namespace URI rather than by prefix."""
+    rids = []
+    for el in pres_dom.getElementsByTagNameNS("*", "sldId"):
+        for i in range(el.attributes.length):
+            attr = el.attributes.item(i)
+            if attr.localName == "id" and attr.namespaceURI in REL_NAMESPACES:
+                rids.append(attr.value)
+    return rids
+
 
 def opc_target(target: str, source_part: str, target_mode: str = "") -> str | None:
     if not target:

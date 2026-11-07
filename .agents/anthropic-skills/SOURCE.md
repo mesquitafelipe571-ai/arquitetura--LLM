@@ -42,6 +42,7 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `pdf/scripts/extract_form_field_info.py` | Checkbox com widget separado era tratado como grupo de rádio e não podia ser desmarcado | Só vira grupo de rádio com o flag de rádio em `/Ff`; estados do checkbox lidos do widget |
 | `pdf/scripts/check_bounding_boxes.py` + `forms.md` | Comparava altura em pixels com fonte em pontos e podia aprovar caixas pequenas demais | Aceita o PDF como 2º argumento e converte para pontos; sem ele, avisa que a altura não foi conferida |
 | `pdf/scripts/convert_pdf_to_images.py` | Falhava quando a pasta de saída não existia | Cria a pasta antes de salvar |
+| `pptx/scripts/thumbnail.py` + `office/helpers` | Procurava `p:sldId`, `r:id` e `Relationship` pelo prefixo; com outro prefixo não achava slides e as miniaturas falhavam | Usa o mesmo leitor por namespace de `clean.py`, movido para `office.helpers.listed_slide_rids` |
 | `skill-creator/eval-viewer/viewer.html` (segurança) | `escapeHtml()` não escapava aspas; uma evidência com `"` saía do atributo `title` e injetava JavaScript no visualizador | `escapeHtml()` escapa `"` e `'`; `run_number` também passa por ela |
 | `skill-creator/eval-viewer/generate_review.py` + `viewer.html` (segurança) | O servidor local (porta 3117) entregava saídas e aceitava feedback sem autenticação; outro usuário da máquina podia ler e adulterar | Token aleatório por execução exigido em todas as rotas; a URL aberta no navegador já o contém |
 
