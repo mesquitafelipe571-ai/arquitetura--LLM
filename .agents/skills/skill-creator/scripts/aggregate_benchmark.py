@@ -240,10 +240,12 @@ def aggregate_results(results: dict) -> dict:
     delta_tokens = primary.get("tokens", {}).get("mean", 0) - baseline.get("tokens", {}).get("mean", 0)
     # A token delta needs real counts on every run of both sides; otherwise it is not measured.
     tokens_known = len(configs) >= 2 and all(tokens_complete.get(c, False) for c in configs[:2])
+    # A side without any graded run was not measured: comparing against its zeros invents a delta.
+    measured = len(configs) >= 2 and all(results.get(c) for c in configs[:2])
 
     run_summary["delta"] = {
-        "pass_rate": f"{delta_pass_rate:+.2f}",
-        "time_seconds": f"{delta_time:+.1f}",
+        "pass_rate": f"{delta_pass_rate:+.2f}" if measured else "—",
+        "time_seconds": f"{delta_time:+.1f}" if measured else "—",
         "tokens": f"{delta_tokens:+.0f}" if tokens_known else "—"
     }
 
@@ -342,7 +344,7 @@ def generate_markdown(benchmark: dict) -> str:
     # Format time
     a_time = a_summary.get("time_seconds", {})
     b_time = b_summary.get("time_seconds", {})
-    lines.append(f"| Time | {a_time.get('mean', 0):.1f}s ± {a_time.get('stddev', 0):.1f}s | {b_time.get('mean', 0):.1f}s ± {b_time.get('stddev', 0):.1f}s | {delta.get('time_seconds', '—')}s |")
+    lines.append(f"| Time | {a_time.get('mean', 0):.1f}s ± {a_time.get('stddev', 0):.1f}s | {b_time.get('mean', 0):.1f}s ± {b_time.get('stddev', 0):.1f}s | {(t + 's') if (t := delta.get('time_seconds', '—')) != '—' else t} |")
 
     # Format tokens
     a_tokens = a_summary.get("tokens", {})

@@ -1354,6 +1354,48 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), "['with_skill', 'old_skill'] +1.00")
 
+    def test_benchmark_unmeasured_baseline_has_no_delta(self):
+        # without_skill tem run-1 sem grading.json: não foi medida, então não há melhoria a mostrar.
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp) / "eval-0" / "with_skill" / "run-1"
+            (d / "outputs").mkdir(parents=True)
+            (d / "grading.json").write_text(json.dumps({"summary": {"pass_rate": 1.0}}))
+            (Path(tmp) / "eval-0" / "without_skill" / "run-1").mkdir(parents=True)
+            result = run_in(SKILLS / "skill-creator", f"""
+                from pathlib import Path
+                from scripts.aggregate_benchmark import generate_benchmark, generate_markdown
+                b = generate_benchmark(Path({tmp!r}))
+                delta = b["run_summary"]["delta"]
+                print(list(b["run_summary"]), delta["pass_rate"], delta["time_seconds"])
+                print("—s" in generate_markdown(b))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip().split("\n")[-2:],
+                             ["['with_skill', 'without_skill', 'delta'] — —", "False"])
+
+    def test_docx_comment_reply_uses_last_paragraph_para_id(self):
+        # commentsExtended registra o comentário pelo paraId do último parágrafo (B), não do primeiro (A).
+        w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        w14 = "http://schemas.microsoft.com/office/word/2010/wordml"
+        w15 = "http://schemas.microsoft.com/office/word/2012/wordml"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "word").mkdir()
+            (root / "word/comments.xml").write_text(
+                f'<w:comments xmlns:w="{w}" xmlns:w14="{w14}"><w:comment w:id="0" w:author="A">'
+                '<w:p w14:paraId="0000000A"/><w:p w14:paraId="0000000B"/></w:comment></w:comments>')
+            (root / "word/commentsExtended.xml").write_text(
+                f'<w15:commentsEx xmlns:w15="{w15}"><w15:commentEx w15:paraId="0000000B" w15:done="0"/>'
+                '</w15:commentsEx>')
+            result = run_in(SKILLS / "docx/scripts", f"""
+                from comment import add_comment
+                print(add_comment({tmp!r}, "resposta", parent_id=0)[0])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            ex = ET.parse(root / "word/commentsExtended.xml").getroot()
+            parents = [e.get(f"{{{w15}}}paraIdParent") for e in ex if e.get(f"{{{w15}}}paraIdParent")]
+            self.assertEqual(parents, ["0000000B"])
+
     def test_benchmark_never_mixes_output_chars_into_tokens(self):
         # Só a baseline tem tokens reais; a outra só tem output_chars. O delta de tokens não é medido.
         with tempfile.TemporaryDirectory() as tmp:

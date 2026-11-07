@@ -121,11 +121,11 @@ def _find_para_id(comments_path: Path, comment_id: int) -> tuple[str | None, boo
     for c in dom.getElementsByTagNameNS(NS["w"], "comment"):
         if c.getAttributeNS(NS["w"], "id") == str(comment_id):
             paragraphs = c.getElementsByTagNameNS(NS["w"], "p")
-            for p in paragraphs:
-                if pid := p.getAttributeNS(NS["w14"], "paraId"):
-                    return pid, False
             if not paragraphs:
                 return None, False
+            # commentsExtended links a comment by the paraId of its last paragraph.
+            if pid := paragraphs[-1].getAttributeNS(NS["w14"], "paraId"):
+                return pid, False
             pid = _generate_hex_id()
             root = dom.documentElement
             if not root.hasAttribute("xmlns:w14"):

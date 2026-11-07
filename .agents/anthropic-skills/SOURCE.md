@@ -119,6 +119,8 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `docx/scripts/comment.py` | `--parent` falhava com "parent comment N not found" quando o comentário existia mas seu parágrafo não tinha `w14:paraId` (atributo opcional) | Localiza o pai pelo `w:id`; sem `paraId`, atribui um ao último parágrafo dele e registra o `commentEx` do pai antes da resposta |
 | `office/helpers/pptx_chart.py` em docx/pptx/xlsx | As checagens de gráfico eram escritas para o prefixo `c:`; com outro prefixo (`chart:`) ou namespace padrão para o mesmo URI, nada era verificado | O prefixo ligado ao namespace de gráficos é normalizado para `c:` antes das checagens |
 | `skill-creator/scripts/aggregate_benchmark.py` + `run_loop.py`, `improve_description.py`, `generate_report.py`, `utils.py` (segurança) | `benchmark.json`/`.md`, `results.json`, `report.html`, o log de iteração e o `--output` eram gravados com `open(..., "w")`/`write_text()` seguindo links plantados | `utils.write_text_replace()` grava num temporário ao lado e substitui com `os.replace()` |
+| `docx/scripts/comment.py` | Num comentário com vários parágrafos, a resposta apontava para o `paraId` do primeiro, mas `commentsExtended.xml` registra o comentário pelo último | `_find_para_id()` usa o `paraId` do último parágrafo |
+| `skill-creator/scripts/aggregate_benchmark.py` | Uma configuração com `run-*` sem nenhum `grading.json` virava 0% e gerava delta inventado (ex.: `+1.00`) | Sem execuções avaliadas nos dois lados, os deltas de taxa e tempo ficam `—` |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.
