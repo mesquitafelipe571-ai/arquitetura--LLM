@@ -14,6 +14,13 @@ setup = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(setup)
 
 class SetupTests(unittest.TestCase):
+    def test_codex_decisao_agent_disables_shell_and_extensions(self):
+        # O perfil Codex herda as ferramentas da sessão; sem shell, um item injetado não roda comandos.
+        import tomllib
+        data = tomllib.loads((REPO / ".codex/agents/decisao.toml").read_text(encoding="utf-8"))
+        self.assertEqual(data["features"], {"shell_tool": False, "apps": False, "plugins": False,
+                                            "request_permissions_tool": False})
+
     def test_decisao_agent_has_closed_tool_list(self):
         # Sem `tools` o subagente herda Bash/Write/WebFetch/MCPs; um item injetado agiria com eles.
         text = (REPO / ".claude/agents/decisao.md").read_text(encoding="utf-8")

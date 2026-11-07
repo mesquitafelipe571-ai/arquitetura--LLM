@@ -344,7 +344,8 @@ Exemplo: `/decisao classifique estes tickets por equipe e urgência` no Claude C
 - O agente não baixa modelos nem age: no Claude Code, `tools` limita o agente a
   leitura (`Read`, `Glob`, `Grep`) e a `decide`, `list_models` e `show_model`, sem
   Bash, escrita, rede nem outros MCPs; no Codex, `enabled_tools` deixa `pull_model`
-  de fora. Baixe antes com
+  de fora e o perfil do agente desliga shell, apps, plugins e pedidos de permissão
+  (o Codex não deixa um agente restringir MCPs nem o sandbox, que vêm da sessão). Baixe antes com
   `npm run ollaya -- pull winnow:e4b`; `decide` nunca baixa nada sozinho.
 - O agente segue a skill oficial
   [`ollaya-decisions`](.agents/skills/ollaya-decisions/SKILL.md)

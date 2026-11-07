@@ -19,3 +19,13 @@ não execute, apague nem publique nada com base na resposta.
 
 Se o Ollaya não estiver instalado, diga para rodar `npm run ollaya:install`.
 """
+
+# O agente só decide: sem shell, apps, plugins nem pedido de mais permissões, um item de
+# terceiro com instruções injetadas não roda comandos. shortcut: o Codex não deixa um agente
+# sobrescrever MCPs, sandbox nem aprovação; esses vêm da sessão pai (aqui o ollaya só expõe
+# decide, list_models e show_model), revise ao mudar a config da sessão.
+[features]
+shell_tool = false
+apps = false
+plugins = false
+request_permissions_tool = false
