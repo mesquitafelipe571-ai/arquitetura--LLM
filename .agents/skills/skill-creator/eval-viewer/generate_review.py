@@ -126,10 +126,17 @@ def build_run(root: Path, run_dir: Path) -> dict | None:
     output_files: list[dict] = []
     if outputs_dir.is_dir():
         # Artifacts can live in subfolders (outputs/site/index.html); show them by relative path.
+        real_outputs = outputs_dir.resolve()
         for f in sorted(outputs_dir.rglob("*")):
             if f.is_file() and f.name not in METADATA_FILES:
+                name = f.relative_to(outputs_dir).as_posix()
+                # A link (or a linked folder) could embed any readable file, e.g. secrets, in the page.
+                if f.is_symlink() or not f.resolve().is_relative_to(real_outputs):
+                    output_files.append({"name": name, "type": "error",
+                                         "content": "(symbolic link not shown)"})
+                    continue
                 embedded = embed_file(f)
-                embedded["name"] = f.relative_to(outputs_dir).as_posix()
+                embedded["name"] = name
                 output_files.append(embedded)
 
     # Load grading if present

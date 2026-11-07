@@ -832,6 +832,30 @@ class SkillCreatorTests(unittest.TestCase):
         # 1+1: nada reservado (o treino nunca fica vazio); 2+2: 1 de cada no teste; 5+5: 2 de cada.
         self.assertEqual(result.stdout.split(), ["1", "2", "0", "2", "2", "2", "5", "6", "4"])
 
+    def test_viewer_never_embeds_files_behind_symlinks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            secret = Path(tmp) / "secret.env"
+            secret.write_text("TOKEN=segredo")
+            outside = Path(tmp) / "fora"
+            outside.mkdir()
+            (outside / "chave.txt").write_text("CHAVE=segredo")
+            out = Path(tmp) / "ws/eval-0/with_skill/outputs"
+            out.mkdir(parents=True)
+            (out / "ok.txt").write_text("resultado")
+            (out / "link.txt").symlink_to(secret)
+            (out / "pasta").symlink_to(outside, target_is_directory=True)
+            result = run_in(SKILLS / "skill-creator/eval-viewer", f"""
+                import json
+                from pathlib import Path
+                from generate_review import find_runs
+                print(json.dumps(find_runs(Path({str(Path(tmp) / "ws")!r}))[0]["outputs"]))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotIn("segredo", result.stdout)
+            outputs = {o["name"]: o for o in json.loads(result.stdout)}
+            self.assertEqual(outputs["ok.txt"]["content"], "resultado")
+            self.assertEqual(outputs["link.txt"]["type"], "error")
+
     def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
         with tempfile.TemporaryDirectory() as tmp:
             run = Path(tmp) / "eval-1/with_skill/run-1"
