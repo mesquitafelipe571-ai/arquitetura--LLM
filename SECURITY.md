@@ -1,60 +1,62 @@
-# Security Policy
+# Política de segurança
 
-## Maintainer
+## Responsável
 
-- **Security maintainer:** João Antonio Mesquita Felipe
+- **Mantenedor responsável pela segurança:** João Antonio Mesquita Felipe
 - **GitHub:** [@mesquitafelipe571-ai](https://github.com/mesquitafelipe571-ai)
-- **Runtime environment:** Google Cloud Platform, region `southamerica-east1`
-  (see [docs/INSTALACAO_GOOGLE_VM.md](docs/INSTALACAO_GOOGLE_VM.md))
+- **Ambiente de execução:** Google Cloud Platform, região `southamerica-east1`
+  (veja [docs/INSTALACAO_GOOGLE_VM.md](docs/INSTALACAO_GOOGLE_VM.md))
 
-## Scope
+## Escopo
 
-In scope: the code and configuration maintained in this repository —
+Dentro do escopo: o código e a configuração mantidos neste repositório —
 `scripts/`, `tests/`, `.github/workflows/`, `.devcontainer/`, `.codex/`,
-`.claude/`, `config/`, `compose.paperclip.json` and `package.json`.
+`.claude/`, `config/`, `compose.paperclip.json` e `package.json`.
 
-Out of scope here: the vendored skills under `.agents/skills/` and the Git
-submodules (`orca`, `paperclip`, `awesome-linux-dev`, `claude-melhores-skills`,
-`awesome-claude-code-mods`). Report issues in those to their upstream projects;
-the files under `.agents/<source>/SOURCE.md` link to each one. If an upstream
-issue affects how this repository uses that code, a report here is welcome too.
+Fora do escopo deste repositório: as skills copiadas em `.agents/skills/` e os
+submódulos Git (`orca`, `paperclip`, `awesome-linux-dev`, `claude-melhores-skills`,
+`awesome-claude-code-mods`). Reporte falhas nesses componentes aos projetos de
+origem; cada `.agents/<origem>/SOURCE.md` indica o link. Se uma falha de origem
+afetar a forma como este repositório usa esse código, o reporte também é bem-vindo
+aqui.
 
-## Supported versions
+## Versões com suporte
 
-Only the current `main` branch receives security fixes.
+Somente a branch `main` atual recebe correções de segurança.
 
-## Reporting a vulnerability
+## Como reportar uma vulnerabilidade
 
-Please **do not open a public issue**. Use GitHub private vulnerability reporting:
+**Não abra uma issue pública.** Use o reporte privado de vulnerabilidades do GitHub:
 
-1. Open the repository's **Security** tab.
-2. Choose **Report a vulnerability**.
-3. Describe the issue, the affected file or command, steps to reproduce, and the
-   impact you expect.
+1. Abra a aba **Security** do repositório.
+2. Escolha **Report a vulnerability**.
+3. Descreva o problema, o arquivo ou comando afetado, os passos para reproduzir e
+   o impacto esperado.
 
-## What to expect
+## Prazos
 
-| Step | Target |
+| Etapa | Prazo |
 | --- | --- |
-| Acknowledge the report | within 7 days |
-| Initial assessment (valid or not, severity) | within 14 days |
-| Fix or mitigation for confirmed issues | within 90 days of the report |
+| Confirmar o recebimento do reporte | até 7 dias |
+| Avaliação inicial (procedente ou não, gravidade) | até 14 dias |
+| Correção ou mitigação de falhas confirmadas | até 90 dias após o reporte |
 
-Disclosure is coordinated: once a fix is merged, a GitHub Security Advisory is
-published for confirmed vulnerabilities, crediting the reporter unless they ask
-otherwise. If a fix needs more than 90 days, the maintainer will agree on a new
-date with the reporter before any public disclosure.
+A divulgação é coordenada: depois que a correção entra no `main`, um GitHub
+Security Advisory é publicado para cada vulnerabilidade confirmada, com crédito a
+quem reportou, salvo pedido em contrário. Se a correção precisar de mais de 90
+dias, o mantenedor combina uma nova data com quem reportou antes de qualquer
+divulgação pública.
 
-## How this repository is checked
+## Verificações do repositório
 
-- `scripts/check-repo.py` and the test suite run on every pull request
-  (`.github/workflows/`). The check also fails if a workflow uses a GitHub
-  Action that is not pinned to a full commit SHA.
-- CodeQL (`.github/workflows/codeql.yml`) analyzes the Python code and the GitHub
-  Actions workflows on every pull request, on `main` and weekly.
-- Workflows run with `contents: read` and do not persist the checkout token.
-- Dependabot watches npm, pip, GitHub Actions, the dev container image and
-  features, and the pinned Git submodules (`.github/dependabot.yml`).
-- Changes to `main` go through pull requests.
-- The latest manual security review is recorded in
+- `scripts/check-repo.py` e a suíte de testes rodam em cada pull request
+  (`.github/workflows/`). A verificação também falha se um workflow usar uma
+  GitHub Action que não esteja fixada por SHA completo.
+- O CodeQL (`.github/workflows/codeql.yml`) analisa o código Python e os
+  workflows do GitHub Actions em cada pull request, no `main` e semanalmente.
+- Os workflows rodam com `contents: read` e não mantêm o token do checkout.
+- O Dependabot acompanha npm, pip, GitHub Actions, a imagem e as features do dev
+  container e os submódulos Git fixados (`.github/dependabot.yml`).
+- Alterações no `main` passam por pull request.
+- A revisão de segurança manual mais recente está registrada em
   [docs/REVISAO_SEGURANCA.md](docs/REVISAO_SEGURANCA.md).
