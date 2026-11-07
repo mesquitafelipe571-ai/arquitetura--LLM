@@ -11,6 +11,8 @@ import posixpath
 import re
 from typing import Mapping
 
+import defusedxml.ElementTree
+
 from . import part_text
 
 THEME_REL_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
@@ -65,18 +67,22 @@ def _masters(files: Mapping[str, bytes]) -> list[str]:
 
 _PRESENTATION = "ppt/presentation.xml"
 _NOTES_MASTERS = "ppt/notesMasters/"
-_IGNORABLE_RE = re.compile(r"<!--.*?-->|<\?.*?\?>", re.DOTALL)
-_AFTER_SLDIDLST_RE = re.compile(
-    r"<p:sldIdLst\b(?:[^>]*/>|[^>]*>.*?</p:sldIdLst\s*>)\s*(<[^>\s/]+)", re.DOTALL
-)
+_PML = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
 
 
 def _notes_master_share_is_inert(files: Mapping[str, bytes]) -> bool:
     data = files.get(_PRESENTATION)
     if data is None:
         return False
-    match = _AFTER_SLDIDLST_RE.search(_IGNORABLE_RE.sub("", part_text(data)))
-    return match is not None and match.group(1) == "<p:notesMasterIdLst"
+    # By namespace URI and local name: deck:sldIdLst is the same element as p:sldIdLst.
+    try:
+        children = list(defusedxml.ElementTree.fromstring(data))
+    except Exception:
+        return False
+    for i, child in enumerate(children):
+        if child.tag == _PML + "sldIdLst":
+            return i + 1 < len(children) and children[i + 1].tag == _PML + "notesMasterIdLst"
+    return False
 
 
 def _shares(files: Mapping[str, bytes]):

@@ -144,16 +144,15 @@ def _has_comment_ex(ext_path: Path, para_id: str) -> bool:
                for e in dom.getElementsByTagNameNS(NS["w15"], "commentEx"))
 
 
-def _next_comment_id(comments_path: Path) -> int:
+def _comment_ids(comments_path: Path) -> list[str]:
     if not comments_path.exists():
-        return 0
+        return []
     dom = defusedxml.minidom.parseString(comments_path.read_text(encoding="utf-8"))
-    ids = []
-    for c in dom.getElementsByTagNameNS(NS["w"], "comment"):
-        try:
-            ids.append(int(c.getAttributeNS(NS["w"], "id")))
-        except ValueError:
-            pass
+    return [c.getAttributeNS(NS["w"], "id") for c in dom.getElementsByTagNameNS(NS["w"], "comment")]
+
+
+def _next_comment_id(comments_path: Path) -> int:
+    ids = [int(i) for i in _comment_ids(comments_path) if i.lstrip("-").isdigit()]
     return (max(ids) + 1) if ids else 0
 
 
@@ -311,6 +310,9 @@ def add_comment(
     )
     if comment_id is None:
         comment_id = _next_comment_id(comments)
+    elif str(comment_id) in _comment_ids(comments):
+        # w:id must be unique: a second comment with it would make the document markers ambiguous.
+        raise ValueError(f"comment id {comment_id} is already used")
 
     parent_para = None
     if parent_id is not None:

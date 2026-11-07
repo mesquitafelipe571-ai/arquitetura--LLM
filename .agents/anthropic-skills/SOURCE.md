@@ -137,6 +137,9 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `skill-creator/scripts/improve_description.py` + `run_eval.py` (segurança) | `claude -p` rodava com todas as ferramentas, MCPs e permissões do usuário; um `SKILL.md`/consulta de terceiro podia pedir Bash, Write ou WebFetch | `improve_description` usa `--tools "" --strict-mcp-config`; `run_eval` usa só `--tools Skill,Read` (o que a detecção precisa) e `--strict-mcp-config` |
 | `mcp-builder/scripts/evaluation.py` (segurança) | `-o` gravava o relatório com `write_text()`, seguindo um link plantado no caminho | `write_report()` grava num temporário ao lado e substitui com `os.replace()` |
 | `xlsx/scripts/recalc.py` (segurança) | `_looks_like_xml()` só reconhecia `<` e BOMs; XML UTF-16BE sem BOM (`00 3c`) passava como binário e um `WEBSERVICE` chegava ao LibreOffice | Detecta XML em UTF-8/16/32 com ou sem BOM (apêndice F do XML), decodificando o início do conteúdo |
+| `office/helpers/pptx_theme.py` (3 cópias) | A ordem `sldIdLst` → `notesMasterIdLst` era lida por regex com `p:` fixo; com outro prefixo para o mesmo URI, um tema compartilhado inerte virava erro | Lê `presentation.xml` com defusedxml e compara URI e nome local dos filhos da raiz |
+| `docx/scripts/comment.py` | `--id` explícito já usado criava um segundo `w:comment` com o mesmo `w:id` | O ID é conferido antes de mexer nas partes; um ID repetido levanta `ValueError` |
+| `pptx/scripts/add_slide.py` (segurança) | `copy2()`/`write_text()` seguiam um link em `slideN.xml(.rels)` ou nas partes registradas e gravavam fora do pacote | `_refuse_linked_writes()` confere todas as partes gravadas, e as pastas até a raiz, antes da primeira gravação |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

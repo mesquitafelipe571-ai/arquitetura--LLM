@@ -25,6 +25,7 @@ A duplicated slide still holds the source's content: edit ppt/slides/slideN.xml
 """
 
 import argparse
+import os
 import re
 import shutil
 import sys
@@ -169,7 +170,22 @@ def _prefixes(xml: str) -> tuple[str, str]:
     return p, (rel.group(1) + ":") if rel else "r:"
 
 
+def _refuse_linked_writes(unpacked_dir: Path, dest: str) -> None:
+    """Every part this script writes, checked before the first write: a link at the part or at a
+    folder between it and the package root would make the write land outside the package."""
+    root = Path(os.path.abspath(unpacked_dir))
+    slides = root / "ppt" / "slides"
+    for part in (slides / dest, slides / "_rels" / f"{dest}.rels", root / "[Content_Types].xml",
+                 root / "ppt" / "_rels" / "presentation.xml.rels", root / "ppt" / "presentation.xml"):
+        for p in (part, *part.parents):
+            if p == root:
+                break
+            if p.is_symlink():
+                _die(f"refusing to write through a symlink: {p}")
+
+
 def _precheck_registration(unpacked_dir: Path, after: str | None, dest: str) -> str | None:
+    _refuse_linked_writes(unpacked_dir, dest)
     pres_path = unpacked_dir / "ppt" / "presentation.xml"
     if not pres_path.exists():
         _die(f"{pres_path} not found — is this an unpacked PPTX?")

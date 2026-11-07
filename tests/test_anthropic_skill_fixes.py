@@ -329,6 +329,62 @@ class OfficeSkillTests(unittest.TestCase):
             rels = ET.parse(root / "ppt/slides/_rels/slide2.xml.rels").getroot()
             self.assertEqual([r.get("Type").rsplit("/", 1)[1] for r in rels], ["slideLayout"])
 
+    def test_pptx_master_theme_order_ignores_namespace_prefix(self):
+        # deck: em vez de p: (mesmo URI), com notesMasterIdLst logo após sldIdLst: compartilhar o tema é inerte.
+        pml = "http://schemas.openxmlformats.org/presentationml/2006/main"
+        rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+        rels = (f'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                f'<Relationship Id="rId1" Type="{rel}" Target="../theme/theme1.xml"/></Relationships>').encode()
+        for prefix in ("p", "deck"):
+            files = {
+                "ppt/presentation.xml": (f'<{prefix}:presentation xmlns:{prefix}="{pml}"><!-- c -->'
+                                         f'<{prefix}:sldIdLst/><{prefix}:notesMasterIdLst/></{prefix}:presentation>').encode(),
+                "ppt/slideMasters/slideMaster1.xml": b"<x/>",
+                "ppt/slideMasters/_rels/slideMaster1.xml.rels": rels,
+                "ppt/notesMasters/notesMaster1.xml": b"<x/>",
+                "ppt/notesMasters/_rels/notesMaster1.xml.rels": rels,
+                "ppt/theme/theme1.xml": b"<x/>",
+            }
+            for skill in ("docx", "pptx", "xlsx"):
+                with self.subTest(prefix=prefix, skill=skill):
+                    result = run_in(SKILLS / f"{skill}/scripts/office", f"""
+                        from helpers.pptx_theme import live_shared_master_themes
+                        print(live_shared_master_themes({files!r}))
+                    """)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout.strip(), "[]")
+
+    def test_pptx_duplicate_slide_refuses_linked_destination(self):
+        # slide2.xml.rels já é link para fora: nada é gravado, e o alvo fica intacto.
+        rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        pkg = "http://schemas.openxmlformats.org/package/2006/relationships"
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
+            root = Path(tmp)
+            (root / "ppt/_rels").mkdir(parents=True)
+            (root / "ppt/slides/_rels").mkdir(parents=True)
+            (root / "ppt/presentation.xml").write_text(
+                f'<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"'
+                f' xmlns:r="{rel_ns}"><p:sldIdLst><p:sldId id="256" r:id="rId1"/></p:sldIdLst></p:presentation>')
+            (root / "ppt/_rels/presentation.xml.rels").write_text(
+                f'<Relationships xmlns="{pkg}"><Relationship Id="rId1" Type="{rel_ns}/slide"'
+                ' Target="slides/slide1.xml"/></Relationships>')
+            (root / "[Content_Types].xml").write_text(
+                '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>')
+            (root / "ppt/slides/slide1.xml").write_text("<p:sld/>")
+            (root / "ppt/slides/_rels/slide1.xml.rels").write_text(f'<Relationships xmlns="{pkg}"/>')
+            victim = Path(outside) / "victim.txt"
+            victim.write_text("da vítima")
+            (root / "ppt/slides/_rels/slide2.xml.rels").symlink_to(victim)
+            result = run_in(SKILLS / "pptx/scripts", f"""
+                from pathlib import Path
+                from add_slide import duplicate_slide
+                duplicate_slide(Path({tmp!r}), "slide1.xml")
+            """)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("symlink", result.stderr + result.stdout)
+            self.assertEqual(victim.read_text(), "da vítima")
+            self.assertFalse((root / "ppt/slides/slide2.xml").exists())
+
     def test_pptx_duplicate_slide_with_other_presentation_prefixes(self):
         # Mesmo namespace com outros prefixos (deck:, rel:): antes a lista de slides "não existia".
         rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
@@ -814,6 +870,25 @@ class OfficeSkillTests(unittest.TestCase):
             entries = [(e.get(f"{{{w15}}}paraId"), e.get(f"{{{w15}}}paraIdParent")) for e in ex]
             self.assertEqual([p for p, parent in entries if p == "12345678"], ["12345678"])  # uma vez só
             self.assertEqual([parent for _, parent in entries if parent], ["12345678", "12345678"])
+
+    def test_docx_comment_refuses_used_explicit_id(self):
+        # --id 5 duas vezes: a segunda é recusada antes de mexer nas partes.
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "word").mkdir()
+            result = run_in(SKILLS / "docx/scripts", f"""
+                from pathlib import Path
+                from comment import add_comment
+                add_comment({tmp!r}, "primeiro", comment_id=5)
+                before = (Path({tmp!r}) / "word/comments.xml").read_text()
+                try:
+                    add_comment({tmp!r}, "segundo", comment_id=5)
+                except ValueError as e:
+                    print("recusado:", e)
+                print((Path({tmp!r}) / "word/comments.xml").read_text() == before)
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines()[-2:],
+                             ["recusado: comment id 5 is already used", "True"])
 
     def test_docx_comment_creates_missing_document_rels(self):
         with tempfile.TemporaryDirectory() as tmp:
