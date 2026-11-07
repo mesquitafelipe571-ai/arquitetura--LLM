@@ -93,14 +93,16 @@ def package_skill(skill_path, output_dir=None):
             for file_path in skill_path.rglob('*'):
                 if file_path == skill_filename:
                     continue  # the archive being written, when the output dir is inside the skill
+                arcname = file_path.relative_to(skill_path.parent)
+                # Excluded paths (node_modules often holds links) never reach the archive.
+                if should_exclude(arcname):
+                    if file_path.is_file():
+                        print(f"  Skipped: {arcname}")
+                    continue
                 # A link could pull in any file the process can read (e.g. credentials).
                 if file_path.is_symlink() or not file_path.resolve().is_relative_to(skill_path):
                     raise ValueError(f"symbolic link not allowed in a skill: {file_path}")
                 if not file_path.is_file():
-                    continue
-                arcname = file_path.relative_to(skill_path.parent)
-                if should_exclude(arcname):
-                    print(f"  Skipped: {arcname}")
                     continue
                 zipf.write(file_path, arcname)
                 print(f"  Added: {arcname}")

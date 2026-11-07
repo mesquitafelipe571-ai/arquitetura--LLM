@@ -652,6 +652,8 @@
     let feedbackMap = {};  // run_id -> feedback text
     let currentIndex = 0;
     let visitedRuns = new Set();
+    let saveTimeout = null;               // pending debounced auto-save
+    let lastSave = Promise.resolve();     // the most recent auto-save request
 
     // ---- Init ----
     async function init() {
@@ -671,7 +673,6 @@
 
       // Wire up feedback auto-save
       const textarea = document.getElementById("feedback");
-      let saveTimeout = null;
       textarea.addEventListener("input", () => {
         clearTimeout(saveTimeout);
         document.getElementById("feedback-status").textContent = "";
@@ -1004,7 +1005,7 @@
         }
       }
 
-      fetch("/api/feedback" + location.search, {
+      lastSave = fetch("/api/feedback" + location.search, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reviews, status: "in_progress" }),
@@ -1019,6 +1020,8 @@
 
     // ---- Done ----
     function showDoneDialog() {
+      // A pending or in-flight auto-save would land after the final POST and overwrite it.
+      clearTimeout(saveTimeout);
       // Save current textarea to feedbackMap (but don't POST yet)
       const run = EMBEDDED_DATA.runs[currentIndex];
       const text = document.getElementById("feedback").value;
@@ -1036,11 +1039,11 @@
         reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
       }
       const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
-      fetch("/api/feedback" + location.search, {
+      lastSave.then(() => fetch("/api/feedback" + location.search, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: payload,
-      }).then(() => {
+      })).then(() => {
         document.getElementById("done-overlay").classList.add("visible");
       }).catch(() => {
         // Server not available (static mode) — download as file

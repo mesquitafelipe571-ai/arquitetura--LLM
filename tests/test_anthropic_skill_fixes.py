@@ -549,6 +549,57 @@ class SkillCreatorTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), items)
 
+    def test_package_skill_ignores_links_in_excluded_dirs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            skill = Path(tmp) / "my-skill"
+            (skill / "node_modules/demo-dep").mkdir(parents=True)
+            (skill / "SKILL.md").write_text("---\nname: my-skill\ndescription: x\n---\n")
+            (skill / "node_modules/demo-dep/bin").symlink_to(sys.executable)
+            result = run_in(SKILLS / "skill-creator", f"""
+                import sys, types, zipfile
+                sys.modules["scripts.quick_validate"] = types.SimpleNamespace(validate_skill=lambda p: (True, "ok"))
+                from scripts.package_skill import package_skill
+                out = package_skill({str(skill)!r}, {str(Path(tmp) / "dist")!r})
+                print(sorted(zipfile.ZipFile(out).namelist()))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+            self.assertEqual(result.stdout.strip().splitlines()[-1], "['my-skill/SKILL.md']")
+
+    @unittest.skipUnless(shutil.which("node"), "node não disponível")
+    def test_viewer_final_submit_is_not_overwritten_by_pending_autosave(self):
+        html = (SKILLS / "skill-creator/eval-viewer/viewer.html").read_text()
+        state = re.search(r"// ---- State ----\n(.*?)\n\n", html, re.S).group(1)
+        funcs = [re.search(rf"(?:async )?function {name}\(\) \{{.*?\n    \}}", html, re.S).group(0)
+                 for name in ("init", "saveCurrentFeedback", "showDoneDialog")]
+        script = textwrap.dedent("""
+            const EMBEDDED_DATA = {skill_name: "s", runs: [{id: "r1"}, {id: "r2"}]};
+            const location = {search: "?token=t"};
+            const posts = [];
+            async function fetch(url, opts) {
+              if (opts && opts.method === "POST") posts.push(JSON.parse(opts.body).status);
+              await new Promise(r => setTimeout(r, 50));  // uma requisição em andamento
+              return {json: async () => ({})};
+            }
+            const els = {};
+            const document = {getElementById(id) {
+              return els[id] || (els[id] = {value: "", handlers: {}, classList: {add() {}, remove() {}},
+                addEventListener(ev, fn) { this.handlers[ev] = fn; }, set textContent(t) {}});
+            }};
+            function showRun() {}
+        """) + state + "\n" + "\n".join(funcs) + textwrap.dedent("""
+            init().then(() => {
+              const box = document.getElementById("feedback");
+              box.value = "ok";
+              box.handlers.input();       // agenda o salvamento automático (800 ms)
+              saveCurrentFeedback();       // e há um salvamento em andamento
+              showDoneDialog();            // o usuário conclui antes dos 800 ms
+              setTimeout(() => process.stdout.write(JSON.stringify(posts)), 1200);
+            });
+        """)
+        result = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)[-1], "complete")
+
     def test_benchmark_reads_real_tokens_when_grading_has_duration(self):
         with tempfile.TemporaryDirectory() as tmp:
             run = Path(tmp) / "eval-1/with_skill/run-1"
