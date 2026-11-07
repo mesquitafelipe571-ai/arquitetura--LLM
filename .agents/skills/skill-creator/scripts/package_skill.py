@@ -53,6 +53,12 @@ def package_skill(skill_path, output_dir=None):
     Returns:
         Path to the created .skill file, or None if error
     """
+    try:
+        # resolve() would follow a linked skill folder and package another, private skill.
+        refuse_linked_folder(skill_path, "skill folder")
+    except ValueError as e:
+        print(f"❌ {e}")
+        return None
     skill_path = Path(skill_path).resolve()
 
     # Validate skill folder exists

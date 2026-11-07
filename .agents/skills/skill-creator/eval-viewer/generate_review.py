@@ -50,7 +50,7 @@ MIME_OVERRIDES = {
 }
 
 
-def refuse_linked_folder(folder) -> None:
+def refuse_linked_folder(folder, what: str = "output folder") -> None:
     """os.replace swaps a link planted at an output file, but a linked folder at or above it would
     still make the write land outside the workspace."""
     path = Path(os.path.abspath(folder))
@@ -62,7 +62,7 @@ def refuse_linked_folder(folder) -> None:
         if p == stop or len(p.parts) <= 2:
             break
         if p.is_symlink():
-            raise ValueError(f"output folder goes through a symlink: {p}")
+            raise ValueError(f"{what} goes through a symlink: {p}")
 
 
 def get_mime_type(path: Path) -> str:
@@ -471,6 +471,14 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    try:
+        # resolve() would follow a linked workspace and embed another folder's outputs in the page.
+        refuse_linked_folder(args.workspace, "workspace")
+        if args.previous_workspace:
+            refuse_linked_folder(args.previous_workspace, "previous workspace")
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
     workspace = args.workspace.resolve()
     if not workspace.is_dir():
         print(f"Error: {workspace} is not a directory", file=sys.stderr)

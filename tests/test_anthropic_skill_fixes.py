@@ -3202,6 +3202,82 @@ class XlsxPdfTests(unittest.TestCase):
 
 @unittest.skipUnless(importlib.util.find_spec("numpy") and importlib.util.find_spec("PIL"),
                      "numpy/Pillow não instalados")
+class LinkedInputRootTests(unittest.TestCase):
+    def test_gif_save_replaces_link_and_refuses_linked_folder(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
+            victim = Path(outside) / "victim.txt"
+            victim.write_text("do usuário")
+            (Path(tmp) / "out.gif").symlink_to(victim)
+            (Path(tmp) / "exports").symlink_to(outside)
+            result = run_in(SKILLS / "slack-gif-creator", f"""
+                import sys, types
+                sys.modules["imageio"] = types.ModuleType("imageio")
+                sys.modules["imageio.v3"] = types.SimpleNamespace(
+                    imwrite=lambda path, *a, **k: open(path, "wb").write(b"GIF89a"))
+                import numpy as np
+                from core.gif_builder import GIFBuilder
+                b = GIFBuilder(16, 16, fps=10)
+                b.add_frame(np.zeros((16, 16, 3), dtype=np.uint8))
+                b.save({str(Path(tmp) / "out.gif")!r})
+                try:
+                    b.save({str(Path(tmp) / "exports/x.gif")!r})
+                except ValueError as e:
+                    print("recusado:", e)
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(victim.read_text(), "do usuário")
+            self.assertFalse((Path(tmp) / "out.gif").is_symlink())
+            self.assertEqual((Path(tmp) / "out.gif").read_bytes(), b"GIF89a")
+            self.assertIn("recusado: output folder goes through a symlink", result.stdout)
+            self.assertEqual(os.listdir(outside), ["victim.txt"])
+
+    def test_package_skill_and_viewer_refuse_linked_roots(self):
+        # submitted-skill -> private-skill: nada do alvo vai para o .skill nem para o HTML.
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:
+            (Path(private) / "SKILL.md").write_text("---\nname: private\ndescription: x\n---\n")
+            (Path(private) / "provider-key.txt").write_text("SEGREDO")
+            (Path(tmp) / "submitted-skill").symlink_to(private)
+            (Path(tmp) / "ws").symlink_to(private)
+            pack = run_in(SKILLS / "skill-creator", f"""
+                import sys, types
+                sys.modules["scripts.quick_validate"] = types.SimpleNamespace(validate_skill=lambda p: (True, "ok"))
+                from scripts.package_skill import package_skill
+                print(package_skill({str(Path(tmp) / "submitted-skill")!r}, {tmp!r}))
+            """)
+            self.assertEqual(pack.returncode, 0, pack.stderr)
+            self.assertIn("skill folder goes through a symlink", pack.stdout)
+            self.assertEqual(pack.stdout.strip().splitlines()[-1], "None")
+            view = subprocess.run([sys.executable, str(SKILLS / "skill-creator/eval-viewer/generate_review.py"),
+                                   str(Path(tmp) / "ws"), "--static", str(Path(tmp) / "r.html")],
+                                  capture_output=True, text=True, timeout=60)
+            self.assertEqual(view.returncode, 1)
+            self.assertIn("workspace goes through a symlink", view.stderr)
+            self.assertEqual(sorted(p.name for p in Path(tmp).iterdir()), ["submitted-skill", "ws"])
+
+    def test_mcp_evaluation_refuses_linked_eval_file(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as private:
+            (Path(private) / "eval.xml").write_text("<evaluation><qa_pair><question>PRIVATE</question>"
+                                                    "<answer>x</answer></qa_pair></evaluation>")
+            (Path(tmp) / "evaluation.xml").symlink_to(Path(private) / "eval.xml")
+            result = run_in(SKILLS / "mcp-builder/scripts", f"""
+                import asyncio, sys, types
+                sys.modules["anthropic"] = types.SimpleNamespace(Anthropic=object)
+                def boom(**kw):
+                    raise AssertionError("conectou ao MCP")
+                sys.modules["connections"] = types.SimpleNamespace(create_connection=boom)
+                import evaluation
+                sys.argv = ["evaluation.py", "-c", "true", {str(Path(tmp) / "evaluation.xml")!r}]
+                try:
+                    asyncio.run(evaluation.main())
+                except SystemExit as e:
+                    print("saiu", e.code)
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("evaluation file goes through a symlink", result.stdout)
+            self.assertIn("saiu 1", result.stdout)
+            self.assertNotIn("PRIVATE", result.stdout)
+
+
 class GifBuilderTests(unittest.TestCase):
     def test_emoji_frame_reduction_keeps_animation_duration(self):
         with tempfile.TemporaryDirectory() as tmp:

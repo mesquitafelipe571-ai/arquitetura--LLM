@@ -6,6 +6,8 @@ This module provides the main interface for creating GIFs from programmatically
 generated frames, with automatic optimization for Slack's requirements.
 """
 
+import os
+import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -241,13 +243,26 @@ class GIFBuilder:
         # Per-frame duration in ms: a frame dropped (dedup or emoji reduction) lengthens the one kept
         durations = [1000 / self.fps * c for c in self._current_frame_counts()]
 
-        # Save GIF
-        imageio.imwrite(
-            output_path,
-            optimized_frames,
-            duration=durations,
-            loop=0,  # Infinite loop
-        )
+        # Save beside the target and replace it: a link at output_path is swapped out, never written
+        # through; a linked folder above it is refused, as it would put the GIF outside the workspace.
+        for p in (output_path.absolute().parent, *output_path.absolute().parent.parents):
+            if Path(p) == Path.cwd() or len(p.parts) <= 2:
+                break
+            if p.is_symlink():
+                raise ValueError(f"output folder goes through a symlink: {p}")
+        fd, tmp = tempfile.mkstemp(prefix=f".{output_path.name}.", suffix=".gif", dir=output_path.parent)
+        os.close(fd)
+        try:
+            imageio.imwrite(
+                tmp,
+                optimized_frames,
+                duration=durations,
+                loop=0,  # Infinite loop
+            )
+            os.replace(tmp, output_path)
+        except BaseException:
+            Path(tmp).unlink(missing_ok=True)
+            raise
 
         # Get file info
         file_size_kb = output_path.stat().st_size / 1024

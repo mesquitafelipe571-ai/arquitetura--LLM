@@ -153,6 +153,9 @@ Skills copiadas de `anthropics/skills@2c5958e`; os defeitos existem na origem.
 - **Avaliador MCP executava qualquer ferramenta** (`mcp-builder/scripts/evaluation.py`): um resultado com
   prompt injection podia levar a uma ferramenta que grava ou apaga. Agora só ferramentas `readOnlyHint: true`
   são oferecidas por padrão (`--allow-write-tools` libera as demais) e chamadas fora da lista são recusadas.
+- **Raízes e saídas que eram links** (GIF, pacote de skill, visualizador, avaliação MCP): o GIF passou a ser
+  gravado com temporário e `os.replace`, e a pasta da skill, o workspace e o `evaluation.xml` são recusados
+  quando são links ou estão sob uma pasta-link.
 - **Nome do projeto virava código `sed`** (`web-artifacts-builder/scripts/init-artifact.sh`, apontado pela
   revisão de segurança do Codex): `x;touch marker/e` executava um comando pela flag GNU `e`. Agora o nome
   precisa ser um slug, validado antes de qualquer outro passo.

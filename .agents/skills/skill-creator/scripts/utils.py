@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 
-def refuse_linked_folder(folder) -> None:
+def refuse_linked_folder(folder, what: str = "output folder") -> None:
     """os.replace swaps a link planted at an output file, but a linked folder at or above it would
     still make the write land outside the workspace."""
     path = Path(os.path.abspath(folder))
@@ -17,7 +17,7 @@ def refuse_linked_folder(folder) -> None:
         if p == stop or len(p.parts) <= 2:
             break
         if p.is_symlink():
-            raise ValueError(f"output folder goes through a symlink: {p}")
+            raise ValueError(f"{what} goes through a symlink: {p}")
 
 
 def write_text_replace(path: Path, text: str) -> None:

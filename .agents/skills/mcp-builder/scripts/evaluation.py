@@ -324,7 +324,7 @@ def parse_env_vars(env_list: list[str]) -> dict[str, str]:
     return env
 
 
-def refuse_linked_folder(folder) -> None:
+def refuse_linked_folder(folder, what: str = "output folder") -> None:
     """os.replace swaps a link planted at an output file, but a linked folder at or above it would
     still make the write land outside the workspace."""
     path = Path(os.path.abspath(folder))
@@ -336,7 +336,7 @@ def refuse_linked_folder(folder) -> None:
         if p == stop or len(p.parts) <= 2:
             break
         if p.is_symlink():
-            raise ValueError(f"output folder goes through a symlink: {p}")
+            raise ValueError(f"{what} goes through a symlink: {p}")
 
 
 def write_report(path: Path, report: str) -> None:
@@ -391,6 +391,12 @@ Examples:
 
     if not args.eval_file.exists():
         print(f"Error: Evaluation file not found: {args.eval_file}")
+        sys.exit(1)
+    try:
+        # A linked eval file would send someone else's questions and answers to the API and report.
+        refuse_linked_folder(args.eval_file, "evaluation file")
+    except ValueError as e:
+        print(f"Error: {e}")
         sys.exit(1)
 
     headers = parse_headers(args.headers) if args.headers else None
