@@ -38,8 +38,10 @@ class GIFBuilder:
         Args:
             frame: Frame as numpy array or PIL Image (will be converted to RGB)
         """
-        if isinstance(frame, Image.Image):
-            frame = np.array(frame.convert("RGB"))
+        # Arrays too: an RGBA (h, w, 4) array would break optimize_colors()'s reshape(-1, 3).
+        if not isinstance(frame, Image.Image):
+            frame = Image.fromarray(frame)
+        frame = np.array(frame.convert("RGB"))
 
         # Ensure frame is correct size
         if frame.shape[:2] != (self.height, self.width):

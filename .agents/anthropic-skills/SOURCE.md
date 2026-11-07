@@ -141,6 +141,9 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `docx/scripts/comment.py` | `--id` explícito já usado criava um segundo `w:comment` com o mesmo `w:id` | O ID é conferido antes de mexer nas partes; um ID repetido levanta `ValueError` |
 | `pptx/scripts/add_slide.py` (segurança) | `copy2()`/`write_text()` seguiam um link em `slideN.xml(.rels)` ou nas partes registradas e gravavam fora do pacote | `_refuse_linked_writes()` confere todas as partes gravadas, e as pastas até a raiz, antes da primeira gravação |
 | `pptx/scripts/clean.py` (segurança) | `glob()`/`unlink()` seguiam um link de diretório (ex.: `ppt/media` → `~/.ssh`) e apagavam arquivos fora do pacote | `_refuse_links()` percorre o pacote sem seguir links e recusa a limpeza, sem apagar nada, se achar algum |
+| `slack-gif-creator/core/gif_builder.py` | `add_frame()` só convertia imagens PIL para RGB; um array NumPy RGBA quebrava `optimize_colors()` no `save()` | Arrays também passam por `Image.fromarray(...).convert("RGB")` |
+| `slack-gif-creator/core/validators.py` | A duração era o atraso do último quadro vezes o número de quadros; com atrasos diferentes, duração e FPS saíam errados | Soma o atraso de cada quadro durante a iteração |
+| `docx/scripts/comment.py` (segurança) | Um `word/comments.xml` (ou outra parte, ou pasta) que fosse link era lido e sobrescrito fora do pacote | `_refuse_linked_writes()` confere as partes de comentários, `document.xml.rels` e `[Content_Types].xml`, e as pastas até a raiz, antes da primeira gravação |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

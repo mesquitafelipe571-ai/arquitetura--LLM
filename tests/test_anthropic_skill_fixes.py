@@ -886,6 +886,26 @@ class OfficeSkillTests(unittest.TestCase):
             self.assertEqual([p for p, parent in entries if p == "12345678"], ["12345678"])  # uma vez só
             self.assertEqual([parent for _, parent in entries if parent], ["12345678", "12345678"])
 
+    def test_docx_comment_refuses_linked_parts(self):
+        # word/comments.xml como link para fora: nada é alterado, nem o alvo nem o pacote.
+        w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
+            (Path(tmp) / "word").mkdir()
+            victim = Path(outside) / "comments.xml"
+            victim.write_text(f'<w:comments xmlns:w="{w}"/>')
+            (Path(tmp) / "word/comments.xml").symlink_to(victim)
+            result = run_in(SKILLS / "docx/scripts", f"""
+                from comment import add_comment
+                try:
+                    add_comment({tmp!r}, "texto")
+                except ValueError as e:
+                    print("recusado:", e)
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("recusado: refusing to write through a symlink", result.stdout)
+            self.assertEqual(victim.read_text(), f'<w:comments xmlns:w="{w}"/>')
+            self.assertEqual(sorted(p.name for p in (Path(tmp) / "word").iterdir()), ["comments.xml"])
+
     def test_docx_comment_refuses_used_explicit_id(self):
         # --id 5 duas vezes: a segunda é recusada antes de mexer nas partes.
         with tempfile.TemporaryDirectory() as tmp:
@@ -2610,6 +2630,37 @@ class GifBuilderTests(unittest.TestCase):
             """)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.splitlines()[-1].split(), ["2000", "2.0"])
+
+    def test_add_frame_converts_rgba_arrays(self):
+        # Arrays RGBA (128, 128, 4) quebravam o reshape(-1, 3) de optimize_colors() no save().
+        result = run_in(SKILLS / "slack-gif-creator", """
+            import sys, types
+            sys.modules["imageio"] = types.ModuleType("imageio")
+            sys.modules["imageio.v3"] = types.SimpleNamespace(imwrite=lambda *a, **k: None)
+            import numpy as np
+            from core.gif_builder import GIFBuilder
+            b = GIFBuilder(128, 128, fps=10)
+            b.add_frame(np.zeros((128, 128, 4), dtype=np.uint8))
+            b.add_frame(np.zeros((64, 64), dtype=np.uint8))  # cinza e de outro tamanho
+            print([f.shape for f in b.frames])
+        """)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip().splitlines()[-1], "[(128, 128, 3), (128, 128, 3)]")
+
+    def test_validator_sums_each_frame_duration(self):
+        # Atrasos de 1000 e 100 ms: 1,1 s, e não 2 x o atraso do último quadro.
+        with tempfile.TemporaryDirectory() as tmp:
+            gif = Path(tmp) / "v.gif"
+            result = run_in(SKILLS / "slack-gif-creator", f"""
+                from PIL import Image
+                from core.validators import validate_gif
+                frames = [Image.new("RGB", (128, 128), c) for c in ("black", "white")]
+                frames[0].save({str(gif)!r}, save_all=True, append_images=frames[1:], duration=[1000, 100], loop=0)
+                _, info = validate_gif({str(gif)!r}, verbose=False)
+                print(info["frame_count"], info["duration_seconds"])
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines()[-1], "2 1.1")
 
     def test_removing_duplicate_frames_keeps_their_time(self):
         with tempfile.TemporaryDirectory() as tmp:

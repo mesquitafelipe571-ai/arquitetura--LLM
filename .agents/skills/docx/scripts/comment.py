@@ -23,6 +23,7 @@ After running, add markers to word/document.xml so the comment is visible:
 """
 
 import argparse
+import os
 import random
 import shutil
 import sys
@@ -286,6 +287,18 @@ def _ensure_comment_content_types(unpacked_dir: Path) -> None:
         ct_path.write_bytes(dom.toxml(encoding="UTF-8"))
 
 
+def _refuse_linked_writes(unpacked_dir: Path, *parts: Path) -> None:
+    """Checked before the first write: a link at a part, or at a folder between it and the
+    package root, would make the edit land outside the package."""
+    root = Path(os.path.abspath(unpacked_dir))
+    for part in parts:
+        for p in (Path(os.path.abspath(part)), *Path(os.path.abspath(part)).parents):
+            if p == root:
+                break
+            if p.is_symlink():
+                raise ValueError(f"refusing to write through a symlink: {p}")
+
+
 def add_comment(
     unpacked_dir: Path | str,
     text: str,
@@ -308,6 +321,8 @@ def add_comment(
     comments, ext, ids, extensible = (
         unpacked_dir / part for part in _comment_parts(unpacked_dir).values()
     )
+    _refuse_linked_writes(unpacked_dir, comments, ext, ids, extensible,
+                          _rels_path(unpacked_dir), unpacked_dir / "[Content_Types].xml")
     if comment_id is None:
         comment_id = _next_comment_id(comments)
     elif str(comment_id) in _comment_ids(comments):
