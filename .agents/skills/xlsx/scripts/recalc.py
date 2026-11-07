@@ -16,6 +16,7 @@ import time
 import zipfile
 from pathlib import Path
 
+from office.helpers import check_archive_limits
 from office.soffice import get_soffice_env, run_soffice
 
 from openpyxl import load_workbook
@@ -26,6 +27,11 @@ SOFFICE_MISSING = "soffice not found on PATH; LibreOffice is required to recalcu
 MAX_LOCATIONS = 100
 
 EXTERNAL_REF_RE = re.compile(r"""(?<![\w"\[])'?\[\d+\][^!"\[\]]*'?!""")
+# LibreOffice fetches these while recalculating, so a third-party workbook could reach
+# local/internal URLs and have the response saved into the file.
+NETWORK_FUNCTION_RE = re.compile(rb"\b(?:_xlfn\.)?(?:WEBSERVICE|DDE)\s*\(", re.IGNORECASE)
+# Formula text: cell <f>, defined names, and conditional-format/validation <formula>, <formula1>, ...
+FORMULA_TEXT_RE = re.compile(rb"<(?:\w+:)?(f|definedName|formula\d?)\b[^>]*>(.*?)</(?:\w+:)?\1\s*>", re.DOTALL)
 
 RECALCULATE_MACRO = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
@@ -121,6 +127,21 @@ def external_links_at_risk(filename):
         return at_risk
 
 
+def network_formula_parts(filename):
+    """Workbook parts whose formulas call WEBSERVICE or DDE; cell text that only mentions them is ignored."""
+    try:
+        archive = zipfile.ZipFile(filename)
+    except (zipfile.BadZipFile, OSError):
+        return []
+    with archive:
+        check_archive_limits(archive)
+        return [
+            name for name in archive.namelist()
+            if name.startswith("xl/") and name.endswith(".xml")
+            and any(NETWORK_FUNCTION_RE.search(m.group(2)) for m in FORMULA_TEXT_RE.finditer(archive.read(name)))
+        ]
+
+
 def recalc(filename, timeout=30, force=False):
     if not Path(filename).exists():
         return {"error": f"File {filename} does not exist"}
@@ -129,6 +150,21 @@ def recalc(filename, timeout=30, force=False):
 
     if not os.access(abs_path, os.W_OK):
         return {"error": f"{filename} is not writable; recalculation rewrites the file in place"}
+
+    # Not covered by --force: that flag accepts losing external links, not network access.
+    try:
+        network_parts = network_formula_parts(filename)
+    except Exception as e:
+        return {"error": f"Could not inspect {filename} for network formulas: {e}"}
+    if network_parts:
+        return {
+            "error": (
+                "Refusing to recalculate: formulas call WEBSERVICE or DDE, which LibreOffice would "
+                "run, fetching data from the network or other programs into the file. Remove those "
+                "formulas (or replace them with their values) and retry."
+            ),
+            "network_formula_parts": network_parts,
+        }
 
     try:
         get_soffice_env()

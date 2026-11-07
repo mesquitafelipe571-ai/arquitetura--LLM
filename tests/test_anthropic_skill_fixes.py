@@ -827,6 +827,24 @@ class SkillCreatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip().splitlines()[-1], "['my-skill/SKILL.md']")
 
+    def test_viewer_static_output_never_follows_link(self):
+        # review.html -> victim.txt: o HTML deve substituir o link, não o alvo.
+        script = SKILLS / "skill-creator/eval-viewer/generate_review.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp) / "ws"
+            (ws / "eval-0/outputs").mkdir(parents=True)
+            (ws / "eval-0/outputs/out.txt").write_text("ok")
+            victim = Path(tmp) / "victim.txt"
+            victim.write_text("da vítima")
+            out = ws / "review.html"
+            out.symlink_to(victim)
+            result = subprocess.run([sys.executable, str(script), str(ws), "--static", str(out)],
+                                    capture_output=True, text=True, timeout=60)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(victim.read_text(), "da vítima")
+            self.assertFalse(out.is_symlink())
+            self.assertIn("<html", out.read_text().lower())
+
     def test_viewer_previous_iteration_ignores_linked_feedback(self):
         # Um feedback.json da iteração anterior que é link levava o feedback de outro lugar para o HTML.
         with tempfile.TemporaryDirectory() as tmp:
@@ -1454,6 +1472,23 @@ class SkillCreatorTests(unittest.TestCase):
 @unittest.skipUnless(importlib.util.find_spec("openpyxl") and importlib.util.find_spec("pypdf"),
                      "openpyxl/pypdf não instalados")
 class XlsxPdfTests(unittest.TestCase):
+    def test_xlsx_recalc_refuses_network_formulas(self):
+        # =WEBSERVICE(...) faria o LibreOffice buscar a URL ao recalcular e gravar a resposta no arquivo.
+        with tempfile.TemporaryDirectory() as tmp:
+            bad, ok = Path(tmp) / "bad.xlsx", Path(tmp) / "ok.xlsx"
+            result = run_in(SKILLS / "xlsx/scripts", f"""
+                from unittest import mock
+                from openpyxl import Workbook
+                import recalc
+                for path, formula in (({str(bad)!r}, '=WEBSERVICE("http://127.0.0.1:1/")'), ({str(ok)!r}, "=SUM(1,2)")):
+                    wb = Workbook(); wb.active["A1"] = formula; wb.active["A2"] = "texto WEBSERVICE(x)"; wb.save(path)
+                with mock.patch.object(recalc, "_recalc_with_profile", side_effect=AssertionError("rodou")):
+                    out = recalc.recalc({str(bad)!r}, force=True)
+                print(out.get("network_formula_parts"), recalc.network_formula_parts({str(ok)!r}))
+            """)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "['xl/worksheets/sheet1.xml'] []")
+
     def test_xlsx_recalc_counts_only_real_error_cells(self):
         with tempfile.TemporaryDirectory() as tmp:
             book = Path(tmp) / "book.xlsx"

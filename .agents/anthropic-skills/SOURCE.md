@@ -99,6 +99,8 @@ Eles foram corrigidos aqui e cobertos por `tests/test_anthropic_skill_fixes.py`
 | `pdf/scripts/check_bounding_boxes.py` | Em páginas com `/Rotate` 90 ou 270, convertia pixels em pontos pela altura do MediaBox, não pela altura exibida; aprovava caixas baixas demais para a fonte | Usa a largura do MediaBox como altura nessas rotações |
 | `office/validators/base.py` em docx/pptx/xlsx | `validate_file_references()` aceitava um destino como `../../outside.png` que saía da extração, se o arquivo existisse na máquina; aprovava recursos que não vão no ZIP | Destino fora do pacote extraído conta como referência quebrada |
 | `office/helpers/pptx_chart.py` em docx/pptx/xlsx | Aprovava qualquer grupo de gráfico com 2 eixos válidos, embora `line3DChart` e `surface3DChart` exijam 3; um eixo de série inexistente passava | Compara com `AXID_MINIMUM` do tipo do gráfico |
+| `skill-creator/eval-viewer/generate_review.py` (segurança) | `--static` gravava com `write_text()`; um `review.html` que fosse link tinha o alvo sobrescrito pelo HTML | Grava em arquivo temporário e substitui com `os.replace()` |
+| `xlsx/scripts/recalc.py` (segurança) | Recalculava fórmulas `WEBSERVICE`/`DDE` de planilhas de terceiros; o LibreOffice buscava URLs locais/internas e gravava a resposta no arquivo | Recusa recalcular (também com `--force`) quando uma fórmula, nome definido ou formatação condicional chama essas funções |
 
 Ao atualizar as skills, confira se a origem já corrigiu cada item antes de
 sobrescrever esses arquivos, e reporte os que continuarem pendentes.

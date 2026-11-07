@@ -479,7 +479,15 @@ def main() -> None:
     if args.static:
         html = generate_html(runs, skill_name, previous, benchmark)
         args.static.parent.mkdir(parents=True, exist_ok=True)
-        args.static.write_text(html)
+        # Temp file + os.replace: a link at the output path is replaced, never its target written.
+        fd, tmp = tempfile.mkstemp(prefix=".review.", suffix=".tmp", dir=args.static.parent)
+        try:
+            with os.fdopen(fd, "w") as fh:
+                fh.write(html)
+            os.replace(tmp, args.static)
+        except BaseException:
+            Path(tmp).unlink(missing_ok=True)
+            raise
         print(f"\n  Static viewer written to: {args.static}\n")
         sys.exit(0)
 
